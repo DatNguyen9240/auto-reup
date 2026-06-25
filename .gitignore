@@ -1,0 +1,39 @@
+# Large compiled executables and build folders
+AutoTool.exe
+AutoTool.exe_extracted/
+_internal/
+packaging/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+
+# Environments
+.env
+.venv
+venv/
+env/
+ENV/
+
+# Project temporary runs and output renders
+projects/
+*.log
+*.tmp
+*.mp3
+*.wav
+
+# Diagnostics & Scratch
+scratch/
+seg_*_test.mp3
+seg_*_test.wav
+
+# IDE Settings
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp

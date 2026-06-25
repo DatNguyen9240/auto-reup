@@ -1,0 +1,16 @@
+{
+  "default_source_folder": "",
+  "default_output_folder": "./examples/outputs",
+  "default_music_folder": "",
+  "auto_open_browser": true,
+  "enable_open_folder": true,
+  "max_recent_items": 5,
+  "backend_host": "127.0.0.1",
+  "backend_port": 8000,
+  "frontend_host": "127.0.0.1",
+  "frontend_port": 5173,
+  "production_single_port": true,
+  "serve_frontend_dist": true,
+  "single_port_url": "http://127.0.0.1:8000",
+  "frontend_dist_path": "frontend/dist"
+}

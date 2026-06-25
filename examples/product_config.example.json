@@ -1,0 +1,109 @@
+{
+  "project_name": "kaw-xmax10",
+  "source_folder": "./sample_videos/kaw_xmax10",
+  "output_folder": "./outputs",
+  "product": {
+    "name": "Máy Chiếu 4K Android KAW XMAX10",
+    "brand": "KAW",
+    "description": "Máy chiếu giải trí gia đình nhỏ gọn, hỗ trợ 4K, Android 9.0.",
+    "features": [
+      "Hỗ trợ 4K",
+      "Android 9.0",
+      "Thiết kế nhỏ gọn",
+      "Phù hợp phòng ngủ, phòng khách, văn phòng"
+    ],
+    "specs": [
+      {
+        "name": "Hệ điều hành",
+        "value": "Android 9.0"
+      }
+    ],
+    "cta": "Xem chi tiết sản phẩm ngay"
+  },
+  "render": {
+    "output_count": 3,
+    "duration": 12,
+    "aspect_ratio": "9:16",
+    "resolution": "1080x1920",
+    "fps": 30
+  },
+  "effects": {
+    "cut_intensity": 70,
+    "speed_variation": 30,
+    "grain": 15,
+    "zoom_motion": 25,
+    "overlay_height": 33,
+    "subtitle_size": 84
+  },
+  "ai": {
+    "text_model": "gemini-3.1-flash-lite",
+    "tone": "friendly_reviewer",
+    "language": "vi",
+    "gemini_api_keys": []
+  },
+  "tts": {
+    "provider": "edge_tts",
+    "fallback_provider": "piper",
+    "voice": "vi-VN-HoaiMyNeural",
+    "language": "vi",
+    "api_key": null,
+    "credentials_json_path": null,
+    "access_token": null,
+    "rate": "+0%",
+    "pitch": "+0Hz",
+    "volume": "+0%",
+    "output_format": "mp3"
+  },
+  "music": {
+    "enabled": true,
+    "source_folder": "./music",
+    "source_file": null,
+    "volume": 0.12,
+    "fade_in": 0.5,
+    "fade_out": 0.8,
+    "duck_under_voice": false
+  },
+  "timeline": {
+    "template_id": "ugc_reviewer_natural"
+  },
+  "script_variation": {
+    "mode": "auto_mix",
+    "preferred_variant_ids": [
+      "reviewer_natural",
+      "benefit_first",
+      "use_case_scene"
+    ]
+  },
+  "visual_style": {
+    "preset_id": "clean_review_light",
+    "custom_overrides": null,
+    "overlay_mode": "preset",
+    "custom_overlay_path": "./overlay",
+    "custom_overlay_height_percent": 33,
+    "custom_overlay_fit_mode": "cover"
+  },
+  "industry": {
+    "preset_id": "general_product"
+  },
+  "crop_safety": {
+    "enabled": true,
+    "mode": "auto_safe",
+    "allow_blur_background": true,
+    "reduce_zoom_on_risk": true,
+    "reduce_overlay_on_risk": true
+  },
+  "cache": {
+    "enabled": true,
+    "cache_media_metadata": true,
+    "cache_segment_scoring": true,
+    "cache_crop_safety": true,
+    "cache_tts": true,
+    "cache_overlay_assets": true,
+    "clear_cache_before_render": false
+  },
+  "source_media": {
+    "respect_user_exclusions": true,
+    "prefer_favorite_segments": true,
+    "allow_excluded_fallback": false
+  }
+}
