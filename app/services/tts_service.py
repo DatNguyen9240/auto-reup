@@ -89,8 +89,8 @@ class TTSService:
             # Step 3: Speed adjust if necessary
             if raw_duration_ms > target_duration_ms:
                 ratio = raw_duration_ms / target_duration_ms
-                # Clamp ratio to reasonable limits [0.5, 4.0]
-                ratio = min(max(ratio, 0.5), 4.0)
+                # Clamp ratio to reasonable limits [0.5, 1.3] (maximum 1.3x speed for natural voice)
+                ratio = min(max(ratio, 0.5), 1.3)
                 try:
                     self.adjust_audio_speed(raw_path, final_path, ratio)
                 except Exception as e:
@@ -116,6 +116,10 @@ class TTSService:
                     
             segment.tts_path = str(final_path)
             segment.status = "tts_generated"
+            
+            # Rate-limiting guard: Add a short sleep between consecutive synthesis requests
+            import asyncio
+            await asyncio.sleep(0.5)
             
         logger.info("All segment voiceovers generated and processed successfully.")
         return segments

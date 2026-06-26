@@ -38,3 +38,17 @@ ffmpeg_bin = settings.auto_tool_root / "_internal" / "vendor" / "ffmpeg" / "bin"
 if ffmpeg_bin.exists():
     os.environ["PATH"] = str(ffmpeg_bin) + os.pathsep + os.environ.get("PATH", "")
 
+# Self-healing: Check if ffmpeg exists in PATH. If not, scan WinGet directories to avoid restarting IDE
+import shutil
+if not shutil.which("ffmpeg"):
+    local_appdata = os.environ.get("LOCALAPPDATA")
+    if local_appdata:
+        winget_packages = Path(local_appdata) / "Microsoft" / "WinGet" / "Packages"
+        if winget_packages.exists():
+            for folder in winget_packages.glob("Gyan.FFmpeg*"):
+                ffmpeg_exes = list(folder.rglob("ffmpeg.exe"))
+                if ffmpeg_exes:
+                    ffmpeg_dir = ffmpeg_exes[0].parent
+                    os.environ["PATH"] = str(ffmpeg_dir) + os.pathsep + os.environ.get("PATH", "")
+                    break
+

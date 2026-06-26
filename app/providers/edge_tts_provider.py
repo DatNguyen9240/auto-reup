@@ -17,7 +17,7 @@ class EdgeTTSProvider(TTSProvider):
             # But normally we only call TTS for non-empty text.
             
         import asyncio
-        for attempt in range(1, 4):
+        for attempt in range(1, 6):
             try:
                 communicate = edge_tts.Communicate(text=text, voice=voice, rate=rate, pitch=pitch)
                 await communicate.save(str(output_path))
@@ -28,7 +28,7 @@ class EdgeTTSProvider(TTSProvider):
                 return output_path
             except Exception as e:
                 logger.warning(f"EdgeTTS attempt {attempt} failed: {e}")
-                if attempt == 3:
-                    logger.error(f"EdgeTTS failed to generate audio after 3 attempts: {e}")
+                if attempt == 5:
+                    logger.error(f"EdgeTTS failed to generate audio after 5 attempts: {e}")
                     raise TTSError(f"EdgeTTS generation failed: {e}")
-                await asyncio.sleep(2.0 * attempt)
+                await asyncio.sleep(3.0 * attempt)

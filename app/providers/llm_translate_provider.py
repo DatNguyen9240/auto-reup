@@ -2,6 +2,7 @@ import json
 from typing import List
 from google import genai
 from google.genai import types
+from pydantic import BaseModel
 from app.config import settings
 from app.providers.translate_base import TranslateProvider
 from app.models.segment import Segment
@@ -11,6 +12,13 @@ from app.utils.logger import get_logger
 logger = get_logger("LLMTranslateProvider")
 
 import os
+
+class TranslationItem(BaseModel):
+    id: int
+    translated_text: str
+
+class TranslationResponse(BaseModel):
+    translations: List[TranslationItem]
 
 class LLMTranslateProvider(TranslateProvider):
     def __init__(self, api_key: str = None):
@@ -54,22 +62,35 @@ Yêu cầu:
 1. Dịch tự nhiên, sinh động, phù hợp với văn phong video ngắn dạng "{tone}".
 2. Giữ nguyên cấu trúc ID, trả về định dạng danh sách JSON tương tự đầu vào với trường "translated_text" là bản dịch tiếng Việt.
 3. Không tự ý gộp/tách câu, đảm bảo số lượng phần tử trả về trùng khớp hoàn toàn với đầu vào.
-4. Chỉ trả về JSON hợp lệ, không bọc trong block Markdown hay giải thích gì thêm.
+4. TỐI ƯU ĐỘ DÀI: Hãy dịch cực kỳ ngắn gọn, súc tích, lược bỏ các từ rườm rà. Câu dịch tiếng Việt phải ngắn gọn để khi lồng tiếng bằng giọng đọc AI không bị nói quá nhanh, đảm bảo người nghe dễ tiếp thu.
+5. Chỉ trả về JSON hợp lệ, không bọc trong block Markdown hay giải thích gì thêm.
 
 Danh sách phụ đề cần dịch:
 {json.dumps(payload, ensure_ascii=False, indent=2)}
 """
 
         try:
-            # We use gemini-2.5-flash as default model
-            response = self.client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                ),
-            )
-            
+            import time
+            response = None
+            for attempt in range(1, 4):
+                try:
+                    # We use gemini-2.5-flash as default model
+                    response = self.client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            response_mime_type="application/json",
+                            response_schema=TranslationResponse,
+                        ),
+                    )
+                    break
+                except Exception as e:
+                    logger.warning(f"Gemini API attempt {attempt} failed: {e}")
+                    if attempt == 3:
+                        raise e
+                    print(f"Rate limit hit or connection failed. Retrying in {5 * attempt} seconds...")
+                    time.sleep(5.0 * attempt)
+                
             response_text = response.text.strip()
             # Clean up potential markdown wrappers
             if response_text.startswith("```json"):
