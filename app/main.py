@@ -1,8 +1,15 @@
 import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import sys
 import asyncio
 import typer
 from pathlib import Path
+
+# Add project root to sys.path to allow imports when executed from other working directories
+project_root = str(Path(__file__).resolve().parents[1])
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from app.core.pipeline import PipelineRunner
 from app.utils.logger import configure_logging, get_logger
 from app.config import settings
@@ -24,16 +31,15 @@ def process(
     """Processes horizontal video input: translates, synthesizes voiceovers, loops BGM, applies sidechain ducking, and crops to 9:16 vertical."""
     configure_logging()
     
-    input_path = Path(input_video)
-    if not input_path.exists():
-        typer.echo(f"Error: Input video file not found at: {input_path}", err=True)
+    if not input_video.exists():
+        typer.echo(f"Error: Input video file not found at: {input_video}", err=True)
         raise typer.Exit(code=1)
         
     if not os.environ.get("GEMINI_API_KEY") and not settings.gemini_api_key:
         typer.echo("Warning: GEMINI_API_KEY environment variable is missing. LLM steps will fail unless translation fallback is enabled.", err=True)
         
     # Generate unique job ID based on the input filename
-    job_id = f"job_{input_path.stem}"
+    job_id = f"job_{input_video.stem}"
     projects_dir = Path("./projects")
     
     runner = PipelineRunner(projects_dir)
@@ -44,7 +50,7 @@ def process(
         typer.echo(f"Resuming existing job: {job_id} (last step: {job.current_step}, status: {job.status})")
     else:
         typer.echo(f"Creating new job: {job_id} for input video...")
-        job = runner.create_job(input_path, job_id)
+        job = runner.create_job(input_video, job_id)
         
     try:
         asyncio.run(runner.run(

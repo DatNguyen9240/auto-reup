@@ -1,6 +1,7 @@
 import os
 import subprocess
 from pathlib import Path
+import pysrt
 from app.core.errors import RenderError
 from app.utils.logger import get_logger
 
@@ -15,9 +16,8 @@ class RenderService:
             p_str = f"{drive}\\:{rest}"
         return p_str
 
-    def _convert_srt_to_ass(self, srt_path: Path, ass_path: Path, margin_v: int, font_size: int = 38):
+    def _convert_srt_to_ass(self, srt_path: Path, ass_path: Path, margin_v: int, mask_subtitle: bool, font_size: int = 38):
         """Converts an SRT file to an ASS file with 1080x1920 layout and specified MarginV."""
-        import pysrt
         subs = pysrt.open(str(srt_path), encoding="utf-8")
         
         def ms_to_ass_time(ms: int) -> str:
@@ -27,6 +27,14 @@ class RenderService:
             centiseconds = (ms % 1000) // 10
             return f"{hours}:{minutes:02d}:{seconds:02d}.{centiseconds:02d}"
             
+        # Select style options based on mask_subtitle
+        if mask_subtitle:
+            border_style = 3  # Opaque background box
+            outline = 10      # Padding for background box
+        else:
+            border_style = 1  # Standard outline
+            outline = 3       # Thin outline border
+            
         ass_lines = [
             "[Script Info]",
             "ScriptType: v4.00+",
@@ -35,7 +43,7 @@ class RenderService:
             "",
             "[V4+ Styles]",
             "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-            f"Style: Default,Arial,{font_size},&H00FFFFFF,&H000000FF,&H1A000000,&H1A000000,0,0,0,0,100,100,0,0,3,10,0,2,80,80,{margin_v},1",
+            f"Style: Default,Arial,{font_size},&H00FFFFFF,&H000000FF,&H1A000000,&H1A000000,0,0,0,0,100,100,0,0,{border_style},{outline},0,2,80,80,{margin_v},1",
             "",
             "[Events]",
             "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"
@@ -78,7 +86,7 @@ class RenderService:
         if w_in >= h_in:
             # Input is horizontal or square: make blurred background + centered foreground
             filters.append(
-                f"[0:v]scale={w_out}:{h_out}:force_original_aspect_ratio=increase,crop={w_out}:{h_out},boxblur=20:5[bg]"
+                f"[0:v]scale={w_out}:{h_out}:force_original_aspect_ratio=increase,crop={w_out}:{h_out},boxblur=20:1[bg]"
             )
             filters.append(
                 f"[0:v]scale={w_out}:{h_out}:force_original_aspect_ratio=decrease[fg]"
@@ -95,17 +103,13 @@ class RenderService:
         current_grid = "[layout]"
         
         # 2. Chinese subtitle cover-up (Calculations only, no drawbox filter added as we use ASS text box background)
-        mask_y = 1147
-        mask_h = 91
-        if mask_subtitle:
-            # Compute subtitle region dynamically relative to the foreground video box vertical span
-            h_fit = int(w_out * h_in / w_in)
-            y_fit = (h_out - h_fit) // 2
-            
-            # Subtitles typically occupy bottom 16-18% of the foreground video box
-            # Adjusted vertical start and height to comfortably host new subtitles
-            mask_y = y_fit + int(h_fit * 0.79)
-            mask_h = int(h_fit * 0.18)
+        # Compute subtitle region dynamically relative to the foreground video box vertical span
+        h_fit = int(w_out * h_in / w_in) if w_in >= h_in else h_out
+        y_fit = (h_out - h_fit) // 2 if w_in >= h_in else 0
+        
+        # Subtitles typically occupy bottom 16-18% of the foreground video box
+        mask_y = y_fit + int(h_fit * 0.79)
+        mask_h = int(h_fit * 0.18)
             
         # 3. Logo/Watermark overlay (centered slightly below the top of the frame)
         has_logo = logo_path and os.path.exists(logo_path) and os.path.getsize(logo_path) > 0
@@ -120,7 +124,7 @@ class RenderService:
         # Position the bottom line of subtitle text exactly 12px above the bottom of the old subtitle area
         margin_v = h_out - (mask_y + mask_h) + 12
         ass_path = srt_path.with_suffix(".ass")
-        self._convert_srt_to_ass(srt_path, ass_path, margin_v=margin_v, font_size=42)
+        self._convert_srt_to_ass(srt_path, ass_path, margin_v=margin_v, mask_subtitle=mask_subtitle, font_size=42)
         
         escaped_ass = self._escape_windows_path(ass_path)
         filters.append(
@@ -131,7 +135,7 @@ class RenderService:
         
         # Assemble FFmpeg execution args
         cmd = [
-            "ffmpeg", "-y",
+            "ffmpeg", "-y", "-nostdin",
             "-i", str(video_path),
             "-i", str(audio_path)
         ]
@@ -144,8 +148,12 @@ class RenderService:
             "-map", "[outv]",
             "-map", "1:a",
             "-c:v", "libx264",
-            "-preset", "medium",
+            "-preset", "veryfast",
             "-crf", "21",
+            "-pix_fmt", "yuv420p",
+            "-colorspace", "bt709",
+            "-color_trc", "bt709",
+            "-color_primaries", "bt709",
             "-c:a", "aac",
             "-b:a", "192k",
             "-shortest",

@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     default_rate: str = "+0%"
     default_pitch: str = "+0Hz"
     
+    # Channel Configuration
+    channel_name: str = Field(default="AutoTool Review", validation_alias="CHANNEL_NAME")
+    
     # Audio ducking default volumes
     original_volume: float = 0.25
     tts_volume: float = 1.0

@@ -1,9 +1,12 @@
 import os
 import shutil
 import json
+import asyncio
 from pathlib import Path
 from typing import List, Optional
 import pysrt
+
+from app.config import settings
 
 from app.models.job import Job
 from app.models.segment import Segment
@@ -31,6 +34,14 @@ class PipelineRunner:
         self.tts_service = TTSService(self.tts_provider)
         self.mixer = AudioMixer()
         self.render_service = RenderService()
+        self.translator = LLMTranslateProvider()
+
+    def _get_dest_video(self, work_dir: Path) -> Path:
+        """Safely resolves the input video path in the work directory."""
+        matches = list(work_dir.glob("input.*"))
+        if not matches:
+            raise AutoToolError(f"No input video file found in work directory: {work_dir}")
+        return matches[0]
 
     def create_job(self, input_path: Path, job_id: str) -> Job:
         job = Job(
@@ -56,6 +67,27 @@ class PipelineRunner:
         job = self.store.load_job(job_id)
         if not job:
             raise AutoToolError(f"Job {job_id} not found.")
+
+        # Apply Emotion Preset mapping if defaults are used and tone has a preset
+        EMOTION_PRESETS = {
+            "funny": {"rate": "+8%", "pitch": "+4Hz", "bgm": "funny_loop"},
+            "sad": {"rate": "-10%", "pitch": "-5Hz", "bgm": "sad_loop"},
+            "drama": {"rate": "-4%", "pitch": "-3Hz", "bgm": "dramatic_loop"},
+            "serious": {"rate": "-5%", "pitch": "-2Hz", "bgm": None},
+            "energetic": {"rate": "+10%", "pitch": "+3Hz", "bgm": None}
+        }
+        
+        if tone in EMOTION_PRESETS:
+            preset = EMOTION_PRESETS[tone]
+            if rate == "+0%":
+                rate = preset["rate"]
+                logger.info(f"Applying preset rate '{rate}' for tone '{tone}'")
+            if pitch == "+0Hz":
+                pitch = preset["pitch"]
+                logger.info(f"Applying preset pitch '{pitch}' for tone '{tone}'")
+            if bgm_name is None and preset.get("bgm"):
+                bgm_name = preset["bgm"]
+                logger.info(f"Applying preset BGM '{bgm_name}' for tone '{tone}'")
 
         job.status = "running"
         self.store.save_job(job)
@@ -97,7 +129,7 @@ class PipelineRunner:
                 self.store.save_job(job)
                 logger.info("--- Step 2: Analyze ---")
                 
-                dest_video = next(work_dir.glob("input.*"))
+                dest_video = self._get_dest_video(work_dir)
                 metadata = self.analyzer.analyze(dest_video)
                 write_json(work_dir / "metadata.json", metadata)
                 
@@ -110,7 +142,7 @@ class PipelineRunner:
                 self.store.save_job(job)
                 logger.info("--- Step 3: Extract Audio ---")
                 
-                dest_video = next(work_dir.glob("input.*"))
+                dest_video = self._get_dest_video(work_dir)
                 self.extractor.extract(dest_video, work_dir / "audio.wav")
                 
                 job.steps["extract_audio"] = "completed"
@@ -146,7 +178,12 @@ class PipelineRunner:
                         audio_path = work_dir / "audio.wav"
                         # base model is fast and works reasonably on CPU
                         model = WhisperModel("base", device="cpu", compute_type="float32")
-                        segments_iter, info = model.transcribe(str(audio_path), beam_size=5)
+                        segments_iter, info = model.transcribe(
+                            str(audio_path),
+                            beam_size=5,
+                            vad_filter=True,
+                            condition_on_previous_text=False
+                        )
                         segments = []
                         for idx, s in enumerate(segments_iter):
                             segments.append(Segment(
@@ -190,8 +227,7 @@ class PipelineRunner:
                 if not segments:
                     logger.warning("No transcript segments found to translate.")
                 else:
-                    translator = LLMTranslateProvider()
-                    segments = translator.translate(segments, tone)
+                    segments = self.translator.translate(segments, tone)
                     
                 self.store.save_translated(job_id, segments)
                 job.steps["translate"] = "completed"
@@ -228,7 +264,16 @@ class PipelineRunner:
                 # Resolve BGM path
                 bgm_path = None
                 if bgm_name:
-                    from app.config import settings
+                    # Map abstract BGM names to actual files in examples/music
+                    bgm_mapping = {
+                        "dramatic_loop": "leberch-soft-piano-501446",
+                        "funny_loop": "lightbeatsmusic-joyful-rhythm-walk-funk-513936",
+                        "sad_loop": "leberch-soft-piano-501446"
+                    }
+                    if bgm_name in bgm_mapping:
+                        logger.info(f"Mapping BGM name '{bgm_name}' to existing file: '{bgm_mapping[bgm_name]}'")
+                        bgm_name = bgm_mapping[bgm_name]
+
                     music_dir = Path(settings.default_music_folder)
                     for ext in [".mp3", ".wav", ".m4a"]:
                         test_path = music_dir / f"{bgm_name}{ext}"
@@ -275,7 +320,7 @@ class PipelineRunner:
                 with open(work_dir / "metadata.json", "r", encoding="utf-8") as f:
                     metadata = json.load(f)
                     
-                dest_video = next(work_dir.glob("input.*"))
+                dest_video = self._get_dest_video(work_dir)
                 final_video = output_dir / "final.mp4"
                 
                 self.render_service.render(
@@ -304,8 +349,7 @@ class PipelineRunner:
                 hashtags = "#autotool #dichphim #reviewphim"
                 
                 # Try calling Gemini to generate highly catchy titles and hashtags contextually
-                translator = LLMTranslateProvider()
-                if translator.api_key:
+                if self.translator.client is not None:
                     try:
                         summary_prompt = (
                             "Bạn là chuyên gia sáng tạo nội dung mạng xã hội. Hãy viết 1 tiêu đề ngắn cực kỳ giật gân, "
@@ -317,7 +361,7 @@ class PipelineRunner:
                         )
                         summary_prompt += "\n".join([s.translated_text for s in segments[:12]])
                         
-                        response = translator.client.models.generate_content(
+                        response = self.translator.client.models.generate_content(
                             model='gemini-2.5-flash',
                             contents=summary_prompt
                         )

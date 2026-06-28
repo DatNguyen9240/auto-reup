@@ -1,4 +1,5 @@
 import ffmpeg
+import asyncio
 from pathlib import Path
 from typing import List
 from app.models.segment import Segment
@@ -65,60 +66,77 @@ class TTSService:
         tts_dir = work_dir / "tts"
         tts_dir.mkdir(parents=True, exist_ok=True)
         
-        for segment in segments:
+        for idx, segment in enumerate(segments):
             if not segment.tts_text.strip():
                 segment.status = "tts_generated"
                 continue
                 
-            raw_path = tts_dir / f"seg_{segment.id}_raw.mp3"
-            final_path = tts_dir / f"seg_{segment.id}.wav"
+            logger.info(f"[{idx+1}/{len(segments)}] Generating voiceover for segment {segment.id}: '{segment.tts_text[:30]}...'")
+            import hashlib
+            param_str = f"{segment.tts_text}|{voice}|{rate}|{pitch}"
+            param_hash = hashlib.md5(param_str.encode('utf-8')).hexdigest()[:12]
             
-            # Step 1: Generate Raw Speech
-            await self.tts_provider.generate_tts(
-                text=segment.tts_text,
-                output_path=raw_path,
-                voice=voice,
-                rate=rate,
-                pitch=pitch
-            )
+            raw_path = tts_dir / f"seg_{segment.id}_{param_hash}_raw.mp3"
+            final_path = tts_dir / f"seg_{segment.id}_{param_hash}.wav"
+            
+            # Clean up old/stale files for this segment id if they exist to prevent disk bloat
+            for old_file in tts_dir.glob(f"seg_{segment.id}_*"):
+                if old_file.name not in [raw_path.name, final_path.name]:
+                    try:
+                        old_file.unlink()
+                    except Exception:
+                        pass
+            
+            # Step 1: Generate Raw Speech (Skip if raw file already exists to save time and API calls)
+            if not raw_path.exists() or raw_path.stat().st_size == 0:
+                await self.tts_provider.generate_tts(
+                    text=segment.tts_text,
+                    output_path=raw_path,
+                    voice=voice,
+                    rate=rate,
+                    pitch=pitch
+                )
             
             # Step 2: Probe raw TTS duration
             raw_duration_ms = self.get_audio_duration_ms(raw_path)
-            target_duration_ms = max(segment.duration_ms, 100)
             
-            # Step 3: Speed adjust if necessary
-            if raw_duration_ms > target_duration_ms:
-                ratio = raw_duration_ms / target_duration_ms
-                # Clamp ratio to reasonable limits [0.5, 1.3] (maximum 1.3x speed for natural voice)
-                ratio = min(max(ratio, 0.5), 1.3)
+            # Calculate available time to next segment to prevent overlapping voiceover
+            if idx < len(segments) - 1:
+                available_time_ms = max(segments[idx+1].start_ms - segment.start_ms, 100)
+            else:
+                available_time_ms = max(segment.duration_ms, 100)
+            
+            # Step 3: Speed adjust (baseline speed is 1.1x, and up to 1.8x to prevent overlap)
+            ratio = raw_duration_ms / available_time_ms
+            ratio = max(1.1, min(ratio, 1.8))
+            
+            logger.info(
+                f"Segment {segment.id}: raw duration {raw_duration_ms}ms, available time {available_time_ms}ms. "
+                f"Applying speed factor {ratio:.2f}x."
+            )
+            try:
+                self.adjust_audio_speed(raw_path, final_path, ratio)
+            except Exception as e:
+                logger.warning(f"Speed adjustment failed for segment {segment.id}, fallback to speed-adjusted copy: {e}")
                 try:
-                    self.adjust_audio_speed(raw_path, final_path, ratio)
-                except Exception as e:
-                    logger.warning(f"Speed adjustment failed for segment {segment.id}, using raw: {e}")
-                    # Fallback: convert raw directly to wav
+                    ffmpeg.run(
+                        ffmpeg.output(ffmpeg.input(str(raw_path)), str(final_path), af=f"atempo={ratio:.4f}"),
+                        overwrite_output=True, capture_stdout=True, capture_stderr=True
+                    )
+                except Exception as copy_err:
+                    # Final fallback: convert raw directly to wav (1.0x)
                     try:
                         ffmpeg.run(
                             ffmpeg.output(ffmpeg.input(str(raw_path)), str(final_path)),
                             overwrite_output=True, capture_stdout=True, capture_stderr=True
                         )
-                    except Exception as copy_err:
-                        raise TTSError(f"Failed to process fallback audio for segment {segment.id}: {copy_err}")
-            else:
-                # No speed adjustment needed, convert raw (mp3) to wav
-                try:
-                    ffmpeg.run(
-                        ffmpeg.output(ffmpeg.input(str(raw_path)), str(final_path)),
-                        overwrite_output=True, capture_stdout=True, capture_stderr=True
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to convert raw TTS to wav for segment {segment.id}: {e}")
-                    raise TTSError(f"Audio format conversion failed: {e}")
+                    except Exception as final_err:
+                        raise TTSError(f"Failed to process fallback audio for segment {segment.id}: {final_err}")
                     
             segment.tts_path = str(final_path)
             segment.status = "tts_generated"
             
             # Rate-limiting guard: Add a short sleep between consecutive synthesis requests
-            import asyncio
             await asyncio.sleep(0.5)
             
         logger.info("All segment voiceovers generated and processed successfully.")

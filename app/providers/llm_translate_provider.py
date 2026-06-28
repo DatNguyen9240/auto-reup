@@ -58,16 +58,39 @@ class LLMTranslateProvider(TranslateProvider):
         prompt = f"""Bạn là một chuyên gia dịch thuật video chuyên nghiệp từ nước ngoài sang tiếng Việt.
 Hãy dịch danh sách phụ đề video ngắn dưới đây sang tiếng Việt.
 
-Yêu cầu:
-1. Dịch tự nhiên, sinh động, phù hợp với văn phong video ngắn dạng "{tone}".
-2. Giữ nguyên cấu trúc ID, trả về định dạng danh sách JSON tương tự đầu vào với trường "translated_text" là bản dịch tiếng Việt.
-3. Không tự ý gộp/tách câu, đảm bảo số lượng phần tử trả về trùng khớp hoàn toàn với đầu vào.
-4. TỐI ƯU ĐỘ DÀI: Hãy dịch cực kỳ ngắn gọn, súc tích, lược bỏ các từ rườm rà. Câu dịch tiếng Việt phải ngắn gọn để khi lồng tiếng bằng giọng đọc AI không bị nói quá nhanh, đảm bảo người nghe dễ tiếp thu.
-5. Chỉ trả về JSON hợp lệ, không bọc trong block Markdown hay giải thích gì thêm.
+BỐI CẢNH & PHONG CÁCH:
+- Video ngắn dạng kịch tính, tóm tắt phim/review phim.
+- Giọng văn kịch tính, cuốn hút, tự nhiên, trôi chảy.
+
+YÊU CẦU QUAN TRỌNG:
+1. SỬA LỖI CHÍNH TẢ & ĐỒNG ÂM (ASR CORRECTION):
+   Phụ đề nguồn tiếng Trung được tạo tự động bằng nhận diện giọng nói (ASR) nên chứa rất nhiều lỗi đồng âm hoặc sai chính tả. Hãy tự động phân tích ngữ cảnh để sửa các lỗi này trước khi dịch. Ví dụ:
+   - "逆名" thực chất là "匿名" (nặc danh).
+   - "契礼子散" thực chất là "妻离子散" (vợ con ly tán, tan nhà nát cửa).
+   - "印着头皮" thực chất là "硬着头皮" (nhắm mắt đưa chân, cố chịu đựng).
+   - "复约" thực chất là "赴约" (đến hẹn, đi gặp).
+   - "舞运" thực chất là "迷晕" (đánh thuốc mê, làm bất tỉnh).
+   - "让人招这儿" thực chất là "店里/这儿" (ở đây, ở cửa hàng).
+
+2. ĐẠI TỪ NHÂN XƯNG CHÍNH XÁC:
+   Do phát âm tiếng Trung của "他" (anh ấy) và "她" (cô ấy) đều là "tā", công cụ ASR thường viết sai lẫn lộn chữ " she" và "he".
+   Hãy đọc toàn bộ ngữ cảnh câu chuyện để dịch đại từ chính xác:
+   - Hàn Đông (韩东) là nam (người chồng - "丈夫" / "男人"), nên khi các câu sau nhắc đến Hàn Đông mà phụ đề viết "她", hãy dịch thành "anh", "anh ấy", "hắn" (không được dịch thành "cô", "nàng").
+   - Lâm Mỹ Nguyệt (林美月) và Mia (米亚) là nữ, hãy dùng "cô ấy", "cô", "chị ấy".
+
+3. Dịch tự nhiên, sinh động, phù hợp với văn phong video ngắn dạng "{tone}".
+4. Giữ nguyên cấu trúc ID, trả về định dạng danh sách JSON tương tự đầu vào với trường "translated_text" là bản dịch tiếng Việt.
+5. Không tự ý gộp/tách câu, đảm bảo số lượng phần tử trả về trùng khớp hoàn toàn với đầu vào.
+6. TỐI ƯU ĐỘ DÀI: Hãy dịch cực kỳ ngắn gọn, súc tích, lược bỏ các từ rườm rà. Câu dịch tiếng Việt phải ngắn gọn để khi lồng tiếng bằng giọng đọc AI không bị nói quá nhanh.
+7. Chỉ trả về JSON hợp lệ, không bọc trong block Markdown hay giải thích gì thêm.
+8. ĐỒNG BỘ TÊN KÊNH THƯƠNG HIỆU:
+   Nếu trong phụ đề gốc xuất hiện tên kênh của tác giả video tiếng Trung (như '真探说' hoặc các tên tự giới thiệu kênh ở cuối video), hãy dịch/thay thế nó thành tên kênh thương hiệu tiếng Việt sau: '{settings.channel_name}'. 
+   Ví dụ: '我是真探说' -> 'Tôi là {settings.channel_name}'.
 
 Danh sách phụ đề cần dịch:
 {json.dumps(payload, ensure_ascii=False, indent=2)}
 """
+
 
         try:
             import time
