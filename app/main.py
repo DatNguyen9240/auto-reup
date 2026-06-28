@@ -1,6 +1,12 @@
 import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import sys
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 import asyncio
 import typer
 from pathlib import Path
@@ -19,7 +25,7 @@ logger = get_logger("CLI")
 
 @app.command()
 def process(
-    input_video: Path = typer.Option(..., "--input", "-i", help="Path to raw input video file"),
+    input_video: str = typer.Option(..., "--input", "-i", help="Path to raw input video file or Douyin/TikTok URL"),
     tone: str = typer.Option("review_phim", "--tone", "-t", help="Translation style or tone (e.g. review_phim, funny)"),
     voice: str = typer.Option(settings.default_voice, "--voice", "-v", help="Edge-TTS voice identifier"),
     rate: str = typer.Option(settings.default_rate, "--rate", help="Speaking rate offset (e.g., +0%, +15%)"),
@@ -28,20 +34,26 @@ def process(
     logo: Path = typer.Option(None, "--logo", help="Path to brand watermark logo PNG image"),
     mask: bool = typer.Option(True, "--mask/--no-mask", help="Mask original hardsub subtitles at the bottom center of the frame")
 ):
-    """Processes horizontal video input: translates, synthesizes voiceovers, loops BGM, applies sidechain ducking, and crops to 9:16 vertical."""
+    """Processes horizontal video input or URL: translates, synthesizes voiceovers, loops BGM, applies sidechain ducking, and crops to 9:16 vertical."""
     configure_logging()
     
-    if not input_video.exists():
-        typer.echo(f"Error: Input video file not found at: {input_video}", err=True)
-        raise typer.Exit(code=1)
+    is_url = input_video.startswith("http://") or input_video.startswith("https://")
+    
+    if not is_url:
+        input_path = Path(input_video)
+        if not input_path.exists():
+            typer.echo(f"Error: Input video file not found at: {input_video}", err=True)
+            raise typer.Exit(code=1)
+        job_id = f"job_{input_path.stem}"
+    else:
+        import hashlib
+        url_hash = hashlib.md5(input_video.encode('utf-8')).hexdigest()[:8]
+        job_id = f"job_url_{url_hash}"
         
     if not os.environ.get("GEMINI_API_KEY") and not settings.gemini_api_key:
         typer.echo("Warning: GEMINI_API_KEY environment variable is missing. LLM steps will fail unless translation fallback is enabled.", err=True)
         
-    # Generate unique job ID based on the input filename
-    job_id = f"job_{input_video.stem}"
     projects_dir = Path("./projects")
-    
     runner = PipelineRunner(projects_dir)
     
     # Resumption check

@@ -9,3 +9,5 @@ pysrt>=1.1.2
 pydub>=0.25.1
 faster-whisper>=0.10.0
 aiofiles>=23.0.0
+playwright
+requests

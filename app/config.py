@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     # Audio ducking default volumes
     original_volume: float = 0.25
     tts_volume: float = 1.0
-    bgm_volume: float = 0.08
+    bgm_volume: float = 0.4
     
     # App root folder
     auto_tool_root: Path = Path(__file__).resolve().parent.parent

@@ -1,0 +1,8 @@
+# Netscape HTTP Cookie File
+.www.douyin.com	TRUE	/	FALSE	1782644707	__ac_nonce	06a40f8df0049dd601393
+.www.douyin.com	TRUE	/	TRUE	1814178909	__ac_signature	_02B4Z6wo00f01zEO95gAAIDCQ90IUGhDxwsxLtMAAKYN0f
+.douyin.com	TRUE	/	TRUE	1813746908	ttwid	1%7CYrA7KLybtxO2QkrgHcr9BiBaW_6GSPHaF-4vuq9eqBA%7C1782642913%7Cd20de1f8fda8955ba49e557bc5d52ba4e037e88e871108d3e70054983fdf209d
+.douyin.com	TRUE	/	TRUE	1817202909	enter_pc_once	1
+.douyin.com	TRUE	/	TRUE	1817202909	UIFID_TEMP	29d6bea3e5a6c157a08a212e1912b5e8a78666ece26be56100fa19e58a63a45b77cffcd918e8b644ea5b738e2b7be30b04544587d57bb0e35924fb3ae0e29be015609dc1c4fce6eb3f965349a3a82f9f
+.www.douyin.com	TRUE	/	FALSE	0	x-web-secsdk-uid	ea0d3f99-2856-438e-8185-2554e5e1a673
+.www.douyin.com	TRUE	/	FALSE	1787826919	s_v_web_id	verify_mqxnkg66_2m89bl5y_fZ6R_4tUg_8UOh_GrWoK4tAwHoe

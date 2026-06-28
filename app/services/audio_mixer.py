@@ -19,7 +19,8 @@ class AudioMixer:
         original_volume: float = 0.25,
         tts_volume: float = 1.0,
         bgm_volume: float = 0.08,
-        ducking_attenuation_db: float = -12.0
+        ducking_attenuation_db: float = -12.0,
+        video_duration_ms: int = None
     ) -> Path:
         """Mixes original video audio, looped background music (BGM), and TTS voiceover tracks.
         Applies a ducking envelope to reduce background volume (original audio + BGM) during speech segments.
@@ -27,13 +28,40 @@ class AudioMixer:
         logger.info("Mixing audio tracks with pydub...")
         try:
             # 1. Load original audio
+            original = None
             if original_audio_path and os.path.exists(original_audio_path) and os.path.getsize(original_audio_path) > 0:
-                original = AudioSegment.from_wav(str(original_audio_path))
-            else:
-                # Fallback to silent base track if no original audio exists
-                max_end_ms = max([s.end_ms for s in segments]) + 2000 if segments else 10000
-                original = AudioSegment.silent(duration=max_end_ms)
+                try:
+                    original = AudioSegment.from_wav(str(original_audio_path))
+                except Exception as e:
+                    logger.warning(f"Failed to load original audio from {original_audio_path}: {e}")
+
+            # Calculate base duration
+            duration_ms = len(original) if original else 0
+            if video_duration_ms and video_duration_ms > duration_ms:
+                duration_ms = video_duration_ms
+
+            # Also check if any TTS segment goes beyond duration_ms
+            max_tts_ms = 0
+            for s in segments:
+                if s.tts_path and os.path.exists(s.tts_path) and os.path.getsize(s.tts_path) > 0:
+                    try:
+                        speech_seg = AudioSegment.from_wav(s.tts_path)
+                        end_pos = s.start_ms + len(speech_seg)
+                        if end_pos > max_tts_ms:
+                            max_tts_ms = end_pos
+                    except Exception as e:
+                        logger.warning(f"Failed to check duration of TTS segment {s.id}: {e}")
+            
+            if max_tts_ms > duration_ms:
+                duration_ms = max_tts_ms + 1000  # add 1s padding
+
+            # Initialize original silent track if none existed or is shorter
+            if not original:
+                original = AudioSegment.silent(duration=duration_ms)
                 original_volume = 0.0
+            elif len(original) < duration_ms:
+                silence_needed = duration_ms - len(original)
+                original = original + AudioSegment.silent(duration=silence_needed)
                 
             # Apply volume scaling to original audio
             if original_volume > 0:
@@ -41,8 +69,6 @@ class AudioMixer:
                 original = original + original_db
             else:
                 original = AudioSegment.silent(duration=len(original))
-
-            duration_ms = len(original)
             tts_track = AudioSegment.silent(duration=duration_ms)
             has_speech = False
             speech_intervals = []

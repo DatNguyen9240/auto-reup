@@ -43,11 +43,14 @@ class PipelineRunner:
             raise AutoToolError(f"No input video file found in work directory: {work_dir}")
         return matches[0]
 
-    def create_job(self, input_path: Path, job_id: str) -> Job:
+    def create_job(self, input_path: str, job_id: str) -> Job:
+        path_str = str(input_path)
+        if not (path_str.startswith("http://") or path_str.startswith("https://")):
+            path_str = str(Path(input_path).resolve())
         job = Job(
             job_id=job_id,
             status="created",
-            input_path=str(input_path.resolve()),
+            input_path=path_str,
             output_path=str((self.projects_dir / job_id / "output" / "final.mp4").resolve())
         )
         self.store.save_job(job)
@@ -106,19 +109,38 @@ class PipelineRunner:
                 self.store.save_job(job)
                 logger.info("--- Step 1: Intake ---")
                 
-                input_video = Path(job.input_path)
-                if not input_video.exists():
-                    raise AutoToolError(f"Input video not found at: {input_video}")
-                
-                # Copy input video to work dir as input.mp4 (or matching suffix)
-                dest_video = work_dir / f"input{input_video.suffix}"
-                shutil.copy2(input_video, dest_video)
-                
-                # Copy sidecar SRT if exists next to the source video
-                sidecar_srt = input_video.with_suffix(".srt")
-                if sidecar_srt.exists():
-                    shutil.copy2(sidecar_srt, work_dir / "input.srt")
-                    logger.info(f"Imported sidecar SRT: {sidecar_srt}")
+                if job.input_path.startswith("http://") or job.input_path.startswith("https://"):
+                    logger.info(f"Input is a URL. Downloading automatically: {job.input_path}")
+                    dest_video = work_dir / "input.mp4"
+                    
+                    from app.services.downloader import PlaywrightDownloaderService
+                    downloader = PlaywrightDownloaderService()
+                    
+                    try:
+                        # Download using Playwright Downloader
+                        info = await downloader.download_video_async(job.input_path, dest_video)
+                        
+                        # Save the downloaded video metadata
+                        metadata_path = work_dir / "origin_metadata.json"
+                        write_json(metadata_path, info)
+                        logger.info(f"Metadata saved to: {metadata_path}")
+                    except Exception as e:
+                        logger.error(f"Download failed: {e}")
+                        raise AutoToolError(f"Failed to download video from URL: {e}")
+                else:
+                    input_video = Path(job.input_path)
+                    if not input_video.exists():
+                        raise AutoToolError(f"Input video not found at: {input_video}")
+                    
+                    # Copy input video to work dir as input.mp4 (or matching suffix)
+                    dest_video = work_dir / f"input{input_video.suffix}"
+                    shutil.copy2(input_video, dest_video)
+                    
+                    # Copy sidecar SRT if exists next to the source video
+                    sidecar_srt = input_video.with_suffix(".srt")
+                    if sidecar_srt.exists():
+                        shutil.copy2(sidecar_srt, work_dir / "input.srt")
+                        logger.info(f"Imported sidecar SRT: {sidecar_srt}")
                     
                 job.steps["intake"] = "completed"
                 self.store.save_job(job)
@@ -285,11 +307,27 @@ class PipelineRunner:
                         if test_path.exists():
                             bgm_path = test_path
                             
+                # Load video duration from metadata if available
+                metadata_path = work_dir / "metadata.json"
+                video_duration_ms = None
+                if metadata_path.exists():
+                    try:
+                        with open(metadata_path, "r", encoding="utf-8") as f:
+                            metadata = json.load(f)
+                            if "duration" in metadata:
+                                video_duration_ms = int(metadata["duration"] * 1000)
+                    except Exception as e:
+                        logger.warning(f"Failed to read metadata.json for duration: {e}")
+
                 self.mixer.mix(
                     original_audio_path=work_dir / "audio.wav",
                     segments=segments,
                     output_mixed_path=work_dir / "mixed_audio.wav",
-                    bgm_path=bgm_path
+                    bgm_path=bgm_path,
+                    original_volume=settings.original_volume,
+                    tts_volume=settings.tts_volume,
+                    bgm_volume=settings.bgm_volume,
+                    video_duration_ms=video_duration_ms
                 )
                 
                 job.steps["mix_audio"] = "completed"
