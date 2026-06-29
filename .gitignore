@@ -37,3 +37,9 @@ seg_*_test.wav
 *.njsproj
 *.sln
 *.swp
+
+# Sensitive & Diagnostic Files
+cookies.txt
+playwright_screenshot.png
+*.png
+

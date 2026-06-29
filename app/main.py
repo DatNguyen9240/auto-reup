@@ -82,5 +82,41 @@ def process(
         typer.echo("[INFO] You can run the exact same command to resume from the last successful checkpoint.", err=True)
         raise typer.Exit(code=1)
 
+@app.command(name="get-cookies")
+def get_cookies(
+    output: Path = typer.Option(Path("./cookies.txt"), "--output", "-o", help="Path to save cookies.txt file")
+):
+    """Automatically generate Douyin cookies via Playwright."""
+    configure_logging()
+    logger.info("Generating Douyin cookies automatically...")
+    from app.services.downloader import auto_generate_douyin_cookies
+    
+    output_path = Path(output).resolve()
+    success = auto_generate_douyin_cookies(output_path)
+    if success:
+        typer.echo(f"\n[SUCCESS] Cookies generated successfully and saved to: {output_path}")
+    else:
+        typer.echo("\n[ERROR] Failed to generate cookies automatically.", err=True)
+        raise typer.Exit(code=1)
+
+@app.command(name="export-cookies")
+def export_cookies(
+    output: Path = typer.Option(Path("./cookies.txt"), "--output", "-o", help="Path to save cookies.txt file")
+):
+    """Export Douyin cookies from local installed browsers (Chrome, Edge, Firefox, Brave, Opera)."""
+    configure_logging()
+    logger.info("Exporting Douyin cookies from local browsers...")
+    from app.services.downloader import export_cookies_from_browser
+    
+    output_path = Path(output).resolve()
+    success = export_cookies_from_browser(output_path)
+    if success:
+        typer.echo(f"\n[SUCCESS] Cookies exported successfully and saved to: {output_path}")
+    else:
+        typer.echo("\n[ERROR] Failed to export cookies from any local browser.", err=True)
+        typer.echo("[INFO] Please ensure the targeted browser is closed completely before running.", err=True)
+        raise typer.Exit(code=1)
+
 if __name__ == "__main__":
     app()
+

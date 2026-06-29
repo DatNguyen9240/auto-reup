@@ -11,3 +11,4 @@ faster-whisper>=0.10.0
 aiofiles>=23.0.0
 playwright
 requests
+yt-dlp
