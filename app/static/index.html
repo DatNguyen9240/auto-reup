@@ -295,6 +295,14 @@
                 </div>
             </div>
 
+            <!-- 1b. Pipeline Logs Console -->
+            <div class="flex flex-col gap-3">
+                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Nhật Ký Chi Tiết (Logs)</h4>
+                <div id="job-logs-console" class="bg-black/50 border border-white/5 rounded-xl p-4 font-mono text-[11px] text-slate-300 h-48 overflow-y-auto whitespace-pre-wrap">
+                    Đang tải nhật ký...
+                </div>
+            </div>
+
             <!-- 2. Subtitle Review Table -->
             <div id="subtitles-section" class="flex flex-col gap-3 hidden">
                 <div class="flex items-center justify-between">
@@ -469,9 +477,14 @@
 
                     <div class="flex items-center justify-between mt-1 pt-3 border-t border-white/5">
                         <span class="text-[10px] text-slate-400 font-medium">${createdTime}</span>
-                        <button onclick="openDetailPanel('${job.job_id}')" class="bg-white/5 hover:bg-white/10 hover:text-white text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/5 transition-all">
-                            Xem Chi Tiết
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button onclick="deleteJob('${job.job_id}')" class="hover:bg-rose-500/10 text-rose-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-500/20 hover:border-rose-500/40 transition-all">
+                                Xóa
+                            </button>
+                            <button onclick="openDetailPanel('${job.job_id}')" class="bg-white/5 hover:bg-white/10 hover:text-white text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/5 transition-all">
+                                Chi Tiết
+                            </button>
+                        </div>
                     </div>
                 `;
                 container.appendChild(card);
@@ -530,9 +543,13 @@
 
             // Hide/Show dynamic sections depending on state
             toggleJobDetailsLayout(job);
+            
+            // Start logs polling
+            startLogsPolling(jobId);
         }
 
         function closeDetailPanel() {
+            stopLogsPolling();
             const panel = document.getElementById('job-detail-panel');
             panel.classList.add('translate-x-full');
             setTimeout(() => {
@@ -858,6 +875,68 @@
                 const matches = name.includes(q);
                 item.style.display = matches ? 'flex' : 'none';
             });
+        }
+
+        async function deleteJob(jobId) {
+            const currentJob = jobsData.find(j => j.job_id === jobId);
+            if (currentJob && currentJob.status === 'running') {
+                alert("Không thể xóa job đang chạy!");
+                return;
+            }
+            if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn Job ${jobId} và toàn bộ file video liên quan để giải phóng bộ nhớ không?`)) {
+                return;
+            }
+            try {
+                const response = await fetch(`/api/jobs/${jobId}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    await loadJobs();
+                    if (selectedJobId === jobId) {
+                        closeDetailPanel();
+                    }
+                } else {
+                    const err = await response.json();
+                    alert("Lỗi khi xóa: " + err.detail);
+                }
+            } catch (err) {
+                alert("Không kết nối được server: " + err.message);
+            }
+        }
+
+        let logsInterval = null;
+
+        function startLogsPolling(jobId) {
+            stopLogsPolling();
+            loadLogs(jobId);
+            logsInterval = setInterval(() => loadLogs(jobId), 2000);
+        }
+
+        function stopLogsPolling() {
+            if (logsInterval) {
+                clearInterval(logsInterval);
+                logsInterval = null;
+            }
+        }
+
+        async function loadLogs(jobId) {
+            try {
+                const response = await fetch(`/api/jobs/${jobId}/logs`);
+                if (!response.ok) return;
+                const data = await response.json();
+                const consoleBox = document.getElementById('job-logs-console');
+                
+                // Auto scroll to bottom only if user hasn't scrolled up manually
+                const isAtBottom = consoleBox.scrollHeight - consoleBox.clientHeight <= consoleBox.scrollTop + 40;
+                
+                consoleBox.innerText = data.logs || 'Chưa có nhật ký hoạt động.';
+                
+                if (isAtBottom || consoleBox.scrollTop === 0) {
+                    consoleBox.scrollTop = consoleBox.scrollHeight;
+                }
+            } catch (err) {
+                console.error("Failed to load logs:", err);
+            }
         }
     </script>
 </body>

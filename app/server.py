@@ -299,7 +299,45 @@ def scan_media(path: Optional[str] = None):
         "videos": videos
     }
 
+@app.delete("/api/jobs/{job_id}")
+def delete_job(job_id: str):
+    job = store.load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+        
+    if job_id in running_jobs:
+        raise HTTPException(status_code=400, detail="Cannot delete a running job")
+        
+    job_dir = store.get_job_dir(job_id)
+    if job_dir.exists():
+        import shutil
+        try:
+            shutil.rmtree(job_dir)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to delete job directory: {e}")
+            
+    return {"status": "deleted", "message": f"Job {job_id} has been deleted successfully"}
+
+@app.get("/api/jobs/{job_id}/logs")
+def get_job_logs(job_id: str):
+    job = store.load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+        
+    log_file = store.get_job_dir(job_id) / "run.log"
+    if not log_file.exists():
+        return {"logs": "Chưa có nhật ký hoạt động."}
+        
+    try:
+        with open(log_file, "r", encoding="utf-8") as f:
+            content = f.read()
+        return {"logs": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read logs: {e}")
+
 @app.get("/")
+
+
 def read_index():
     index_path = STATIC_DIR / "index.html"
     if not index_path.exists():

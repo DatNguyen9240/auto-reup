@@ -65,4 +65,5 @@ echo =======================================================
 echo Cleanup completed successfully!
 echo =======================================================
 echo.
-pause
+if "%~1" neq "nopause" pause
+

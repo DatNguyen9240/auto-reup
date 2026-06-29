@@ -103,6 +103,12 @@ class PipelineRunner:
         ensure_dir(output_dir)
         
         try:
+            import logging
+            log_file = job_dir / "run.log"
+            file_handler = logging.FileHandler(str(log_file), encoding="utf-8")
+            file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+            logger.addHandler(file_handler)
+            
             # Step 1: Intake
             if job.steps.get("intake", "pending") == "pending":
                 job.current_step = "intake"
@@ -427,3 +433,7 @@ class PipelineRunner:
             job.errors.append(str(e))
             self.store.save_job(job)
             raise e
+        finally:
+            if 'file_handler' in locals():
+                logger.removeHandler(file_handler)
+                file_handler.close()

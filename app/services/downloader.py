@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Optional, Dict
 import requests
 import requests.cookies
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from playwright.sync_api import sync_playwright
 
 logger = logging.getLogger("Downloader")
@@ -84,7 +86,14 @@ def get_douyin_metadata_playwright(url: str, cookie_file_path: Path) -> dict:
             
     video_info = None
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        # Try local Chrome first, fallback to local Edge, then to default Playwright browser
+        try:
+            browser = p.chromium.launch(headless=False, channel="chrome")
+        except Exception:
+            try:
+                browser = p.chromium.launch(headless=False, channel="msedge")
+            except Exception:
+                browser = p.chromium.launch(headless=False)
         context = browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
         )
@@ -187,7 +196,7 @@ class PlaywrightDownloaderService:
                 'Referer': 'https://www.douyin.com/'
             }
             cookies = _load_cookies_from_file(self.cookie_file_path)
-            with requests.get(info['play_addr'], headers=headers, cookies=cookies, stream=True, timeout=30) as r:
+            with requests.get(info['play_addr'], headers=headers, cookies=cookies, stream=True, timeout=30, verify=False) as r:
                 r.raise_for_status()
                 with open(dest_path, 'wb') as f:
                     for chunk in r.iter_content(chunk_size=8192): 
@@ -202,7 +211,14 @@ def auto_generate_douyin_cookies(cookie_file_path: Path) -> bool:
     """Run Playwright headlessly to hit douyin.com and capture signature/session cookies."""
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            # Try local Chrome first, fallback to local Edge, then to default Playwright browser
+            try:
+                browser = p.chromium.launch(headless=True, channel="chrome")
+            except Exception:
+                try:
+                    browser = p.chromium.launch(headless=True, channel="msedge")
+                except Exception:
+                    browser = p.chromium.launch(headless=True)
             context = browser.new_context(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
             )
