@@ -38,6 +38,13 @@ if exist export_cookies.py (
     del export_cookies.py
     echo   [Deleted] export_cookies.py
 )
+
+rem Remove sample videos
+if exist examples\sample_videos (
+    rmdir /s /q examples\sample_videos
+    echo   [Deleted] examples\sample_videos\
+)
+
 if exist pyinstxtractor.py (
     del pyinstxtractor.py
     echo   [Deleted] pyinstxtractor.py
@@ -49,6 +56,14 @@ if exist app\utils\app_paths.py (
 if exist playwright_screenshot.png (
     del playwright_screenshot.png
     echo   [Deleted] playwright_screenshot.png
+)
+if exist douyin_search_debug.png (
+    del douyin_search_debug.png
+    echo   [Deleted] douyin_search_debug.png
+)
+if exist search_error.png (
+    del search_error.png
+    echo   [Deleted] search_error.png
 )
 if exist config\local_app_config.json (
     del config\local_app_config.json

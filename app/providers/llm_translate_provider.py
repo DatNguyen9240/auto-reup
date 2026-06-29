@@ -1,5 +1,5 @@
 import json
-from typing import List
+from typing import List, Optional
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
@@ -22,24 +22,77 @@ class TranslationResponse(BaseModel):
 
 class LLMTranslateProvider(TranslateProvider):
     def __init__(self, api_key: str = None):
-        self.api_key = api_key or settings.gemini_api_key
+        self.api_keys = []
+        primary_key = api_key or settings.gemini_api_key
+        if primary_key:
+            self.api_keys.append(primary_key)
+        if settings.gemini_api_key_2:
+            self.api_keys.append(settings.gemini_api_key_2)
+        if settings.gemini_api_key_3:
+            self.api_keys.append(settings.gemini_api_key_3)
+            
+        # Filter out empty or whitespace-only keys
+        self.api_keys = [k.strip() for k in self.api_keys if k.strip()]
+        
         fallback_enabled = os.environ.get("AUTO_TOOL_ALLOW_TRANSLATION_FALLBACK", "false").lower() == "true"
         
-        if not self.api_key:
+        # Set self.client to the first active client for backward compatibility
+        self.client = None
+        if self.api_keys:
+            try:
+                self.client = genai.Client(api_key=self.api_keys[0])
+            except Exception as e:
+                logger.warning(f"Failed to initialize primary Gemini Client: {e}")
+                
+        if not self.api_keys:
             if fallback_enabled:
                 logger.warning("Gemini API key is not configured, but fallback translation is enabled.")
-                self.client = None
                 return
             raise TranslationError("Gemini API key is not configured. Please set the GEMINI_API_KEY environment variable.")
-        try:
-            self.client = genai.Client(api_key=self.api_key)
-        except Exception as e:
-            if fallback_enabled:
-                logger.warning(f"Failed to initialize Gemini Client: {e}. Fallback translation is active.")
-                self.client = None
-            else:
-                raise TranslationError(f"Failed to initialize Gemini Client: {e}")
 
+    def generate_content(self, prompt: str, model: str = 'gemini-2.5-flash', mime_type: Optional[str] = None, schema: Optional[BaseModel] = None):
+        response = None
+        last_error = None
+        
+        # Try each client key in order
+        for idx, key in enumerate(self.api_keys):
+            try:
+                logger.info(f"Attempting content generation using Gemini API Key {idx + 1}/{len(self.api_keys)}...")
+                client = genai.Client(api_key=key)
+                
+                config_args = {}
+                if mime_type:
+                    config_args["response_mime_type"] = mime_type
+                if schema:
+                    config_args["response_schema"] = schema
+                    
+                config = types.GenerateContentConfig(**config_args) if config_args else None
+                
+                # Try up to 2 times for transient network errors per key
+                for attempt in range(1, 3):
+                    try:
+                        response = client.models.generate_content(
+                            model=model,
+                            contents=prompt,
+                            config=config
+                        )
+                        break
+                    except Exception as e:
+                        logger.warning(f"Gemini API Key {idx + 1} attempt {attempt} failed: {e}")
+                        if attempt == 2:
+                            raise e
+                        import time
+                        time.sleep(2.0)
+                        
+                if response:
+                    logger.info(f"Successfully generated content using Gemini API Key {idx + 1}.")
+                    return response
+            except Exception as e:
+                logger.error(f"Gemini API Key {idx + 1} failed: {e}")
+                last_error = e
+                # Fall back to next key
+                
+        raise TranslationError(f"All configured Gemini API Keys failed. Last error: {last_error}")
 
     def translate(self, segments: List[Segment], tone: str) -> List[Segment]:
         if not segments:
@@ -93,26 +146,11 @@ Danh sách phụ đề cần dịch:
 
 
         try:
-            import time
-            response = None
-            for attempt in range(1, 4):
-                try:
-                    # We use gemini-2.5-flash as default model
-                    response = self.client.models.generate_content(
-                        model='gemini-2.5-flash',
-                        contents=prompt,
-                        config=types.GenerateContentConfig(
-                            response_mime_type="application/json",
-                            response_schema=TranslationResponse,
-                        ),
-                    )
-                    break
-                except Exception as e:
-                    logger.warning(f"Gemini API attempt {attempt} failed: {e}")
-                    if attempt == 3:
-                        raise e
-                    print(f"Rate limit hit or connection failed. Retrying in {5 * attempt} seconds...")
-                    time.sleep(5.0 * attempt)
+            response = self.generate_content(
+                prompt=prompt,
+                mime_type="application/json",
+                schema=TranslationResponse
+            )
                 
             response_text = response.text.strip()
             # Clean up potential markdown wrappers

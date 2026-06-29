@@ -24,6 +24,13 @@ from app.utils.file_utils import ensure_dir, write_json
 
 logger = get_logger("Pipeline")
 
+import logging
+
+class FlushingFileHandler(logging.FileHandler):
+    def emit(self, record):
+        super().emit(record)
+        self.flush()
+
 class PipelineRunner:
     def __init__(self, projects_dir: Path):
         self.projects_dir = Path(projects_dir)
@@ -71,6 +78,11 @@ class PipelineRunner:
         if not job:
             raise AutoToolError(f"Job {job_id} not found.")
 
+        def check_cancellation():
+            curr = self.store.load_job(job_id)
+            if not curr or curr.status == "failed" or curr.status == "cancelled":
+                raise AutoToolError("Job bị ngắt bởi người dùng.")
+
         # Apply Emotion Preset mapping if defaults are used and tone has a preset
         EMOTION_PRESETS = {
             "funny": {"rate": "+8%", "pitch": "+4Hz", "bgm": "funny_loop"},
@@ -105,11 +117,12 @@ class PipelineRunner:
         try:
             import logging
             log_file = job_dir / "run.log"
-            file_handler = logging.FileHandler(str(log_file), encoding="utf-8")
+            file_handler = FlushingFileHandler(str(log_file), encoding="utf-8")
             file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
             logger.addHandler(file_handler)
             
             # Step 1: Intake
+            check_cancellation()
             if job.steps.get("intake", "pending") == "pending":
                 job.current_step = "intake"
                 self.store.save_job(job)
@@ -119,20 +132,46 @@ class PipelineRunner:
                     logger.info(f"Input is a URL. Downloading automatically: {job.input_path}")
                     dest_video = work_dir / "input.mp4"
                     
-                    from app.services.downloader import PlaywrightDownloaderService
-                    downloader = PlaywrightDownloaderService()
-                    
-                    try:
-                        # Download using Playwright Downloader
-                        info = await downloader.download_video_async(job.input_path, dest_video)
+                    is_douyin = "douyin.com" in job.input_path or "v.douyin.com" in job.input_path
+                    if not is_douyin:
+                        logger.info("Using yt-dlp to download URL with console feedback...")
+                        class YTDLPLogger:
+                            def debug(self, msg):
+                                if msg.startswith('[download]'):
+                                    logger.info(msg)
+                            def info(self, msg):
+                                logger.info(msg)
+                            def warning(self, msg):
+                                logger.warning(msg)
+                            def error(self, msg):
+                                logger.error(msg)
                         
-                        # Save the downloaded video metadata
-                        metadata_path = work_dir / "origin_metadata.json"
-                        write_json(metadata_path, info)
-                        logger.info(f"Metadata saved to: {metadata_path}")
-                    except Exception as e:
-                        logger.error(f"Download failed: {e}")
-                        raise AutoToolError(f"Failed to download video from URL: {e}")
+                        import yt_dlp
+                        ydl_opts = {
+                            'outtmpl': str(dest_video),
+                            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                            'logger': YTDLPLogger(),
+                            'quiet': False
+                        }
+                        def run_ytdl():
+                            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                                ydl.download([job.input_path])
+                        await asyncio.get_event_loop().run_in_executor(None, run_ytdl)
+                        info = {"title": job_id, "duration": 0}
+                    else:
+                        from app.services.downloader import PlaywrightDownloaderService
+                        downloader = PlaywrightDownloaderService()
+                        try:
+                            # Download using Playwright Downloader
+                            info = await downloader.download_video_async(job.input_path, dest_video)
+                        except Exception as e:
+                            logger.error(f"Download failed: {e}")
+                            raise AutoToolError(f"Failed to download video from URL: {e}")
+                        
+                    # Save the downloaded video metadata
+                    metadata_path = work_dir / "origin_metadata.json"
+                    write_json(metadata_path, info)
+                    logger.info(f"Metadata saved to: {metadata_path}")
                 else:
                     input_video = Path(job.input_path)
                     if not input_video.exists():
@@ -152,6 +191,7 @@ class PipelineRunner:
                 self.store.save_job(job)
                 
             # Step 2: Analyze
+            check_cancellation()
             if job.steps.get("analyze", "pending") == "pending":
                 job.current_step = "analyze"
                 self.store.save_job(job)
@@ -165,6 +205,7 @@ class PipelineRunner:
                 self.store.save_job(job)
                 
             # Step 3: Extract Audio
+            check_cancellation()
             if job.steps.get("extract_audio", "pending") == "pending":
                 job.current_step = "extract_audio"
                 self.store.save_job(job)
@@ -177,6 +218,7 @@ class PipelineRunner:
                 self.store.save_job(job)
                 
             # Step 4: Transcribe / Import SRT
+            check_cancellation()
             if job.steps.get("transcribe", "pending") == "pending":
                 job.current_step = "transcribe"
                 self.store.save_job(job)
@@ -246,6 +288,7 @@ class PipelineRunner:
                         raise AutoToolError(f"Auto-transcription failed: {e}")
                         
             # Step 5: Translate
+            check_cancellation()
             if job.steps.get("translate", "pending") == "pending":
                 job.current_step = "translate"
                 self.store.save_job(job)
@@ -262,6 +305,7 @@ class PipelineRunner:
                 self.store.save_job(job)
                 
             # Step 6: TTS (Voiceover Generation)
+            check_cancellation()
             if job.steps.get("tts", "pending") == "pending":
                 job.current_step = "tts"
                 self.store.save_job(job)
@@ -282,6 +326,7 @@ class PipelineRunner:
                 self.store.save_job(job)
                 
             # Step 7: Mix Audio
+            check_cancellation()
             if job.steps.get("mix_audio", "pending") == "pending":
                 job.current_step = "mix_audio"
                 self.store.save_job(job)
@@ -340,6 +385,7 @@ class PipelineRunner:
                 self.store.save_job(job)
                 
             # Step 8: Render Video
+            check_cancellation()
             if job.steps.get("render", "pending") == "pending":
                 job.current_step = "render"
                 self.store.save_job(job)
@@ -381,6 +427,7 @@ class PipelineRunner:
                 self.store.save_job(job)
                 
             # Step 9: Metadata & Post Captioning
+            check_cancellation()
             if job.steps.get("metadata", "pending") == "pending":
                 job.current_step = "metadata"
                 self.store.save_job(job)

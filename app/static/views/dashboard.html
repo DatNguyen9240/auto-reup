@@ -1,0 +1,34 @@
+<div id="view-dashboard" class="flex-1 flex flex-col overflow-hidden w-full bg-slate-950">
+    <!-- Right Side: Channel Workspaces & Jobs List -->
+    <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+
+        <!-- Running Jobs Section -->
+        <div class="flex flex-col gap-4 mt-2">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-white/5 pb-3 gap-3">
+                <div>
+                    <h2 class="font-outfit font-semibold text-sm text-white uppercase tracking-wider">Danh Sách Jobs Đang Chạy</h2>
+                    <p class="text-[10px] text-slate-400">Chọn một job để xem tiến trình và chỉnh sửa phụ đề</p>
+                </div>
+                <div class="flex gap-2 flex-wrap items-center">
+                    <select id="dashboard-filter-channel" onchange="filterJobsByChannel(this.value)"
+                        class="bg-slate-900 border border-slate-700/60 rounded-lg py-1.5 px-2.5 text-xs text-slate-100 transition-colors focus:outline-none focus:border-purple-500 cursor-pointer">
+                        <option value="">Tất cả kênh</option>
+                        <option value="default">Output mặc định (Không kênh)</option>
+                    </select>
+
+                    <button onclick="loadJobs()"
+                        class="bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-white/5 transition-all">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H16M4 8h5.183M12 4v4m0 0H8"></path>
+                        </svg>
+                        Làm Mới
+                    </button>
+                </div>
+            </div>
+            <div id="jobs-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
+                <!-- Dynamic Job Cards go here -->
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,46 @@
+<div id="view-search" class="flex-1 flex flex-col overflow-y-auto p-6 gap-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h2 class="font-outfit font-bold text-2xl text-white tracking-tight">Tìm Kiếm & Khám Phá Video</h2>
+            <p class="text-xs text-slate-400">Tìm kiếm video từ YouTube hoặc Bilibili để chọn lọc đưa vào quy trình dịch thuật</p>
+        </div>
+    </div>
+
+    <!-- Search bar -->
+    <div class="glass-card rounded-2xl p-4 flex flex-col sm:flex-row gap-3">
+        <input type="text" id="search-query" placeholder="Nhập từ khóa tìm kiếm (Ví dụ: review phim, funny cats...)"
+               class="flex-1 bg-slate-900 border border-slate-700/60 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-purple-500 text-slate-100 placeholder-slate-400 transition-colors"
+               onkeydown="if(event.key === 'Enter') triggerSearch()">
+               
+        <select id="search-source" class="bg-slate-900 border border-slate-700/60 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+            <option value="youtube">YouTube (Global)</option>
+            <option value="bilibili">Bilibili (Trung Quốc)</option>
+            <option value="douyin">Douyin (Trung Quốc)</option>
+        </select>
+
+        <button onclick="triggerSearch()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-rose-500 hover:from-purple-500 hover:to-rose-400 text-white text-sm font-semibold rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            Tìm Kiếm
+        </button>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="search-loading" class="hidden py-12 flex flex-col items-center justify-center gap-3">
+        <div class="w-8 h-8 rounded-full border-4 border-purple-500/20 border-t-purple-500 animate-spin"></div>
+        <p class="text-sm text-slate-400">Đang tìm kiếm video...</p>
+    </div>
+
+    <!-- Search Results Grid -->
+    <div id="search-results" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <!-- Dynamically populated cards -->
+    </div>
+    
+    <!-- Empty state -->
+    <div id="search-empty" class="py-16 flex flex-col items-center justify-center text-center gap-3 border border-dashed border-white/5 rounded-2xl bg-white/5">
+        <div class="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 text-2xl font-bold">🔍</div>
+        <div>
+            <p class="text-sm font-semibold text-slate-300">Chưa có kết quả tìm kiếm</p>
+            <p class="text-xs text-slate-500 mt-1">Hãy nhập từ khóa và chọn nguồn tìm kiếm để khám phá nội dung</p>
+        </div>
+    </div>
+</div>

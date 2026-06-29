@@ -1,0 +1,93 @@
+<div id="view-channels" class="flex-1 flex flex-col lg:flex-row overflow-hidden w-full p-6 gap-6">
+    
+    <!-- Left Side: Add/Edit Channel Form -->
+    <div class="w-full lg:w-[380px] glass-card rounded-2xl p-6 flex flex-col gap-5 flex-shrink-0 overflow-y-auto">
+        <div class="flex flex-col border-b border-white/5 pb-4">
+            <h2 class="font-outfit font-bold text-lg text-white" id="chan-modal-title">Cấu Hình Kênh Mới</h2>
+            <p class="text-[10px] text-slate-400">Thiết lập cấu hình lồng tiếng sẵn cho kênh</p>
+        </div>
+
+        <form id="channel-form" onsubmit="saveChannel(event)" class="flex flex-col gap-4">
+            <input type="hidden" id="edit-channel-id" value="">
+            
+            <div>
+                <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Tên Kênh</label>
+                <input type="text" id="chan-name" required placeholder="Ví dụ: Kênh TikTok Phim Kinh Dị"
+                       class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Tone dịch</label>
+                    <select id="chan-tone" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-1 text-xs focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Giọng đọc (TTS)</label>
+                    <select id="chan-voice" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-1 text-xs focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Tốc độ đọc</label>
+                    <select id="chan-rate" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-1 text-xs focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Cao độ (Pitch)</label>
+                    <select id="chan-pitch" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-1 text-xs focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Nhạc nền (BGM)</label>
+                    <select id="chan-bgm" onfocus="loadBgmList()" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-1 text-xs focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                        <option value="">Không sử dụng BGM</option>
+                        <!-- Dynamically populated -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Logo nước</label>
+                    <input type="text" id="chan-logo" placeholder="Ví dụ: logo.png"
+                           class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 py-1">
+                <input type="checkbox" id="chan-mask" checked 
+                       class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 bg-slate-900 border-slate-700">
+                <label for="chan-mask" class="text-[11px] font-medium text-slate-300">Che phụ đề cũ tiếng Trung ở dưới</label>
+            </div>
+
+            <div class="flex gap-2 justify-end mt-2">
+                <button type="button" onclick="cancelChannelEdit()" class="bg-white/5 hover:bg-white/10 text-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition-all">
+                    Hủy
+                </button>
+                <button type="submit" class="bg-gradient-to-r from-purple-600 to-rose-500 text-white px-4 py-2 rounded-lg text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all">
+                    Lưu Kênh
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Right Side: Existing Channels List -->
+    <div class="flex-1 flex flex-col gap-5 overflow-y-auto">
+        <div class="flex flex-col border-b border-white/5 pb-4">
+            <h2 class="font-outfit font-bold text-lg text-white">Danh Sách Kênh Đã Lưu</h2>
+            <p class="text-[10px] text-slate-400">Danh sách các kênh có sẵn để kéo thả video đầu vào</p>
+        </div>
+
+        <div id="modal-channel-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Editable channel cards populated dynamically -->
+        </div>
+    </div>
+
+</div>

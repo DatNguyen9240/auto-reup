@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-slate-950 text-slate-100">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,7 +10,9 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap"
+        rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
@@ -22,35 +25,10 @@
             }
         }
     </script>
-    <style>
-        /* Glassmorphism custom styles */
-        .glass-card {
-            background: rgba(15, 23, 42, 0.65);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .glass-panel {
-            background: rgba(10, 15, 30, 0.8);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .text-gradient {
-            background: linear-gradient(135deg, #a78bfa 0%, #f43f5e 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .pulse-glow {
-            box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
-            animation: pulse-glow-anim 2s infinite alternate;
-        }
-        @keyframes pulse-glow-anim {
-            0% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.2); }
-            100% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.6); }
-        }
-    </style>
+    <!-- Custom Style Components -->
+    <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body class="h-full font-sans antialiased selection:bg-purple-500 selection:text-white overflow-hidden flex flex-col">
     <!-- Background Gradients -->
     <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none opacity-40">
@@ -62,7 +40,8 @@
     <!-- Header -->
     <header class="glass-card sticky top-0 z-40 border-b border-white/5 py-4 px-6 flex items-center justify-between">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-rose-500 flex items-center justify-center font-outfit font-extrabold text-xl text-white shadow-lg">
+            <div
+                class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-rose-500 flex items-center justify-center font-outfit font-extrabold text-xl text-white shadow-lg">
                 AT
             </div>
             <div>
@@ -72,1211 +51,582 @@
         </div>
 
         <nav class="flex items-center gap-2">
-            <button onclick="switchTab('dashboard')" id="btn-tab-dashboard" class="px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 text-white transition-all">
+            <button onclick="switchTab('dashboard')" id="btn-tab-dashboard"
+                class="px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 text-white transition-all">
                 Dashboard
             </button>
-            <button onclick="switchTab('cookies')" id="btn-tab-cookies" class="px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all">
+            <button onclick="switchTab('search')" id="btn-tab-search"
+                class="px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all">
+                Tìm Kiếm Video
+            </button>
+            <button onclick="switchTab('cookies')" id="btn-tab-cookies"
+                class="px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all">
                 Cookie Tools
             </button>
         </nav>
     </header>
 
-    <!-- Main Content Grid -->
-    <main class="flex-1 overflow-hidden flex flex-row">
-        <!-- Dashboard Tab View -->
-        <div id="view-dashboard" class="flex-1 flex flex-col md:flex-row overflow-hidden w-full">
-            
-            <!-- Left Side: Create Job Form -->
-            <div class="w-full md:w-96 border-r border-white/5 overflow-y-auto p-6 flex-shrink-0 flex flex-col gap-6">
-                <div class="flex flex-col">
-                    <h2 class="font-outfit font-semibold text-lg text-white">Tạo Job Mới</h2>
-                    <p class="text-xs text-slate-400">Tải và Việt hóa video tự động</p>
-                </div>
+    <!-- Main Workspace Grid -->
+    <div class="flex-1 flex overflow-hidden flex-row w-full">
+        <!-- Left Side: Persistent Create Job Form Sidebar -->
+        <div id="sidebar-container"
+            class="w-full md:w-96 border-r border-white/5 overflow-y-auto p-6 flex-shrink-0 flex flex-col gap-5 bg-slate-950/80">
+            <div class="flex flex-col">
+                <h2 class="font-outfit font-semibold text-lg text-white">Tạo Job Mới</h2>
+                <p class="text-xs text-slate-400">Tải và Việt hóa video tự động hàng loạt</p>
+            </div>
 
-                <form id="job-form" onsubmit="submitJob(event)" class="flex flex-col gap-5">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Video Đầu Vào (URL / File)</label>
-                        <input type="text" id="input_video" required placeholder="https://www.douyin.com/... hoặc input.mp4" 
-                               class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                    </div>
+            <!-- Sidebar Tab Switcher -->
+            <div class="flex bg-slate-950/60 p-1 rounded-xl border border-white/5 flex-shrink-0">
+                <button type="button" onclick="switchSidebarTab('config')" id="btn-sidebar-config"
+                    class="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-white/10 text-white transition-all text-center">
+                    ⚙️ Cấu Hàng
+                </button>
+                <button type="button" onclick="switchSidebarTab('queue')" id="btn-sidebar-queue"
+                    class="flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all text-center">
+                    🎥 Video Sắp Làm
+                </button>
+            </div>
 
+            <!-- Main configuration form -->
+            <form id="job-form" onsubmit="submitJob(event)" class="flex flex-col gap-5">
+
+                <!-- Tab 1: Config Fields -->
+                <div id="sidebar-tab-config" class="flex flex-col gap-5">
+                    <!-- Split Tone/Voice Row -->
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tone Dịch</label>
-                            <select id="tone" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tone
+                                Dịch</label>
+                            <select id="tone"
+                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
                                 <!-- Dynamically populated -->
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Giọng Đọc (TTS)</label>
-                            <select id="voice" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                            <label
+                                class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Giọng
+                                (TTS)</label>
+                            <select id="voice"
+                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
                                 <!-- Dynamically populated -->
                             </select>
                         </div>
                     </div>
 
+                    <!-- Split Speed/Pitch Row -->
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tốc Độ Đọc</label>
-                            <select id="rate" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tốc
+                                Độ</label>
+                            <select id="rate"
+                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
                                 <!-- Dynamically populated -->
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Cao Độ (Pitch)</label>
-                            <select id="pitch" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Cao
+                                Độ (Pitch)</label>
+                            <select id="pitch"
+                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
                                 <!-- Dynamically populated -->
                             </select>
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Nhạc Nền BGM (Tùy chọn)</label>
-                        <input type="text" id="bgm" placeholder="Ví dụ: funny_loop" 
-                               class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Logo Nước (Watermark)</label>
-                        <input type="text" id="logo" placeholder="Đường dẫn file logo.png" 
-                               class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                    </div>
-
-                    <div class="flex items-center gap-3">
-                        <input type="checkbox" id="mask" checked 
-                               class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 bg-slate-900 border-slate-700">
-                        <label for="mask" class="text-xs font-medium text-slate-300">Che phụ đề cũ tiếng Trung ở dưới</label>
-                    </div>
-
-                    <button type="submit" class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-semibold text-sm py-2.5 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all shadow-md pulse-glow mt-2">
-                        Bắt Đầu Việt Hóa
-                    </button>
-                </form>
-
-                <!-- Local Media Library Browser -->
-                <div class="border-t border-white/5 pt-6 flex flex-col gap-4">
-                    <div class="flex flex-col">
-                        <h3 class="font-outfit font-semibold text-sm text-white">Thư viện Video Đầu Vào</h3>
-                        <p class="text-[10px] text-slate-400">Chọn video cục bộ từ thư mục trên máy</p>
-                    </div>
-
-                    <div class="flex gap-2">
-                        <input type="text" id="scan_path" placeholder="Đường dẫn thư mục (ví dụ: .)" value="."
-                               class="flex-1 bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
-                        <button onclick="scanLocalMedia()" class="bg-purple-600/80 hover:bg-purple-600 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors">
-                            Quét
-                        </button>
-                    </div>
-
-                    <!-- Search filter -->
-                    <input type="text" id="library_search" oninput="filterLibrary()" placeholder="Tìm kiếm nhanh video..."
-                           class="w-full bg-slate-950 border border-slate-900 rounded-lg py-1 px-2.5 text-[11px] text-slate-300 focus:outline-none focus:border-purple-500">
-
-                    <!-- Folders/Files container -->
-                    <div id="library-container" class="max-h-60 overflow-y-auto border border-white/5 rounded-xl bg-black/20 p-2 flex flex-col gap-2">
-                        <div class="text-[10px] text-center text-slate-500 py-4">Bấm Quét để hiển thị danh sách video</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Side: Channel Workspaces & Jobs List -->
-            <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-                <!-- Channel Workspaces Section -->
-                <div class="flex flex-col gap-3">
-                    <div class="flex items-center justify-between border-b border-white/5 pb-3">
+                    <!-- BGM and Logo Row -->
+                    <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <h2 class="font-outfit font-semibold text-sm text-white uppercase tracking-wider">Kênh Cấu Hình (Kéo thả video vào đây)</h2>
-                            <p class="text-[10px] text-slate-400">Kéo file video từ thư viện bên trái thả vào kênh bên dưới để tự động chạy Việt hóa</p>
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Nhạc
+                                    Nền BGM</label>
+                                <button type="button" onclick="openBgmManager()"
+                                    class="text-[9px] text-purple-400 hover:text-purple-300 font-semibold transition-colors">📥
+                                    Tải nhạc</button>
+                            </div>
+                            <select id="bgm" onfocus="loadBgmList()"
+                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                                <option value="">Không sử dụng</option>
+                            </select>
                         </div>
-                        <button onclick="openChannelManager()" class="bg-purple-600/80 hover:bg-purple-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 border border-purple-500/20 active:scale-[0.98]">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                            Quản lý Kênh
-                        </button>
-                    </div>
-                    <div id="channels-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                        <!-- Channels dynamically populated as dropzones -->
-                    </div>
-                </div>
-
-                <!-- Running Jobs Section -->
-                <div class="flex flex-col gap-4 mt-2">
-                    <div class="flex items-center justify-between border-b border-white/5 pb-3">
                         <div>
-                            <h2 class="font-outfit font-semibold text-sm text-white uppercase tracking-wider">Danh Sách Jobs Đang Chạy</h2>
-                            <p class="text-[10px] text-slate-400">Chọn một job để xem tiến trình và chỉnh sửa phụ đề</p>
+                            <label
+                                class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Watermark
+                                Logo</label>
+                            <select id="logo"
+                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                                <option value="">Không sử dụng Logo</option>
+                            </select>
                         </div>
-                        <button onclick="loadJobs()" class="bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-white/5 transition-all">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H16M4 8h5.183M12 4v4m0 0H8"></path></svg>
-                            Làm Mới
-                        </button>
                     </div>
-                    <div id="jobs-container" class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                        <!-- Dynamic Job Cards go here -->
+
+                    <!-- Output Channels Manager Block -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Quản
+                                Lý Kênh Output</label>
+                            <div class="flex gap-1.5">
+                                <button type="button" onclick="openCreateChannelModal()"
+                                    class="flex-1 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-lg py-2 px-1 text-[11px] font-semibold text-slate-200 transition-all flex items-center justify-center gap-1 active:scale-[0.98]">
+                                    ➕ Thêm
+                                </button>
+                                <button type="button" onclick="openManageChannelsModal()"
+                                    class="flex-1 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-lg py-2 px-1 text-[11px] font-semibold text-slate-200 transition-all flex items-center justify-center gap-1 active:scale-[0.98]">
+                                    ⚙️ Quản lý
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Chia
+                                Nền Tảng</label>
+                            <select id="dest_platform"
+                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                                <option value="">Không chia</option>
+                                <option value="TikTok">TikTok</option>
+                                <option value="YouTube">YouTube</option>
+                                <option value="Facebook">Facebook</option>
+                                <option value="Douyin">Douyin</option>
+                            </select>
+                        </div>
+                    </div>
+
+
+                </div>
+
+                <!-- Tab 2: Queue List & URL Input -->
+                <div id="sidebar-tab-queue" class="flex flex-col gap-4 hidden">
+                    <!-- Video Queue Box -->
+                    <div class="flex flex-col gap-2">
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Hàng Chờ Việt
+                            Hóa (Kéo thả)</label>
+
+                        <!-- Drop zone and queue list container -->
+                        <div id="queue-drop-zone"
+                            class="border-2 border-dashed border-slate-700/60 rounded-xl p-3 bg-slate-900/50 flex flex-col gap-2 transition-all min-h-[140px] justify-center items-center text-center">
+                            <!-- Placeholder when empty -->
+                            <div id="queue-empty-placeholder"
+                                class="flex flex-col items-center gap-1.5 py-4 text-slate-500">
+                                <svg class="w-8 h-8 opacity-40 text-purple-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                                    </path>
+                                </svg>
+                                <span class="text-[10px] font-medium leading-relaxed">Kéo thả link video từ<br>Trang Tìm
+                                    Kiếm vào đây</span>
+                            </div>
+
+                            <!-- Dynamic list items container -->
+                            <div id="queue-list" class="w-full flex flex-col gap-1.5 hidden">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Optional URL input row -->
+                        <div class="flex gap-1.5 mt-1">
+                            <input type="text" id="input_video_url" placeholder="Nhập Douyin/YouTube URL..."
+                                class="flex-1 bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                            <button type="button" onclick="addUrlToQueue()"
+                                class="bg-purple-600/30 text-purple-300 border border-purple-500/20 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-purple-600 hover:text-white transition-all active:scale-[0.98]">Thêm</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
+                <!-- Submit Button (Always Visible) -->
+                <button type="submit"
+                    class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-semibold text-sm py-2.5 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all shadow-md pulse-glow mt-2">
+                    Bắt Đầu Việt Hóa Hàng Loạt
+                </button>
+            </form>
         </div>
 
-        <!-- Cookie Tools Tab View -->
-        <div id="view-cookies" class="hidden flex-1 overflow-y-auto p-6 flex flex-col gap-6 max-w-4xl mx-auto">
-            <div>
-                <h2 class="font-outfit font-bold text-2xl text-white">Hệ Thống Quản Lý Cookies</h2>
-                <p class="text-sm text-slate-400">Sinh và xuất cookies Douyin để tránh bị giới hạn tải và lấy thông tin video.</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Card 1: Playwright Auto -->
-                <div class="glass-card rounded-2xl p-6 border border-white/5 flex flex-col gap-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
-                        </div>
-                        <div>
-                            <h3 class="font-semibold text-white">Tự Động Sinh Cookies</h3>
-                            <p class="text-xs text-slate-400">Sử dụng Playwright để tự lấy cookies</p>
-                        </div>
-                    </div>
-                    <p class="text-xs text-slate-300">Tính năng này sẽ khởi chạy trình duyệt Chromium ngầm, truy cập vào trang chủ Douyin.com để kích hoạt và lưu lại session cookies cần thiết.</p>
-                    <button onclick="triggerCookieAction('generate')" class="bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs py-2 rounded-lg transition-colors mt-auto">
-                        Chạy Playwright Auto-Cookie
-                    </button>
-                </div>
-
-                <!-- Card 2: Browser Export -->
-                <div class="glass-card rounded-2xl p-6 border border-white/5 flex flex-col gap-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-rose-500/20 flex items-center justify-center text-rose-400">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                        </div>
-                        <div>
-                            <h3 class="font-semibold text-white">Xuất Cookies Trình Duyệt</h3>
-                            <p class="text-xs text-slate-400">Lấy cookies từ các trình duyệt local</p>
-                        </div>
-                    </div>
-                    <p class="text-xs text-slate-300">Trích xuất cookies của Douyin từ các trình duyệt đã cài đặt trên máy của bạn (Chrome, Edge, Firefox, Brave, Opera) thông qua yt-dlp.</p>
-                    <button onclick="triggerCookieAction('export')" class="bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs py-2 rounded-lg transition-colors mt-auto">
-                        Xuất Cookies Từ Trình Duyệt
-                    </button>
-                </div>
-            </div>
-
-            <!-- Cookie Action Console Logs -->
-            <div class="glass-card rounded-2xl p-5 border border-white/5 flex flex-col gap-3">
-                <div class="flex items-center justify-between">
-                    <h3 class="font-semibold text-white text-sm">Console Output</h3>
-                    <span id="cookie-status-badge" class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-slate-800 text-slate-400">Sẵn sàng</span>
-                </div>
-                <div id="cookie-console" class="bg-black/40 rounded-lg p-4 font-mono text-xs text-emerald-400 h-40 overflow-y-auto border border-white/5">
-                    Hệ thống cookies đã sẵn sàng. Hãy bấm chạy một tác vụ ở trên...
-                </div>
-            </div>
-        </div>
-
-    </main>
+        <!-- Right Side: Dynamic Content View (Jobs List or Search results) -->
+        <main class="flex-1 overflow-hidden flex flex-col bg-slate-950" id="app-view">
+            <!-- Views are loaded dynamically here -->
+        </main>
+    </div>
 
     <!-- Job Detail Overlay Sidebar (Floating Panel) -->
-    <div id="job-detail-panel" class="hidden fixed inset-y-0 right-0 w-full lg:w-[650px] glass-panel border-l border-white/10 z-50 shadow-2xl flex flex-col overflow-hidden transition-all duration-300 transform translate-x-full">
+    <div id="detail-panel"
+        class="hidden fixed inset-y-0 right-0 w-full lg:w-[650px] glass-panel border-l border-white/10 z-50 shadow-2xl flex flex-col overflow-hidden transition-all duration-300 transform translate-x-full">
         <!-- Panel Header -->
         <div class="p-6 border-b border-white/5 flex items-center justify-between flex-shrink-0">
             <div>
-                <span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-extrabold uppercase tracking-widest" id="detail-job-id-badge">JOB ID</span>
+                <span
+                    class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-extrabold uppercase tracking-widest"
+                    id="detail-job-id-badge">JOB ID</span>
                 <h3 class="font-outfit font-bold text-lg text-white mt-1" id="detail-job-title">Job Details</h3>
             </div>
-            <button onclick="closeDetailPanel()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <button onclick="closeDetailPanel()"
+                class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
             </button>
         </div>
 
         <!-- Panel Body -->
         <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-            
+
             <!-- 1. Progress Step Tracker -->
             <div class="flex flex-col gap-3">
                 <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Tiến Trình Xử Lý</h4>
-                <div id="pipeline-steps-grid" class="grid grid-cols-3 gap-2">
-                    <!-- Dynamically populated step cards -->
+                <div id="pipeline-steps-list"
+                    class="flex flex-col gap-1 bg-black/20 rounded-xl p-3 border border-white/5">
+                    <!-- Dynamically populated steps -->
                 </div>
             </div>
 
             <!-- 1b. Pipeline Logs Console -->
-            <div class="flex flex-col gap-3">
+            <div id="detail-logs-section" class="flex flex-col gap-3">
                 <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Nhật Ký Chi Tiết (Logs)</h4>
-                <div id="job-logs-console" class="bg-black/50 border border-white/5 rounded-xl p-4 font-mono text-[11px] text-slate-300 h-48 overflow-y-auto whitespace-pre-wrap">
-                    Đang tải nhật ký...
-                </div>
+                <pre id="detail-console"
+                    class="bg-black/50 border border-white/5 rounded-xl p-4 font-mono text-[11px] text-slate-300 h-64 overflow-y-auto whitespace-pre-wrap">Đang tải nhật ký...</pre>
             </div>
 
-            <!-- 2. Subtitle Review Table -->
-            <div id="subtitles-section" class="flex flex-col gap-3 hidden">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Hiệu Chỉnh Phụ Đề</h4>
-                        <p class="text-[10px] text-slate-400">Chỉnh sửa dịch thuật & Bấm cập nhật để lồng tiếng lại</p>
-                    </div>
-                    <button onclick="saveAndReRun()" id="btn-save-rerun" class="bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90 active:scale-[0.98] text-white text-[11px] font-bold py-1.5 px-3 rounded-lg transition-all shadow shadow-emerald-900/50">
-                        Lưu & Tạo Lại Giọng Đọc/Video
-                    </button>
-                </div>
+            <!-- Completed Sections (Loaded only when completed) -->
+            <div id="detail-completed-section" class="flex flex-col gap-6 hidden">
+                <!-- Local Settings Overrides for Re-Rendering -->
+                <div class="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col gap-3">
+                    <h5 class="text-xs font-bold text-purple-400 uppercase tracking-wider">Cấu Hình Lồng Tiếng & Nhạc
+                        Nền Mới</h5>
 
-                <div class="border border-white/5 rounded-xl overflow-hidden max-h-[300px] overflow-y-auto">
-                    <table class="w-full border-collapse text-xs text-left text-slate-200">
-                        <thead class="bg-slate-900 text-slate-400 font-semibold border-b border-white/5">
-                            <tr>
-                                <th class="py-2 px-3 w-16">Thời gian</th>
-                                <th class="py-2 px-3 w-1/2">Văn Bản Gốc (Trung/Anh)</th>
-                                <th class="py-2 px-3 w-1/2">Dịch / Giọng đọc Việt</th>
-                            </tr>
-                        </thead>
-                        <tbody id="subtitles-table-body" class="divide-y divide-white/5">
-                            <!-- Populated segments -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- 3. Final Output Preview -->
-            <div id="preview-section" class="flex flex-col gap-3 hidden">
-                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Video Kết Quả (9:16)</h4>
-                
-                <div class="flex flex-col lg:flex-row gap-4">
-                    <!-- Video player wrapper -->
-                    <div class="w-full lg:w-48 aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 flex-shrink-0 flex items-center justify-center">
-                        <video id="final-video-player" controls class="w-full h-full object-contain">
-                            <source src="" type="video/mp4">
-                        </video>
-                    </div>
-                    <!-- Caption box -->
-                    <div class="flex-1 flex flex-col gap-2">
-                        <div class="flex items-center justify-between">
-                            <span class="text-[10px] font-semibold text-slate-400">Caption gợi ý từ AI</span>
-                            <button onclick="copyCaption()" class="bg-white/5 hover:bg-white/10 border border-white/5 text-[10px] font-bold px-2.5 py-1 rounded text-slate-300 hover:text-white transition-all flex items-center gap-1">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-5 4h5m-5 4h3m1 2a2 2 0 100-4 2 2 0 000 4z"></path></svg>
-                                Copy
-                            </button>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Giọng Đọc
+                                (TTS)</label>
+                            <select id="detail-voice"
+                                class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1 px-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                                <!-- Populated dynamically -->
+                            </select>
                         </div>
-                        <textarea id="caption-textarea" readonly class="flex-1 bg-slate-900 border border-slate-700/60 rounded-xl p-3 text-xs focus:outline-none text-slate-300 font-sans resize-none h-40"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 4. Error Stack -->
-            <div id="error-section" class="flex flex-col gap-3 hidden">
-                <h4 class="text-xs font-bold text-rose-400 uppercase tracking-widest">Nhật Ký Lỗi</h4>
-                <div id="error-console" class="bg-rose-950/20 border border-rose-500/30 text-rose-300 font-mono text-xs rounded-xl p-4 overflow-x-auto max-h-40">
-                    Error trace...
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- Channel Manager Modal -->
-    <div id="channel-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
-            <div class="p-5 border-b border-white/5 flex items-center justify-between">
-                <h3 class="font-outfit font-bold text-sm text-white" id="channel-modal-title">Quản Lý Kênh Cấu Hình</h3>
-                <button onclick="closeChannelManager()" class="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
-            
-            <!-- Channel List -->
-            <div id="modal-channel-list" class="p-5 flex flex-col gap-2.5 max-h-60 overflow-y-auto border-b border-white/5">
-                <!-- Editable channel rows -->
-            </div>
-
-            <!-- Add/Edit Channel Form -->
-            <form id="channel-form" onsubmit="saveChannel(event)" class="p-5 flex flex-col gap-4 bg-black/20">
-                <input type="hidden" id="edit-channel-id" value="">
-                <div class="flex flex-col gap-1.5">
-                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tên Kênh</label>
-                    <input type="text" id="chan-name" required placeholder="Ví dụ: Kênh TikTok Phim Kinh Dị"
-                           class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
-                </div>
-                
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tone dịch</label>
-                        <select id="chan-tone" class="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-xs text-slate-300 focus:outline-none focus:border-purple-500">
-                            <!-- Dynamically populated -->
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Giọng đọc (TTS)</label>
-                        <select id="chan-voice" class="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-xs text-slate-300 focus:outline-none focus:border-purple-500">
-                            <!-- Dynamically populated -->
-                        </select>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tốc độ đọc</label>
-                        <select id="chan-rate" class="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-xs text-slate-300 focus:outline-none focus:border-purple-500">
-                            <!-- Dynamically populated -->
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cao độ</label>
-                        <select id="chan-pitch" class="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-xs text-slate-300 focus:outline-none focus:border-purple-500">
-                            <!-- Dynamically populated -->
-                        </select>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nhạc nền (BGM)</label>
-                        <input type="text" id="chan-bgm" placeholder="Ví dụ: funny_loop"
-                               class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Logo nước</label>
-                        <input type="text" id="chan-logo" placeholder="Đường dẫn file logo.png"
-                               class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-2 py-1">
-                    <input type="checkbox" id="chan-mask" checked class="rounded border-slate-800 text-purple-600 focus:ring-0 focus:ring-offset-0 bg-slate-950 w-4 h-4">
-                    <label for="chan-mask" class="text-[11px] text-slate-300 font-medium">Che phụ đề cũ tiếng Trung ở dưới</label>
-                </div>
-
-                <div class="flex gap-2.5 mt-2 justify-end">
-                    <button type="button" onclick="cancelChannelEdit()" class="bg-white/5 hover:bg-white/10 text-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition-colors">
-                        Hủy
-                    </button>
-                    <button type="submit" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors">
-                        Lưu Kênh
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Script logic -->
-    <script>
-        let currentTab = 'dashboard';
-        let jobsData = [];
-        let selectedJobId = null;
-        let selectedSegments = [];
-        let refreshInterval = null;
-
-        document.addEventListener('DOMContentLoaded', () => {
-            loadJobs();
-            loadChannels();
-            loadGlobalConfig();
-            // Poll jobs status every 4 seconds
-            setInterval(loadJobs, 4000);
-        });
-
-        function switchTab(tab) {
-            currentTab = tab;
-            document.getElementById('view-dashboard').classList.toggle('hidden', tab !== 'dashboard');
-            document.getElementById('view-cookies').classList.toggle('hidden', tab !== 'cookies');
-            
-            // Buttons class styling toggle
-            const btnDashboard = document.getElementById('btn-tab-dashboard');
-            const btnCookies = document.getElementById('btn-tab-cookies');
-            
-            if (tab === 'dashboard') {
-                btnDashboard.className = "px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 text-white transition-all";
-                btnCookies.className = "px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all";
-            } else {
-                btnCookies.className = "px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 text-white transition-all";
-                btnDashboard.className = "px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all";
-            }
-        }
-
-        async function loadJobs() {
-            try {
-                const response = await fetch('/api/jobs');
-                const data = await response.json();
-                jobsData = data;
-                renderJobsList();
-                
-                // If the detail modal is open, refresh detail details
-                if (selectedJobId) {
-                    const currentJob = jobsData.find(j => j.job_id === selectedJobId);
-                    if (currentJob) {
-                        updatePipelineSteps(currentJob);
-                    }
-                }
-            } catch (err) {
-                console.error("Failed to load jobs:", err);
-            }
-        }
-
-        function renderJobsList() {
-            const container = document.getElementById('jobs-container');
-            container.innerHTML = '';
-            
-            if (jobsData.length === 0) {
-                container.innerHTML = `
-                    <div class="col-span-full py-12 text-center text-slate-500 border border-dashed border-white/5 rounded-2xl">
-                        Không có job nào được tìm thấy. Hãy tạo job mới ở cột bên trái.
-                    </div>
-                `;
-                return;
-            }
-
-            jobsData.forEach(job => {
-                const card = document.createElement('div');
-                card.className = "glass-card rounded-2xl p-5 hover:border-white/15 transition-all flex flex-col gap-4 relative group";
-                
-                // Status badge layout
-                let statusBadge = '';
-                if (job.status === 'completed') {
-                    statusBadge = '<span class="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-300 font-bold rounded-md">Hoàn thành</span>';
-                } else if (job.status === 'failed') {
-                    statusBadge = '<span class="text-[10px] px-2 py-0.5 bg-rose-500/20 text-rose-300 font-bold rounded-md">Lỗi</span>';
-                } else if (job.status === 'running') {
-                    statusBadge = '<span class="text-[10px] px-2 py-0.5 bg-indigo-500/20 text-indigo-300 font-bold rounded-md animate-pulse">Đang xử lý</span>';
-                } else {
-                    statusBadge = `<span class="text-[10px] px-2 py-0.5 bg-slate-800 text-slate-300 font-bold rounded-md">${job.status}</span>`;
-                }
-
-                // Render completed percentage based on steps status
-                const totalSteps = Object.keys(job.steps).length;
-                const completedSteps = Object.values(job.steps).filter(s => s === 'completed').length;
-                const pct = Math.round((completedSteps / totalSteps) * 100);
-
-                const createdTime = new Date(job.created_at).toLocaleString();
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div class="flex flex-col">
-                            <span class="text-[10px] font-mono text-purple-400 font-bold">${job.job_id}</span>
-                            <h3 class="font-semibold text-white mt-0.5 text-sm truncate max-w-[280px]" title="${job.input_path}">
-                                ${job.input_path.split(/[\\/]/).pop()}
-                            </h3>
-                        </div>
-                        ${statusBadge}
-                    </div>
-
-                    <div class="flex flex-col gap-1">
-                        <div class="flex justify-between text-[10px] text-slate-400">
-                            <span>Tiến độ</span>
-                            <span>${pct}% (${completedSteps}/${totalSteps})</span>
-                        </div>
-                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                            <div class="bg-gradient-to-r from-purple-500 to-rose-500 h-full transition-all duration-500" style="width: ${pct}%"></div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Nhạc Nền
+                                (BGM)</label>
+                            <select id="detail-bgm" onfocus="loadBgmList()"
+                                class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1 px-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                                <option value="">Không sử dụng BGM</option>
+                                <!-- Populated dynamically -->
+                            </select>
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-between mt-1 pt-3 border-t border-white/5">
-                        <span class="text-[10px] text-slate-400 font-medium">${createdTime}</span>
-                        <div class="flex items-center gap-2">
-                            <button onclick="deleteJob('${job.job_id}')" class="hover:bg-rose-500/10 text-rose-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-500/20 hover:border-rose-500/40 transition-all">
-                                Xóa
-                            </button>
-                            <button onclick="openDetailPanel('${job.job_id}')" class="bg-white/5 hover:bg-white/10 hover:text-white text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/5 transition-all">
-                                Chi Tiết
-                            </button>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Tốc Độ
+                                Đọc</label>
+                            <select id="detail-rate"
+                                class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1 px-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Cao Độ
+                                (Pitch)</label>
+                            <select id="detail-pitch"
+                                class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1 px-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                                <!-- Populated dynamically -->
+                            </select>
                         </div>
                     </div>
-                `;
-                container.appendChild(card);
-            });
-        }
+                </div>
 
-        async function submitJob(e) {
-            e.preventDefault();
-            const input_video = document.getElementById('input_video').value.trim();
-            const tone = document.getElementById('tone').value;
-            const voice = document.getElementById('voice').value;
-            const rate = document.getElementById('rate').value;
-            const pitch = document.getElementById('pitch').value;
-            const bgm = document.getElementById('bgm').value.trim() || null;
-            const logo = document.getElementById('logo').value.trim() || null;
-            const mask = document.getElementById('mask').checked;
-
-            try {
-                const response = await fetch('/api/jobs', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ input_video, tone, voice, rate, pitch, bgm, logo, mask })
-                });
-                const res = await response.json();
-                
-                // Clear input
-                document.getElementById('input_video').value = '';
-                document.getElementById('bgm').value = '';
-                
-                // Reload list and focus on this new job
-                await loadJobs();
-                openDetailPanel(res.job_id);
-            } catch (err) {
-                alert("Không thể khởi động Job: " + err.message);
-            }
-        }
-
-        async function openDetailPanel(jobId) {
-            selectedJobId = jobId;
-            const job = jobsData.find(j => j.job_id === jobId);
-            if (!job) return;
-
-            document.getElementById('detail-job-id-badge').innerText = job.job_id;
-            document.getElementById('detail-job-title').innerText = job.input_path.split(/[\\/]/).pop();
-
-            // Set detail panel visibility classes
-            const panel = document.getElementById('job-detail-panel');
-            panel.classList.remove('hidden');
-            // Allow layout render before animation
-            setTimeout(() => {
-                panel.classList.remove('translate-x-full');
-            }, 50);
-
-            // Populate step grid status
-            updatePipelineSteps(job);
-
-            // Hide/Show dynamic sections depending on state
-            toggleJobDetailsLayout(job);
-            
-            // Start logs polling
-            startLogsPolling(jobId);
-        }
-
-        function closeDetailPanel() {
-            stopLogsPolling();
-            const panel = document.getElementById('job-detail-panel');
-            panel.classList.add('translate-x-full');
-            setTimeout(() => {
-                panel.classList.add('hidden');
-                selectedJobId = null;
-                // Pause video preview
-                document.getElementById('final-video-player').pause();
-            }, 300);
-        }
-
-        function toggleJobDetailsLayout(job) {
-            const subSection = document.getElementById('subtitles-section');
-            const previewSection = document.getElementById('preview-section');
-            const errorSection = document.getElementById('error-section');
-
-            // Subtitle review block (if step translate is completed)
-            if (job.steps.translate === 'completed') {
-                subSection.classList.remove('hidden');
-                loadSubtitleTranscript(job.job_id);
-            } else {
-                subSection.classList.add('hidden');
-            }
-
-            // Preview video block (if completed)
-            if (job.status === 'completed') {
-                previewSection.classList.remove('hidden');
-                
-                const videoPlayer = document.getElementById('final-video-player');
-                videoPlayer.src = `/api/jobs/${job.job_id}/video`;
-                videoPlayer.load();
-
-                // Load caption
-                loadAIcaption(job.job_id);
-            } else {
-                previewSection.classList.add('hidden');
-                document.getElementById('final-video-player').src = '';
-            }
-
-            // Error traceback block (if failed)
-            if (job.status === 'failed' && job.errors && job.errors.length > 0) {
-                errorSection.classList.remove('hidden');
-                document.getElementById('error-console').innerText = job.errors.join('\n');
-            } else {
-                errorSection.classList.add('hidden');
-            }
-        }
-
-        function updatePipelineSteps(job) {
-            const grid = document.getElementById('pipeline-steps-grid');
-            grid.innerHTML = '';
-
-            // We order steps manually
-            const stepOrder = [
-                { id: 'intake', label: '1. Nhận Video' },
-                { id: 'analyze', label: '2. Phân Tích' },
-                { id: 'extract_audio', label: '3. Tách Âm Thanh' },
-                { id: 'transcribe', label: '4. Transcribe' },
-                { id: 'translate', label: '5. Dịch Thuật' },
-                { id: 'tts', label: '6. Giọng Đọc' },
-                { id: 'mix_audio', label: '7. Trộn Nhạc' },
-                { id: 'render', label: '8. Render Video' },
-                { id: 'metadata', label: '9. Caption AI' }
-            ];
-
-            // Recheck modal visibility details if status flips to finished or failed
-            if (selectedJobId === job.job_id) {
-                toggleJobDetailsLayout(job);
-            }
-
-            stepOrder.forEach(s => {
-                const status = job.steps[s.id] || 'pending';
-                const div = document.createElement('div');
-                div.className = "p-3 rounded-lg border flex flex-col items-center justify-center text-center gap-1.5 transition-all";
-                
-                let statusText = '';
-                let statusClasses = '';
-                
-                // If job is in running state, and current step matches this step, pulse it
-                const isCurrent = job.status === 'running' && job.current_step === s.id;
-
-                if (status === 'completed') {
-                    statusClasses = 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300';
-                    statusText = 'Completed';
-                } else if (status === 'failed') {
-                    statusClasses = 'bg-rose-500/10 border-rose-500/30 text-rose-300';
-                    statusText = 'Failed';
-                } else if (isCurrent) {
-                    statusClasses = 'bg-indigo-500/20 border-indigo-500/60 text-indigo-300 animate-pulse';
-                    statusText = 'Processing...';
-                } else {
-                    statusClasses = 'bg-slate-900 border-slate-800 text-slate-400';
-                    statusText = 'Pending';
-                }
-
-                div.className = `${div.className} ${statusClasses}`;
-                div.innerHTML = `
-                    <span class="text-[10px] font-bold tracking-tight">${s.label}</span>
-                    <span class="text-[9px] uppercase font-semibold tracking-wider opacity-85">${statusText}</span>
-                `;
-                grid.appendChild(div);
-            });
-        }
-
-        async function loadSubtitleTranscript(jobId) {
-            try {
-                const response = await fetch(`/api/jobs/${jobId}/transcript`);
-                if (!response.ok) return;
-                const segments = await response.json();
-                selectedSegments = segments;
-                
-                const tbody = document.getElementById('subtitles-table-body');
-                tbody.innerHTML = '';
-
-                segments.forEach((seg, index) => {
-                    const row = document.createElement('tr');
-                    row.className = "hover:bg-white/[0.02] border-b border-white/5";
-
-                    const timeStr = `${(seg.start_ms / 1000).toFixed(1)}s - ${(seg.end_ms / 1000).toFixed(1)}s`;
-
-                    row.innerHTML = `
-                        <td class="py-2 px-3 text-slate-400 font-mono text-[10px]">${timeStr}</td>
-                        <td class="py-2 px-3 font-medium text-slate-300">${seg.source_text}</td>
-                        <td class="py-1.5 px-3">
-                            <input type="text" value="${seg.translated_text}" onchange="updateSegmentText(${index}, this.value)"
-                                   class="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 focus:outline-none focus:border-purple-500 text-slate-200 text-xs">
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            } catch (err) {
-                console.error("Failed to load transcript:", err);
-            }
-        }
-
-        function updateSegmentText(idx, val) {
-            if (selectedSegments[idx]) {
-                selectedSegments[idx].translated_text = val;
-                // Sync TTS text as well for synthesis
-                selectedSegments[idx].tts_text = val;
-            }
-        }
-
-        async function saveAndReRun() {
-            const btn = document.getElementById('btn-save-rerun');
-            btn.disabled = true;
-            btn.innerText = "Đang chạy lại...";
-
-            // Retrieve parameter settings from selected tone/voice inside form
-            const tone = document.getElementById('tone').value;
-            const voice = document.getElementById('voice').value;
-            const rate = document.getElementById('rate').value;
-            const pitch = document.getElementById('pitch').value;
-            const bgm = document.getElementById('bgm').value.trim() || null;
-            const logo = document.getElementById('logo').value.trim() || null;
-            const mask = document.getElementById('mask').checked;
-
-            try {
-                const response = await fetch(`/api/jobs/${selectedJobId}/transcript`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        segments: selectedSegments,
-                        reset_from_tts: true,
-                        tone, voice, rate, pitch, bgm, logo, mask
-                    })
-                });
-
-                if (response.ok) {
-                    // Refresh logs, close panel detail
-                    await loadJobs();
-                    alert("Cập nhật thành công! Job đã bắt đầu sinh lại giọng nói và video.");
-                    closeDetailPanel();
-                } else {
-                    const err = await response.json();
-                    alert("Không thể chạy lại: " + err.detail);
-                }
-            } catch (err) {
-                alert("Lỗi: " + err.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Lưu & Tạo Lại Giọng Đọc/Video";
-            }
-        }
-
-        async function loadAIcaption(jobId) {
-            try {
-                const response = await fetch(`/api/jobs/${jobId}/caption`);
-                const data = await response.json();
-                document.getElementById('caption-textarea').value = data.content || '';
-            } catch (err) {
-                console.error("Failed to load caption:", err);
-            }
-        }
-
-        function copyCaption() {
-            const textarea = document.getElementById('caption-textarea');
-            textarea.select();
-            document.execCommand('copy');
-            alert('Đã copy caption vào clipboard!');
-        }
-
-        async function triggerCookieAction(action) {
-            const consoleBox = document.getElementById('cookie-console');
-            const badge = document.getElementById('cookie-status-badge');
-            
-            badge.className = "text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-600/35 text-indigo-300 animate-pulse";
-            badge.innerText = "Đang chạy";
-            
-            consoleBox.innerHTML += `\n[SYSTEM] Triggering cookie ${action}...`;
-
-            try {
-                const response = await fetch(`/api/cookies/${action}`, { method: 'POST' });
-                const res = await response.json();
-                
-                consoleBox.innerHTML += `\n[SYSTEM] ${res.message}`;
-                
-                // Let's print feedback
-                setTimeout(() => {
-                    badge.className = "text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-600/35 text-emerald-300";
-                    badge.innerText = "Hoàn tất";
-                    consoleBox.innerHTML += `\n[SYSTEM] Tác vụ đã hoàn tất trong background. Vui lòng check file cookies.txt.`;
-                }, 8000); // Simulated delay to let background start
-            } catch (err) {
-                badge.className = "text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-rose-600/35 text-rose-300";
-                badge.innerText = "Lỗi";
-                consoleBox.innerHTML += `\n[ERROR] Request failed: ${err.message}`;
-            }
-        }
-
-        let libraryVideos = [];
-
-        async function scanLocalMedia() {
-            const path = document.getElementById('scan_path').value.trim();
-            const container = document.getElementById('library-container');
-            container.innerHTML = `<div class="text-[10px] text-center text-slate-400 py-4 animate-pulse">Đang quét thư mục...</div>`;
-            
-            try {
-                const response = await fetch(`/api/media/scan?path=${encodeURIComponent(path)}`);
-                if (!response.ok) {
-                    const err = await response.json();
-                    container.innerHTML = `<div class="text-[10px] text-center text-rose-400 py-4">Lỗi: ${err.detail}</div>`;
-                    return;
-                }
-                const data = await response.json();
-                libraryVideos = data.videos;
-                renderLibrary();
-            } catch (err) {
-                container.innerHTML = `<div class="text-[10px] text-center text-rose-400 py-4">Không kết nối được server</div>`;
-            }
-        }
-
-        function renderLibrary() {
-            const container = document.getElementById('library-container');
-            container.innerHTML = '';
-            
-            if (libraryVideos.length === 0) {
-                container.innerHTML = `<div class="text-[10px] text-center text-slate-500 py-4">Không tìm thấy video nào.</div>`;
-                return;
-            }
-
-            // Group by folder
-            const groups = {};
-            libraryVideos.forEach(v => {
-                const f = v.folder || "Thư mục gốc";
-                if (!groups[f]) groups[f] = [];
-                groups[f].push(v);
-            });
-
-            // Render groups
-            for (const folder in groups) {
-                const folderDiv = document.createElement('div');
-                folderDiv.className = "flex flex-col gap-1";
-
-                const header = document.createElement('div');
-                header.className = "flex items-center gap-1.5 text-[11px] font-semibold text-slate-300 hover:text-white cursor-pointer select-none py-1";
-                header.innerHTML = `
-                    <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-                    <span>${folder}</span>
-                    <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.2 rounded-full ml-auto">${groups[folder].length}</span>
-                `;
-                
-                const fileList = document.createElement('div');
-                fileList.className = "flex flex-col gap-1 pl-4 border-l border-white/5 ml-1.5 mt-0.5";
-
-                groups[folder].forEach(video => {
-                    const item = document.createElement('div');
-                    item.setAttribute('draggable', 'true');
-                    item.className = "flex items-center justify-between text-[10px] text-slate-400 hover:text-white hover:bg-white/5 px-2 py-1 rounded cursor-pointer transition-colors library-video-item active:scale-[0.98] select-none";
-                    item.dataset.name = video.name.toLowerCase();
-                    item.onclick = () => selectLibraryVideo(video.absolute_path, item);
-                    item.ondragstart = (e) => {
-                        e.dataTransfer.setData('text/plain', video.absolute_path);
-                        e.dataTransfer.effectAllowed = 'copy';
-                        item.classList.add('opacity-50');
-                    };
-                    item.ondragend = () => {
-                        item.classList.remove('opacity-50');
-                    };
-                    item.innerHTML = `
-                        <span class="truncate max-w-[180px]" title="${video.name}">${video.name}</span>
-                        <span class="text-[9px] text-slate-500 font-mono flex-shrink-0 ml-2">${video.size_mb} MB</span>
-                    `;
-                    fileList.appendChild(item);
-                });
-
-                header.onclick = () => {
-                    fileList.classList.toggle('hidden');
-                };
-
-                folderDiv.appendChild(header);
-                folderDiv.appendChild(fileList);
-                container.appendChild(folderDiv);
-            }
-        }
-
-        function selectLibraryVideo(absPath, element) {
-            document.getElementById('input_video').value = absPath;
-            
-            // Highlight selected item
-            document.querySelectorAll('.library-video-item').forEach(el => {
-                el.classList.remove('bg-purple-500/20', 'text-purple-300', 'border', 'border-purple-500/30');
-                el.classList.add('text-slate-400');
-            });
-            element.classList.remove('text-slate-400');
-            element.classList.add('bg-purple-500/20', 'text-purple-300', 'border', 'border-purple-500/30');
-        }
-
-        function filterLibrary() {
-            const q = document.getElementById('library_search').value.toLowerCase().trim();
-            document.querySelectorAll('.library-video-item').forEach(item => {
-                const name = item.dataset.name;
-                const matches = name.includes(q);
-                item.style.display = matches ? 'flex' : 'none';
-            });
-        }
-
-        async function deleteJob(jobId) {
-            const currentJob = jobsData.find(j => j.job_id === jobId);
-            if (currentJob && currentJob.status === 'running') {
-                alert("Không thể xóa job đang chạy!");
-                return;
-            }
-            if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn Job ${jobId} và toàn bộ file video liên quan để giải phóng bộ nhớ không?`)) {
-                return;
-            }
-            try {
-                const response = await fetch(`/api/jobs/${jobId}`, {
-                    method: 'DELETE'
-                });
-                if (response.ok) {
-                    await loadJobs();
-                    if (selectedJobId === jobId) {
-                        closeDetailPanel();
-                    }
-                } else {
-                    const err = await response.json();
-                    alert("Lỗi khi xóa: " + err.detail);
-                }
-            } catch (err) {
-                alert("Không kết nối được server: " + err.message);
-            }
-        }
-
-        let logsInterval = null;
-
-        function startLogsPolling(jobId) {
-            stopLogsPolling();
-            loadLogs(jobId);
-            logsInterval = setInterval(() => loadLogs(jobId), 2000);
-        }
-
-        function stopLogsPolling() {
-            if (logsInterval) {
-                clearInterval(logsInterval);
-                logsInterval = null;
-            }
-        }
-
-        async function loadLogs(jobId) {
-            try {
-                const response = await fetch(`/api/jobs/${jobId}/logs`);
-                if (!response.ok) return;
-                const data = await response.json();
-                const consoleBox = document.getElementById('job-logs-console');
-                
-                // Auto scroll to bottom only if user hasn't scrolled up manually
-                const isAtBottom = consoleBox.scrollHeight - consoleBox.clientHeight <= consoleBox.scrollTop + 40;
-                
-                consoleBox.innerText = data.logs || 'Chưa có nhật ký hoạt động.';
-                
-                if (isAtBottom || consoleBox.scrollTop === 0) {
-                    consoleBox.scrollTop = consoleBox.scrollHeight;
-                }
-            } catch (err) {
-                console.error("Failed to load logs:", err);
-            }
-        }
-
-        let channelsData = [];
-
-        async function loadChannels() {
-            try {
-                const response = await fetch('/api/channels');
-                if (!response.ok) return;
-                channelsData = await response.json();
-                renderChannelsGrid();
-            } catch (err) {
-                console.error("Failed to load channels:", err);
-            }
-        }
-
-        function renderChannelsGrid() {
-            const grid = document.getElementById('channels-grid');
-            grid.innerHTML = '';
-            
-            if (channelsData.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-full border-2 border-dashed border-white/5 rounded-xl p-6 text-center text-xs text-slate-500">
-                        Chưa có kênh cấu hình nào. Hãy bấm "Quản lý Kênh" để thêm kênh mới.
-                    </div>
-                `;
-                return;
-            }
-
-            channelsData.forEach(chan => {
-                const card = document.createElement('div');
-                card.className = "border-2 border-dashed border-purple-500/20 bg-purple-950/10 rounded-xl p-4 flex flex-col gap-2 hover:border-purple-500/60 hover:bg-purple-950/20 transition-all cursor-pointer select-none drop-zone-card";
-                card.ondragover = handleDragOver;
-                card.ondragleave = handleDragLeave;
-                card.ondrop = (e) => handleDrop(e, chan.id);
-                card.innerHTML = `
+                <!-- 2. Subtitle Review Table -->
+                <div class="flex flex-col gap-3">
                     <div class="flex items-center justify-between">
-                        <span class="font-semibold text-xs text-white">${chan.name}</span>
-                        <span class="text-[9px] bg-purple-500/20 text-purple-300 px-1.5 py-0.2 rounded font-mono uppercase tracking-wider">${chan.tone}</span>
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Hiệu Chỉnh Phụ Đề
+                            </h4>
+                            <p class="text-[10px] text-slate-400">Chỉnh sửa dịch thuật & Bấm cập nhật để lồng tiếng lại
+                            </p>
+                        </div>
+                        <button onclick="saveAndReRun()" id="btn-save-rerun"
+                            class="bg-gradient-to-r from-emerald-600 to-teal-500 hover:opacity-90 active:scale-[0.98] text-white text-[11px] font-bold py-1.5 px-3 rounded-lg transition-all shadow shadow-emerald-900/50">
+                            Lưu & Tạo Lại Giọng Đọc/Video
+                        </button>
                     </div>
-                    <div class="flex flex-col gap-0.5 text-[10px] text-slate-400 font-sans">
-                        <div class="flex justify-between"><span>Giọng đọc:</span> <span class="text-slate-300 truncate max-w-[120px]" title="${chan.voice}">${chan.voice.split('-')[2] || chan.voice}</span></div>
-                        <div class="flex justify-between"><span>Tốc độ:</span> <span class="text-slate-300">${chan.rate}</span></div>
-                        <div class="flex justify-between"><span>Nhạc BGM:</span> <span class="text-slate-300 truncate max-w-[120px]">${chan.bgm || 'Không có'}</span></div>
+
+                    <div id="transcript-container"
+                        class="flex flex-col gap-3 max-h-80 overflow-y-auto border border-white/5 rounded-xl bg-black/20 p-3">
+                        <!-- Populated segments -->
                     </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
+                </div>
 
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
-            const card = e.currentTarget;
-            card.classList.remove('border-purple-500/20', 'bg-purple-950/10');
-            card.classList.add('border-purple-400', 'bg-purple-500/10', 'shadow-lg', 'shadow-purple-500/10');
-        }
+                <!-- 3. Final Output Preview -->
+                <div class="flex flex-col gap-3">
+                    <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Video Kết Quả (9:16)</h4>
 
-        function handleDragLeave(e) {
-            const card = e.currentTarget;
-            card.classList.remove('border-purple-400', 'bg-purple-500/10', 'shadow-lg', 'shadow-purple-500/10');
-            card.classList.add('border-purple-500/20', 'bg-purple-950/10');
-        }
+                    <div class="flex flex-col lg:flex-row gap-4">
+                        <!-- Video player wrapper -->
+                        <div
+                            class="w-full lg:w-48 aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 flex-shrink-0 flex items-center justify-center">
+                            <video id="detail-video-player" controls class="w-full h-full object-contain"></video>
+                        </div>
+                        <!-- Caption box -->
+                        <div class="flex-1 flex flex-col gap-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-semibold text-slate-400">Caption gợi ý từ AI</span>
+                                <button onclick="copyCaption()"
+                                    class="bg-white/5 hover:bg-white/10 border border-white/5 text-[10px] font-bold px-2.5 py-1 rounded text-slate-300 hover:text-white transition-all flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-5 4h5m-5 4h3m1 2a2 2 0 100-4 2 2 0 000 4z">
+                                        </path>
+                                    </svg>
+                                    Copy
+                                </button>
+                            </div>
+                            <textarea id="caption-textarea" readonly
+                                class="flex-1 bg-slate-900 border border-slate-700/60 rounded-xl p-3 text-xs focus:outline-none text-slate-300 font-sans resize-none h-40"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        async function handleDrop(e, channelId) {
-            e.preventDefault();
-            const card = e.currentTarget;
-            card.classList.remove('border-purple-400', 'bg-purple-500/10', 'shadow-lg', 'shadow-purple-500/10');
-            card.classList.add('border-purple-500/20', 'bg-purple-950/10');
 
-            const inputVideo = e.dataTransfer.getData('text/plain');
-            if (!inputVideo) return;
 
-            // Visual feedback on drop
-            card.classList.add('animate-pulse', 'border-emerald-500', 'text-emerald-400');
-            setTimeout(() => {
-                card.classList.remove('animate-pulse', 'border-emerald-500', 'text-emerald-400');
-            }, 1000);
+        <!-- BGM Downloader Manager Modal -->
+            <div id="bgm-modal"
+                class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                <div
+                    class="glass-card rounded-2xl w-full max-w-lg overflow-hidden flex flex-col shadow-2xl border border-white/10">
+                    <!-- Header -->
+                    <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                        <h3 class="font-outfit font-bold text-lg text-white">Quản Lý & Tải Nhạc Nền (BGM)</h3>
+                        <button onclick="closeBgmManager()"
+                            class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
 
-            try {
-                const response = await fetch(`/api/channels/${channelId}/process`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ input_video: inputVideo })
-                });
-                const res = await response.json();
-                if (response.ok) {
-                    await loadJobs();
-                    // Open progress panel for the newly started job
-                    openDetailPanel(res.job_id);
-                } else {
-                    alert("Lỗi kéo thả: " + res.detail);
-                }
-            } catch (err) {
-                alert("Lỗi kết nối server: " + err.message);
-            }
-        }
+                    <!-- Body -->
+                    <div class="p-6 flex flex-col gap-5 overflow-y-auto max-h-[450px]">
+                        <!-- Preset Downloads -->
+                        <div class="flex flex-col gap-2.5">
+                            <h4 class="text-xs font-bold text-purple-400 uppercase tracking-wider">Tải Nhạc Nền Mẫu (Một
+                                Click)</h4>
+                            <div class="grid grid-cols-1 gap-2">
+                                <!-- Preset 1: Menu (Patrick Patrikios) -->
+                                <div
+                                    class="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between hover:bg-white/10 transition-colors">
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-bold text-slate-200">🎵 Menu - Patrick
+                                            Patrikios</span>
+                                        <span class="text-[10px] text-slate-400">Nhạc nền review phim quốc dân (Kịch
+                                            tính, lôi cuốn)</span>
+                                    </div>
+                                    <button
+                                        onclick="downloadPresetBgm('https://pub-8be06c11867c4b4a92d83da16db475fb.r2.dev/Menu.mp3', 'Menu.mp3', this)"
+                                        class="bg-purple-600/80 hover:bg-purple-600 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1">
+                                        Tải về
+                                    </button>
+                                </div>
 
-        function openChannelManager() {
-            document.getElementById('channel-modal').classList.remove('hidden');
-            renderModalChannelsList();
-            cancelChannelEdit();
-        }
+                                <!-- Preset 2: Joyful Rhythm Walk Funk -->
+                                <div
+                                    class="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between hover:bg-white/10 transition-colors">
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-bold text-slate-200">🎵 Joyful Rhythm Walk Funk</span>
+                                        <span class="text-[10px] text-slate-400">Nhạc nền vui nhộn, sôi động
+                                            (funny_loop)</span>
+                                    </div>
+                                    <button
+                                        onclick="downloadPresetBgm('https://pub-8be06c11867c4b4a92d83da16db475fb.r2.dev/funny_loop.mp3', 'funny_loop.mp3', this)"
+                                        class="bg-purple-600/80 hover:bg-purple-600 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1">
+                                        Tải về
+                                    </button>
+                                </div>
 
-        function closeChannelManager() {
-            document.getElementById('channel-modal').classList.add('hidden');
-        }
+                                <!-- Preset 3: Soft Piano -->
+                                <div
+                                    class="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between hover:bg-white/10 transition-colors">
+                                    <div class="flex flex-col">
+                                        <span class="text-xs font-bold text-slate-200">🎵 Soft Piano - Emotional</span>
+                                        <span class="text-[10px] text-slate-400">Nhạc piano nhẹ nhàng trầm buồn
+                                            (sad_loop)</span>
+                                    </div>
+                                    <button
+                                        onclick="downloadPresetBgm('https://pub-8be06c11867c4b4a92d83da16db475fb.r2.dev/sad_loop.mp3', 'sad_loop.mp3', this)"
+                                        class="bg-purple-600/80 hover:bg-purple-600 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1">
+                                        Tải về
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
 
-        function renderModalChannelsList() {
-            const list = document.getElementById('modal-channel-list');
-            list.innerHTML = '';
+                        <hr class="border-white/5">
+
+                        <!-- Custom Download Form -->
+                        <div class="flex flex-col gap-3">
+                            <h4 class="text-xs font-bold text-purple-400 uppercase tracking-wider">Tải Nhạc Từ URL Tùy
+                                Chọn</h4>
+                            <div class="flex flex-col gap-2">
+                                <input type="text" id="custom-bgm-url"
+                                    placeholder="Nhập link trực tiếp tải nhạc (.mp3, .wav, .m4a)"
+                                    class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                                <div class="flex gap-2">
+                                    <input type="text" id="custom-bgm-name"
+                                        placeholder="Đặt tên tệp lưu (Ví dụ: nhac_review)"
+                                        class="flex-1 bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                                    <button onclick="downloadCustomBgm()"
+                                        class="bg-gradient-to-r from-purple-600 to-rose-500 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-all active:scale-[0.98]">
+                                        Bắt đầu tải
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="border-white/5">
+
+                        <!-- Installed Tracks List -->
+                        <div class="flex flex-col gap-2.5">
+                            <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Danh Sách Nhạc Hiện Có
+                            </h4>
+                            <div id="installed-bgm-list"
+                                class="max-h-36 overflow-y-auto border border-white/5 rounded-xl bg-black/20 p-2 flex flex-col gap-2 text-xs text-slate-400">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create Channel Modal -->
+            <div id="create-channel-modal"
+                class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div
+                    class="glass-panel w-full max-w-md rounded-2xl border border-white/15 p-6 flex flex-col gap-4 shadow-2xl relative bg-slate-950">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-outfit font-bold text-lg text-white flex items-center gap-2">➕ Thêm Kênh Output
+                            Mới</h3>
+                        <button onclick="closeCreateChannelModal()"
+                            class="text-slate-400 hover:text-white transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="flex flex-col gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Tên Kênh</label>
+                            <input type="text" id="chan-new-name" placeholder="Ví dụ: Kênh Shorts Youtube"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Đường Dẫn Thư Mục</label>
+                            <input type="text" id="chan-new-path" placeholder="D:\Youtube\Shorts"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-200">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-2.5 mt-2">
+                        <button onclick="closeCreateChannelModal()"
+                            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-all">Hủy</button>
+                        <button onclick="saveNewChannel()"
+                            class="px-4 py-2 bg-gradient-to-r from-purple-600 to-rose-500 text-white rounded-lg text-xs font-semibold transition-all active:scale-[0.98]">Lưu
+                            Kênh</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manage Channels Modal -->
+            <div id="manage-channels-modal"
+                class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div
+                    class="glass-panel w-full max-w-lg rounded-2xl border border-white/15 p-6 flex flex-col gap-4 shadow-2xl relative bg-slate-950">
+                    <div class="flex justify-between items-center border-b border-white/5 pb-3">
+                        <h3 class="font-outfit font-bold text-lg text-white flex items-center gap-2">⚙️ Quản Lý Kênh
+                            Output</h3>
+                        <button onclick="closeManageChannelsModal()"
+                            class="text-slate-400 hover:text-white transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="max-h-[300px] overflow-y-auto flex flex-col gap-2.5 pr-1" id="manage-channels-list">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="flex justify-end pt-2 border-t border-white/5">
+                        <button onclick="closeManageChannelsModal()"
+                            class="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-lg text-xs font-semibold transition-all">Đóng</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Channel Modal -->
+            <div id="edit-channel-modal"
+                class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div
+                    class="glass-panel w-full max-w-md rounded-2xl border border-white/15 p-6 flex flex-col gap-4 shadow-2xl relative bg-slate-950">
+                    <div class="flex justify-between items-center">
+                        <h3 class="font-outfit font-bold text-lg text-white flex items-center gap-2">✏️ Chỉnh Sửa Kênh
+                        </h3>
+                        <button onclick="closeEditChannelModal()"
+                            class="text-slate-400 hover:text-white transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <input type="hidden" id="chan-edit-id">
+                    <div class="flex flex-col gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Tên Kênh</label>
+                            <input type="text" id="chan-edit-name"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-200">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 mb-1">Đường Dẫn Thư Mục</label>
+                            <input type="text" id="chan-edit-path"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-200">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-2.5 mt-2">
+                        <button onclick="closeEditChannelModal()"
+                            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-all">Hủy</button>
+                        <button onclick="updateExistingChannel()"
+                            class="px-4 py-2 bg-gradient-to-r from-purple-600 to-rose-500 text-white rounded-lg text-xs font-semibold transition-all active:scale-[0.98]">Cập
+                            Nhật</button>
+                    </div>
+                </div>
+            </div>
             
-            channelsData.forEach(chan => {
-                const row = document.createElement('div');
-                row.className = "flex items-center justify-between bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-xs";
-                row.innerHTML = `
-                    <div class="flex flex-col">
-                        <span class="font-semibold text-slate-200">${chan.name}</span>
-                        <span class="text-[9px] text-slate-400 font-mono">${chan.voice.split('-')[2] || chan.voice} | ${chan.tone}</span>
+            <!-- Custom Confirm Modal -->
+            <div id="confirm-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all duration-300 opacity-0">
+                <div class="glass-card w-full max-w-sm rounded-2xl border border-white/10 p-6 flex flex-col gap-4 shadow-2xl bg-slate-950/95 transform scale-95 transition-all duration-300">
+                    <div class="flex items-center gap-3 text-purple-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <h3 class="font-outfit font-bold text-base text-white">Xác nhận</h3>
                     </div>
-                    <div class="flex gap-2">
-                        <button type="button" onclick="editChannel('${chan.id}')" class="text-purple-400 hover:text-purple-300 font-semibold text-[11px]">Sửa</button>
-                        <button type="button" onclick="deleteChannel('${chan.id}')" class="text-rose-400 hover:text-rose-300 font-semibold text-[11px]">Xóa</button>
+                    <p class="text-xs text-slate-300 leading-relaxed" id="confirm-message">Bạn có chắc chắn muốn thực hiện hành động này?</p>
+                    <div class="flex justify-end gap-2.5 mt-2">
+                        <button id="confirm-btn-cancel" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-white/5 rounded-xl text-xs font-semibold transition-all">Hủy</button>
+                        <button id="confirm-btn-ok" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-rose-500 hover:opacity-90 text-white rounded-xl text-xs font-semibold transition-all active:scale-[0.98]">Xác nhận</button>
                     </div>
-                `;
-                list.appendChild(row);
-            });
-        }
+                </div>
+            </div>
 
-        function editChannel(id) {
-            const chan = channelsData.find(c => c.id === id);
-            if (!chan) return;
-            
-            document.getElementById('edit-channel-id').value = chan.id;
-            document.getElementById('chan-name').value = chan.name;
-            document.getElementById('chan-tone').value = chan.tone;
-            document.getElementById('chan-voice').value = chan.voice;
-            document.getElementById('chan-rate').value = chan.rate;
-            document.getElementById('chan-pitch').value = chan.pitch;
-            document.getElementById('chan-bgm').value = chan.bgm || '';
-            document.getElementById('chan-logo').value = chan.logo || '';
-            document.getElementById('chan-mask').checked = chan.mask;
-            
-            document.getElementById('channel-modal-title').innerText = "Chỉnh Sửa Kênh: " + chan.name;
-        }
-
-        function cancelChannelEdit() {
-            document.getElementById('edit-channel-id').value = '';
-            document.getElementById('channel-form').reset();
-            document.getElementById('channel-modal-title').innerText = "Quản Lý Kênh Cấu Hình";
-        }
-
-        async function saveChannel(e) {
-            e.preventDefault();
-            const id = document.getElementById('edit-channel-id').value;
-            const name = document.getElementById('chan-name').value.trim();
-            const tone = document.getElementById('chan-tone').value;
-            const voice = document.getElementById('chan-voice').value;
-            const rate = document.getElementById('chan-rate').value;
-            const pitch = document.getElementById('chan-pitch').value;
-            const bgm = document.getElementById('chan-bgm').value.trim() || null;
-            const logo = document.getElementById('chan-logo').value.trim() || null;
-            const mask = document.getElementById('chan-mask').checked;
-
-            const payload = { name, tone, voice, rate, pitch, bgm, logo, mask };
-            const url = id ? `/api/channels/${id}` : '/api/channels';
-            const method = id ? 'PUT' : 'POST';
-
-            try {
-                const response = await fetch(url, {
-                    method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (response.ok) {
-                    await loadChannels();
-                    renderModalChannelsList();
-                    cancelChannelEdit();
-                } else {
-                    const err = await response.json();
-                    alert("Lỗi khi lưu kênh: " + err.detail);
-                }
-            } catch (err) {
-                alert("Lỗi kết nối: " + err.message);
-            }
-        }
-
-        async function deleteChannel(id) {
-            if (!confirm("Bạn có chắc chắn muốn xóa kênh cấu hình này không?")) return;
-            try {
-                const response = await fetch(`/api/channels/${id}`, {
-                    method: 'DELETE'
-                });
-                if (response.ok) {
-                    await loadChannels();
-                    renderModalChannelsList();
-                    cancelChannelEdit();
-                } else {
-                    const err = await response.json();
-                    alert("Lỗi khi xóa: " + err.detail);
-                }
-            } catch (err) {
-                alert("Lỗi kết nối: " + err.message);
-            }
-        }
-
-        let globalConfig = {};
-
-        async function loadGlobalConfig() {
-            try {
-                const response = await fetch('/api/config');
-                if (!response.ok) return;
-                globalConfig = await response.json();
-                
-                // Populate Job Form Selects
-                populateSelect('tone', globalConfig.tones, 'review_phim');
-                populateSelect('voice', globalConfig.voices, 'vi-VN-HoaiMyNeural');
-                populateSelect('rate', globalConfig.rates, '+0%');
-                populateSelect('pitch', globalConfig.pitches, '+0Hz');
-                
-                // Populate Channel Form Selects
-                populateSelect('chan-tone', globalConfig.tones, 'review_phim');
-                populateSelect('chan-voice', globalConfig.voices, 'vi-VN-HoaiMyNeural');
-                populateSelect('chan-rate', globalConfig.rates, '+0%');
-                populateSelect('chan-pitch', globalConfig.pitches, '+0Hz');
-            } catch (err) {
-                console.error("Failed to load global config:", err);
-            }
-        }
-
-        function populateSelect(elementId, items, defaultValue) {
-            const select = document.getElementById(elementId);
-            if (!select) return;
-            select.innerHTML = '';
-            items.forEach(item => {
-                const opt = new Option(item.name, item.id);
-                if (item.id === defaultValue) {
-                    opt.selected = true;
-                }
-                select.add(opt);
-            });
-        }
-    </script>
+            <!-- Modular Script Components -->
+            <script src="js/utils.js?v=3.6"></script>
+            <script src="js/api.js?v=3.6"></script>
+            <script src="js/app.js?v=3.6"></script>
 </body>
+
 </html>

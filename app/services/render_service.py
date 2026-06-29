@@ -43,7 +43,7 @@ class RenderService:
             "",
             "[V4+ Styles]",
             "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-            f"Style: Default,Arial,{font_size},&H00FFFFFF,&H000000FF,&H1A000000,&H1A000000,0,0,0,0,100,100,0,0,{border_style},{outline},0,2,80,80,{margin_v},1",
+            f"Style: Default,Arial,{font_size},&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,{border_style},{outline},2,2,80,80,{margin_v},1",
             "",
             "[Events]",
             "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"
@@ -102,7 +102,7 @@ class RenderService:
             
         current_grid = "[layout]"
         
-        # 2. Chinese subtitle cover-up (Calculations only, no drawbox filter added as we use ASS text box background)
+        # 2. Chinese subtitle cover-up (Draw solid black bar to fully cover background hardsubs)
         # Compute subtitle region dynamically relative to the foreground video box vertical span
         h_fit = int(w_out * h_in / w_in) if w_in >= h_in else h_out
         y_fit = (h_out - h_fit) // 2 if w_in >= h_in else 0
@@ -110,6 +110,13 @@ class RenderService:
         # Subtitles typically occupy bottom 16-18% of the foreground video box
         mask_y = y_fit + int(h_fit * 0.79)
         mask_h = int(h_fit * 0.18)
+        
+        if mask_subtitle:
+            # Draw a full-width solid black bar at the subtitle location to completely hide background subtitles
+            filters.append(
+                f"{current_grid}drawbox=x=0:y={mask_y}:w={w_out}:h={mask_h}:color=black@0.95:t=fill[masked]"
+            )
+            current_grid = "[masked]"
             
         # 3. Logo/Watermark overlay (centered slightly below the top of the frame)
         has_logo = logo_path and os.path.exists(logo_path) and os.path.getsize(logo_path) > 0
@@ -124,7 +131,8 @@ class RenderService:
         # Position the bottom line of subtitle text exactly 12px above the bottom of the old subtitle area
         margin_v = h_out - (mask_y + mask_h) + 12
         ass_path = srt_path.with_suffix(".ass")
-        self._convert_srt_to_ass(srt_path, ass_path, margin_v=margin_v, mask_subtitle=mask_subtitle, font_size=42)
+        # Since we draw a full-width background black bar via drawbox, we use standard clean outline subtitles
+        self._convert_srt_to_ass(srt_path, ass_path, margin_v=margin_v, mask_subtitle=False, font_size=42)
         
         escaped_ass = self._escape_windows_path(ass_path)
         filters.append(

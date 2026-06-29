@@ -6,6 +6,11 @@ echo =======================================================
 echo.
 
 rem 1. Install dependencies
+echo [INFO] Ensuring Port 8088 is free...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8088') do (
+    taskkill /f /pid %%a >nul 2>&1
+)
+
 echo [1/3] Checking and installing Python dependencies...
 call venv\Scripts\pip.exe install -r app/requirements.txt
 if %ERRORLEVEL% neq 0 (
@@ -29,6 +34,6 @@ echo.
 echo Server is starting up. To close the server, press Ctrl + C in this window.
 echo.
 
-venv\Scripts\python.exe app/main.py server --port 8088
+venv\Scripts\python.exe app/main.py server --port 8088 --reload
 pause
 

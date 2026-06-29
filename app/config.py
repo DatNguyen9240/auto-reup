@@ -6,6 +6,8 @@ from pydantic import Field
 class Settings(BaseSettings):
     # API Configuration
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
+    gemini_api_key_2: str = Field(default="", validation_alias="GEMINI_API_KEY_2")
+    gemini_api_key_3: str = Field(default="", validation_alias="GEMINI_API_KEY_3")
     
     # Path Configuration
     default_output_folder: str = "./examples/outputs"

@@ -22,3 +22,6 @@ class Job(BaseModel):
         "metadata": "pending"
     })
     errors: List[str] = Field(default_factory=list)
+    channel_folder: Optional[str] = None
+    platform_folder: Optional[str] = None
+    channel_id: Optional[str] = None
