@@ -167,6 +167,31 @@
                         Bắt Đầu Việt Hóa
                     </button>
                 </form>
+
+                <!-- Local Media Library Browser -->
+                <div class="border-t border-white/5 pt-6 flex flex-col gap-4">
+                    <div class="flex flex-col">
+                        <h3 class="font-outfit font-semibold text-sm text-white">Thư viện Video Đầu Vào</h3>
+                        <p class="text-[10px] text-slate-400">Chọn video cục bộ từ thư mục trên máy</p>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <input type="text" id="scan_path" placeholder="Đường dẫn thư mục (ví dụ: .)" value="."
+                               class="flex-1 bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                        <button onclick="scanLocalMedia()" class="bg-purple-600/80 hover:bg-purple-600 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors">
+                            Quét
+                        </button>
+                    </div>
+
+                    <!-- Search filter -->
+                    <input type="text" id="library_search" oninput="filterLibrary()" placeholder="Tìm kiếm nhanh video..."
+                           class="w-full bg-slate-950 border border-slate-900 rounded-lg py-1 px-2.5 text-[11px] text-slate-300 focus:outline-none focus:border-purple-500">
+
+                    <!-- Folders/Files container -->
+                    <div id="library-container" class="max-h-60 overflow-y-auto border border-white/5 rounded-xl bg-black/20 p-2 flex flex-col gap-2">
+                        <div class="text-[10px] text-center text-slate-500 py-4">Bấm Quét để hiển thị danh sách video</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Right Side: Jobs List -->
@@ -735,6 +760,104 @@
                 badge.innerText = "Lỗi";
                 consoleBox.innerHTML += `\n[ERROR] Request failed: ${err.message}`;
             }
+        }
+
+        let libraryVideos = [];
+
+        async function scanLocalMedia() {
+            const path = document.getElementById('scan_path').value.trim();
+            const container = document.getElementById('library-container');
+            container.innerHTML = `<div class="text-[10px] text-center text-slate-400 py-4 animate-pulse">Đang quét thư mục...</div>`;
+            
+            try {
+                const response = await fetch(`/api/media/scan?path=${encodeURIComponent(path)}`);
+                if (!response.ok) {
+                    const err = await response.json();
+                    container.innerHTML = `<div class="text-[10px] text-center text-rose-400 py-4">Lỗi: ${err.detail}</div>`;
+                    return;
+                }
+                const data = await response.json();
+                libraryVideos = data.videos;
+                renderLibrary();
+            } catch (err) {
+                container.innerHTML = `<div class="text-[10px] text-center text-rose-400 py-4">Không kết nối được server</div>`;
+            }
+        }
+
+        function renderLibrary() {
+            const container = document.getElementById('library-container');
+            container.innerHTML = '';
+            
+            if (libraryVideos.length === 0) {
+                container.innerHTML = `<div class="text-[10px] text-center text-slate-500 py-4">Không tìm thấy video nào.</div>`;
+                return;
+            }
+
+            // Group by folder
+            const groups = {};
+            libraryVideos.forEach(v => {
+                const f = v.folder || "Thư mục gốc";
+                if (!groups[f]) groups[f] = [];
+                groups[f].push(v);
+            });
+
+            // Render groups
+            for (const folder in groups) {
+                const folderDiv = document.createElement('div');
+                folderDiv.className = "flex flex-col gap-1";
+
+                const header = document.createElement('div');
+                header.className = "flex items-center gap-1.5 text-[11px] font-semibold text-slate-300 hover:text-white cursor-pointer select-none py-1";
+                header.innerHTML = `
+                    <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                    <span>${folder}</span>
+                    <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.2 rounded-full ml-auto">${groups[folder].length}</span>
+                `;
+                
+                const fileList = document.createElement('div');
+                fileList.className = "flex flex-col gap-1 pl-4 border-l border-white/5 ml-1.5 mt-0.5";
+
+                groups[folder].forEach(video => {
+                    const item = document.createElement('div');
+                    item.className = "flex items-center justify-between text-[10px] text-slate-400 hover:text-white hover:bg-white/5 px-2 py-1 rounded cursor-pointer transition-colors library-video-item";
+                    item.dataset.name = video.name.toLowerCase();
+                    item.onclick = () => selectLibraryVideo(video.absolute_path, item);
+                    item.innerHTML = `
+                        <span class="truncate max-w-[190px]" title="${video.name}">${video.name}</span>
+                        <span class="text-[9px] text-slate-500 font-mono flex-shrink-0 ml-2">${video.size_mb} MB</span>
+                    `;
+                    fileList.appendChild(item);
+                });
+
+                header.onclick = () => {
+                    fileList.classList.toggle('hidden');
+                };
+
+                folderDiv.appendChild(header);
+                folderDiv.appendChild(fileList);
+                container.appendChild(folderDiv);
+            }
+        }
+
+        function selectLibraryVideo(absPath, element) {
+            document.getElementById('input_video').value = absPath;
+            
+            // Highlight selected item
+            document.querySelectorAll('.library-video-item').forEach(el => {
+                el.classList.remove('bg-purple-500/20', 'text-purple-300', 'border', 'border-purple-500/30');
+                el.classList.add('text-slate-400');
+            });
+            element.classList.remove('text-slate-400');
+            element.classList.add('bg-purple-500/20', 'text-purple-300', 'border', 'border-purple-500/30');
+        }
+
+        function filterLibrary() {
+            const q = document.getElementById('library_search').value.toLowerCase().trim();
+            document.querySelectorAll('.library-video-item').forEach(item => {
+                const name = item.dataset.name;
+                const matches = name.includes(q);
+                item.style.display = matches ? 'flex' : 'none';
+            });
         }
     </script>
 </body>

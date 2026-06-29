@@ -2,12 +2,14 @@ import os
 import json
 import logging
 import asyncio
+import threading
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
+from app.config import settings
 from app.core.pipeline import PipelineRunner
 from app.storage.json_store import JsonStore
 from app.models.job import Job
@@ -51,7 +53,9 @@ class SegmentUpdateRequest(BaseModel):
     logo: Optional[str] = None
     mask: bool = True
 
-async def run_pipeline_bg(
+pipeline_lock = threading.Lock()
+
+def run_pipeline_in_thread(
     job_id: str,
     tone: str,
     voice: str,
@@ -63,23 +67,29 @@ async def run_pipeline_bg(
 ):
     running_jobs.add(job_id)
     try:
-        await runner.run(
-            job_id=job_id,
-            tone=tone,
-            voice=voice,
-            rate=rate,
-            pitch=pitch,
-            bgm_name=bgm_name,
-            logo_path=logo_path,
-            mask_subtitle=mask_subtitle
-        )
+        with pipeline_lock:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(runner.run(
+                    job_id=job_id,
+                    tone=tone,
+                    voice=voice,
+                    rate=rate,
+                    pitch=pitch,
+                    bgm_name=bgm_name,
+                    logo_path=logo_path,
+                    mask_subtitle=mask_subtitle
+                ))
+            finally:
+                loop.close()
     except Exception as e:
-        logger.error(f"Error running pipeline in background for {job_id}: {e}")
+        logger.error(f"Error running pipeline in thread for {job_id}: {e}")
     finally:
         running_jobs.discard(job_id)
 
 @app.post("/api/jobs")
-async def create_job(req: JobCreateRequest, background_tasks: BackgroundTasks):
+async def create_job(req: JobCreateRequest):
     input_video = req.input_video
     is_url = input_video.startswith("http://") or input_video.startswith("https://")
     
@@ -114,17 +124,11 @@ async def create_job(req: JobCreateRequest, background_tasks: BackgroundTasks):
         job.errors = []
         store.save_job(job)
 
-    background_tasks.add_task(
-        run_pipeline_bg,
-        job_id=job_id,
-        tone=req.tone,
-        voice=req.voice,
-        rate=req.rate,
-        pitch=req.pitch,
-        bgm_name=req.bgm,
-        logo_path=logo_path,
-        mask_subtitle=req.mask
+    thread = threading.Thread(
+        target=run_pipeline_in_thread,
+        args=(job_id, req.tone, req.voice, req.rate, req.pitch, req.bgm, logo_path, req.mask)
     )
+    thread.start()
 
     return {"job_id": job_id, "status": "running", "message": "Job started successfully"}
 
@@ -166,7 +170,7 @@ def get_transcript(job_id: str):
     return segments
 
 @app.put("/api/jobs/{job_id}/transcript")
-async def update_transcript(job_id: str, req: SegmentUpdateRequest, background_tasks: BackgroundTasks):
+async def update_transcript(job_id: str, req: SegmentUpdateRequest):
     job = store.load_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
@@ -191,17 +195,11 @@ async def update_transcript(job_id: str, req: SegmentUpdateRequest, background_t
             if not logo_path.is_absolute():
                 logo_path = PROJECT_ROOT / logo_path
 
-        background_tasks.add_task(
-            run_pipeline_bg,
-            job_id=job_id,
-            tone=req.tone,
-            voice=req.voice,
-            rate=req.rate,
-            pitch=req.pitch,
-            bgm_name=req.bgm,
-            logo_path=logo_path,
-            mask_subtitle=req.mask
+        thread = threading.Thread(
+            target=run_pipeline_in_thread,
+            args=(job_id, req.tone, req.voice, req.rate, req.pitch, req.bgm, logo_path, req.mask)
         )
+        thread.start()
         return {"status": "re-running", "message": "Transcript saved and pipeline restarted from TTS step"}
         
     return {"status": "saved", "message": "Transcript saved successfully"}
@@ -265,9 +263,46 @@ def export_cookies_endpoint(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_export)
     return {"status": "running", "message": "Browser cookie export started in background"}
 
+@app.get("/api/media/scan")
+def scan_media(path: Optional[str] = None):
+    scan_path = path or settings.default_source_folder or str(PROJECT_ROOT)
+    p = Path(scan_path)
+    if not p.exists() or not p.is_dir():
+        raise HTTPException(status_code=400, detail=f"Source folder not found or is not a directory: {scan_path}")
+
+    # Video extensions to scan
+    video_extensions = {".mp4", ".mkv", ".mov", ".avi", ".webm", ".m4v"}
+    videos = []
+
+    try:
+        # Recursively search for video files
+        for file in p.rglob("*"):
+            if file.is_file() and file.suffix.lower() in video_extensions:
+                # Exclude files inside projects/ or venv/ or .git/ or docs/
+                parts = file.relative_to(p).parts
+                if any(x in parts for x in ["projects", "venv", ".git", "docs", "app/static", "app"]):
+                    continue
+                
+                rel_path = file.relative_to(p)
+                videos.append({
+                    "name": file.name,
+                    "relative_path": str(rel_path).replace("\\", "/"),
+                    "absolute_path": str(file.resolve()),
+                    "folder": str(rel_path.parent).replace("\\", "/") if len(parts) > 1 else "",
+                    "size_mb": round(file.stat().st_size / (1024 * 1024), 2)
+                })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to scan directory: {e}")
+
+    return {
+        "scan_path": str(p.resolve()),
+        "videos": videos
+    }
+
 @app.get("/")
 def read_index():
     index_path = STATIC_DIR / "index.html"
     if not index_path.exists():
         return HTMLResponse("<h1>Frontend Static SPA index.html is missing. Please create it.</h1>")
     return FileResponse(index_path)
+
