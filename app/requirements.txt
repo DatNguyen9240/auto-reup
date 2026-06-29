@@ -12,3 +12,6 @@ aiofiles>=23.0.0
 playwright
 requests
 yt-dlp
+fastapi
+uvicorn
+

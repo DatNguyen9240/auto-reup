@@ -117,6 +117,24 @@ def export_cookies(
         typer.echo("[INFO] Please ensure the targeted browser is closed completely before running.", err=True)
         raise typer.Exit(code=1)
 
+@app.command(name="server")
+def run_server(
+    host: str = typer.Option("127.0.0.1", "--host", "-h", help="API server bind host"),
+    port: int = typer.Option(8000, "--port", "-p", help="API server bind port"),
+    reload: bool = typer.Option(False, "--reload", help="Enable live auto-reload on code change")
+):
+    """Start the FastAPI backend server and serve the Web UI dashboard."""
+    configure_logging()
+    logger.info(f"Starting API server on http://{host}:{port} ...")
+    
+    import uvicorn
+    if reload:
+        uvicorn.run("app.server:app", host=host, port=port, reload=True)
+    else:
+        from app.server import app as fastapi_app
+        uvicorn.run(fastapi_app, host=host, port=port)
+
 if __name__ == "__main__":
     app()
+
 
