@@ -9,7 +9,7 @@ from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
-from app.config import settings
+from app.config import settings, AVAILABLE_VOICES, AVAILABLE_TONES, AVAILABLE_RATES, AVAILABLE_PITCHES
 from app.core.pipeline import PipelineRunner
 from app.storage.json_store import JsonStore
 from app.models.job import Job
@@ -35,9 +35,9 @@ running_jobs = set()
 class JobCreateRequest(BaseModel):
     input_video: str
     tone: str = "review_phim"
-    voice: str = "vi-VN-HoaiMyNeural"
-    rate: str = "+0%"
-    pitch: str = "+0Hz"
+    voice: str = settings.default_voice
+    rate: str = settings.default_rate
+    pitch: str = settings.default_pitch
     bgm: Optional[str] = None
     logo: Optional[str] = None
     mask: bool = True
@@ -46,12 +46,75 @@ class SegmentUpdateRequest(BaseModel):
     segments: List[Segment]
     reset_from_tts: bool = False
     tone: str = "review_phim"
-    voice: str = "vi-VN-HoaiMyNeural"
-    rate: str = "+0%"
-    pitch: str = "+0Hz"
+    voice: str = settings.default_voice
+    rate: str = settings.default_rate
+    pitch: str = settings.default_pitch
     bgm: Optional[str] = None
     logo: Optional[str] = None
     mask: bool = True
+
+class ChannelCreateRequest(BaseModel):
+    name: str
+    tone: str = "review_phim"
+    voice: str = settings.default_voice
+    rate: str = settings.default_rate
+    pitch: str = settings.default_pitch
+    bgm: Optional[str] = None
+    logo: Optional[str] = None
+    mask: bool = True
+
+class ChannelProcessRequest(BaseModel):
+    input_video: str
+
+CHANNELS_FILE = PROJECTS_DIR / "channels.json"
+
+def _load_channels() -> List[Dict[str, Any]]:
+    if not CHANNELS_FILE.exists():
+        default_channels = [
+            {
+                "id": "chan_review_phim",
+                "name": "Kênh Review Phim",
+                "tone": "review_phim",
+                "voice": settings.default_voice,
+                "rate": settings.default_rate,
+                "pitch": settings.default_pitch,
+                "bgm": None,
+                "logo": None,
+                "mask": True
+            },
+            {
+                "id": "chan_hai_huoc",
+                "name": "Kênh Hài Hước",
+                "tone": "funny",
+                "voice": "vi-VN-NamMinhNeural",
+                "rate": "+10%",
+                "pitch": "+0Hz",
+                "bgm": "funny_loop",
+                "logo": None,
+                "mask": True
+            }
+        ]
+        PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            with open(CHANNELS_FILE, "w", encoding="utf-8") as f:
+                json.dump(default_channels, f, indent=4, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Error seeding channels: {e}")
+        return default_channels
+        
+    try:
+        with open(CHANNELS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading channels: {e}")
+        return []
+
+def _save_channels(channels: List[Dict[str, Any]]):
+    try:
+        with open(CHANNELS_FILE, "w", encoding="utf-8") as f:
+            json.dump(channels, f, indent=4, ensure_ascii=False)
+    except Exception as e:
+        logger.error(f"Error saving channels: {e}")
 
 pipeline_lock = threading.Lock()
 
@@ -334,6 +397,143 @@ def get_job_logs(job_id: str):
         return {"logs": content}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read logs: {e}")
+
+@app.get("/api/config")
+def get_global_config():
+    return {
+        "voices": AVAILABLE_VOICES,
+        "tones": AVAILABLE_TONES,
+        "rates": AVAILABLE_RATES,
+        "pitches": AVAILABLE_PITCHES
+    }
+
+@app.get("/api/voices")
+def get_voices():
+    return AVAILABLE_VOICES
+
+@app.get("/api/channels")
+def list_channels():
+    return _load_channels()
+
+@app.post("/api/channels")
+def create_channel(req: ChannelCreateRequest):
+    import uuid
+    channels = _load_channels()
+    chan_id = f"chan_{uuid.uuid4().hex[:8]}"
+    new_chan = {
+        "id": chan_id,
+        "name": req.name,
+        "tone": req.tone,
+        "voice": req.voice,
+        "rate": req.rate,
+        "pitch": req.pitch,
+        "bgm": req.bgm,
+        "logo": req.logo,
+        "mask": req.mask
+    }
+    channels.append(new_chan)
+    _save_channels(channels)
+    return new_chan
+
+@app.put("/api/channels/{channel_id}")
+def update_channel(channel_id: str, req: ChannelCreateRequest):
+    channels = _load_channels()
+    found = False
+    for chan in channels:
+        if chan["id"] == channel_id:
+            chan["name"] = req.name
+            chan["tone"] = req.tone
+            chan["voice"] = req.voice
+            chan["rate"] = req.rate
+            chan["pitch"] = req.pitch
+            chan["bgm"] = req.bgm
+            chan["logo"] = req.logo
+            chan["mask"] = req.mask
+            found = True
+            break
+            
+    if not found:
+        raise HTTPException(status_code=404, detail="Channel not found")
+        
+    _save_channels(channels)
+    return {"status": "success"}
+
+@app.delete("/api/channels/{channel_id}")
+def delete_channel(channel_id: str):
+    channels = _load_channels()
+    new_channels = [c for c in channels if c["id"] != channel_id]
+    if len(new_channels) == len(channels):
+        raise HTTPException(status_code=404, detail="Channel not found")
+    _save_channels(new_channels)
+    return {"status": "deleted"}
+
+@app.post("/api/channels/{channel_id}/process")
+def process_channel_video(channel_id: str, req: ChannelProcessRequest):
+    channels = _load_channels()
+    channel = next((c for c in channels if c["id"] == channel_id), None)
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+        
+    import re
+    input_video = req.input_video.strip()
+    is_url = input_video.startswith("http://") or input_video.startswith("https://")
+    
+    if not is_url:
+        input_path = Path(input_video)
+        if not input_path.is_absolute():
+            input_path = PROJECT_ROOT / input_path
+        if not input_path.exists():
+            raise HTTPException(status_code=400, detail=f"Input video file not found at: {input_video}")
+        # Generate safe job_id
+        safe_name = re.sub(r'[^a-zA-Z0-9_]', '_', input_path.stem)[:12]
+        import hashlib
+        path_hash = hashlib.md5(str(input_path).encode('utf-8')).hexdigest()[:4]
+        job_id = f"job_{safe_name}_{path_hash}"
+    else:
+        import hashlib
+        url_hash = hashlib.md5(input_video.encode('utf-8')).hexdigest()[:8]
+        job_id = f"job_url_{url_hash}"
+        
+    if job_id in running_jobs:
+        raise HTTPException(status_code=400, detail="This video is already being processed.")
+        
+    # Get logo path
+    logo_path = None
+    logo_str = channel.get("logo")
+    if logo_str:
+        logo_path = Path(logo_str)
+        if not logo_path.is_absolute():
+            logo_path = PROJECT_ROOT / logo_path
+            
+    # Load or create job
+    job = store.load_job(job_id)
+    if not job:
+        job = runner.create_job(str(input_path) if not is_url else input_video, job_id)
+    else:
+        job.status = "created"
+        for step in job.steps:
+            job.steps[step] = "pending"
+        job.errors = []
+        store.save_job(job)
+        
+    # Inject channel settings
+    job.tone = channel["tone"]
+    job.voice = channel["voice"]
+    job.rate = channel["rate"]
+    job.pitch = channel["pitch"]
+    job.bgm = channel["bgm"]
+    job.logo = channel.get("logo")
+    job.mask = channel["mask"]
+    store.save_job(job)
+    
+    # Start thread
+    thread = threading.Thread(
+        target=run_pipeline_in_thread,
+        args=(job_id, job.tone, job.voice, job.rate, job.pitch, job.bgm, logo_path, job.mask)
+    )
+    thread.start()
+    
+    return {"status": "started", "job_id": job_id}
 
 @app.get("/")
 

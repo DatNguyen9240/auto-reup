@@ -36,6 +36,46 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+# Global list of available TTS voices
+AVAILABLE_VOICES = [
+    {"id": "vi-VN-HoaiMyNeural", "name": "Nữ Nam (Hoài Mỹ)"},
+    {"id": "vi-VN-NamMinhNeural", "name": "Nam Trung (Nam Minh)"},
+    {"id": "en-US-EmmaNeural", "name": "English US Female (Emma)"},
+    {"id": "en-US-BrianNeural", "name": "English US Male (Brian)"},
+]
+
+# Global list of available translation tones
+AVAILABLE_TONES = [
+    {"id": "review_phim", "name": "Review Phim"},
+    {"id": "funny", "name": "Hài Hước"},
+    {"id": "dramatic", "name": "Kịch Tính"},
+    {"id": "serious", "name": "Nghiêm Túc"},
+    {"id": "sad", "name": "Buồn"},
+    {"id": "energetic", "name": "Năng Động"},
+]
+
+# Global list of available TTS rates
+AVAILABLE_RATES = [
+    {"id": "-20%", "name": "Chậm (-20%)"},
+    {"id": "-10%", "name": "Chậm vừa (-10%)"},
+    {"id": "-5%", "name": "Chậm nhẹ (-5%)"},
+    {"id": "+0%", "name": "Mặc định (+0%)"},
+    {"id": "+5%", "name": "Nhanh nhẹ (+5%)"},
+    {"id": "+10%", "name": "Nhanh (+10%)"},
+    {"id": "+15%", "name": "Nhanh (+15%)"},
+    {"id": "+20%", "name": "Nhanh (+20%)"},
+]
+
+# Global list of available TTS pitch offsets
+AVAILABLE_PITCHES = [
+    {"id": "-5Hz", "name": "Thấp (-5Hz)"},
+    {"id": "+0Hz", "name": "Mặc định (+0Hz)"},
+    {"id": "+2Hz", "name": "Thanh hơn (+2Hz)"},
+    {"id": "+5Hz", "name": "Cao (+5Hz)"},
+]
+
+
+
 # Add bundled ffmpeg/bin to PATH to ensure ffprobe/ffmpeg processes are found globally
 ffmpeg_bin = settings.auto_tool_root / "_internal" / "vendor" / "ffmpeg" / "bin"
 if ffmpeg_bin.exists():

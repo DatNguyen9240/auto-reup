@@ -104,19 +104,13 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tone Dịch</label>
                             <select id="tone" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                                <option value="review_phim">Review Phim</option>
-                                <option value="funny">Hài Hước</option>
-                                <option value="drama">Kịch Tính</option>
-                                <option value="serious">Nghiêm Túc</option>
-                                <option value="sad">Buồn</option>
-                                <option value="energetic">Năng Động</option>
+                                <!-- Dynamically populated -->
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Giọng Đọc (TTS)</label>
                             <select id="voice" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                                <option value="vi-VN-HoaiMyNeural">Nữ Nam (Hoài Mỹ)</option>
-                                <option value="vi-VN-NamMinhNeural">Nam Nam (Nam Minh)</option>
+                                <!-- Dynamically populated -->
                             </select>
                         </div>
                     </div>
@@ -125,22 +119,13 @@
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tốc Độ Đọc</label>
                             <select id="rate" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                                <option value="+0%">Mặc định (+0%)</option>
-                                <option value="+5%">Nhanh nhẹ (+5%)</option>
-                                <option value="+10%">Nhanh (+10%)</option>
-                                <option value="+15%">Nhanh (+15%)</option>
-                                <option value="-5%">Chậm nhẹ (-5%)</option>
-                                <option value="-10%">Chậm (-10%)</option>
+                                <!-- Dynamically populated -->
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Cao Độ (Pitch)</label>
                             <select id="pitch" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                                <option value="+0Hz">Mặc định (+0Hz)</option>
-                                <option value="+2Hz">Thanh hơn (+2Hz)</option>
-                                <option value="+4Hz">Thanh hơn (+4Hz)</option>
-                                <option value="-2Hz">Trầm hơn (-2Hz)</option>
-                                <option value="-4Hz">Trầm hơn (-4Hz)</option>
+                                <!-- Dynamically populated -->
                             </select>
                         </div>
                     </div>
@@ -194,21 +179,40 @@
                 </div>
             </div>
 
-            <!-- Right Side: Jobs List -->
-            <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-5">
-                <div class="flex items-center justify-between border-b border-white/5 pb-4">
-                    <div>
-                        <h2 class="font-outfit font-semibold text-lg text-white">Danh Sách Jobs Đang Chạy</h2>
-                        <p class="text-xs text-slate-400">Chọn một job để xem tiến trình và chỉnh sửa phụ đề</p>
+            <!-- Right Side: Channel Workspaces & Jobs List -->
+            <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
+                <!-- Channel Workspaces Section -->
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center justify-between border-b border-white/5 pb-3">
+                        <div>
+                            <h2 class="font-outfit font-semibold text-sm text-white uppercase tracking-wider">Kênh Cấu Hình (Kéo thả video vào đây)</h2>
+                            <p class="text-[10px] text-slate-400">Kéo file video từ thư viện bên trái thả vào kênh bên dưới để tự động chạy Việt hóa</p>
+                        </div>
+                        <button onclick="openChannelManager()" class="bg-purple-600/80 hover:bg-purple-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 border border-purple-500/20 active:scale-[0.98]">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                            Quản lý Kênh
+                        </button>
                     </div>
-                    <button onclick="loadJobs()" class="bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-white/5 transition-all">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H16M4 8h5.183M12 4v4m0 0H8"></path></svg>
-                        Làm Mới
-                    </button>
+                    <div id="channels-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        <!-- Channels dynamically populated as dropzones -->
+                    </div>
                 </div>
 
-                <div id="jobs-container" class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                    <!-- Dynamic Job Cards go here -->
+                <!-- Running Jobs Section -->
+                <div class="flex flex-col gap-4 mt-2">
+                    <div class="flex items-center justify-between border-b border-white/5 pb-3">
+                        <div>
+                            <h2 class="font-outfit font-semibold text-sm text-white uppercase tracking-wider">Danh Sách Jobs Đang Chạy</h2>
+                            <p class="text-[10px] text-slate-400">Chọn một job để xem tiến trình và chỉnh sửa phụ đề</p>
+                        </div>
+                        <button onclick="loadJobs()" class="bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-white/5 transition-all">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H16M4 8h5.183M12 4v4m0 0H8"></path></svg>
+                            Làm Mới
+                        </button>
+                    </div>
+                    <div id="jobs-container" class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                        <!-- Dynamic Job Cards go here -->
+                    </div>
                 </div>
             </div>
 
@@ -367,6 +371,90 @@
         </div>
     </div>
 
+    <!-- Channel Manager Modal -->
+    <div id="channel-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col">
+            <div class="p-5 border-b border-white/5 flex items-center justify-between">
+                <h3 class="font-outfit font-bold text-sm text-white" id="channel-modal-title">Quản Lý Kênh Cấu Hình</h3>
+                <button onclick="closeChannelManager()" class="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <!-- Channel List -->
+            <div id="modal-channel-list" class="p-5 flex flex-col gap-2.5 max-h-60 overflow-y-auto border-b border-white/5">
+                <!-- Editable channel rows -->
+            </div>
+
+            <!-- Add/Edit Channel Form -->
+            <form id="channel-form" onsubmit="saveChannel(event)" class="p-5 flex flex-col gap-4 bg-black/20">
+                <input type="hidden" id="edit-channel-id" value="">
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tên Kênh</label>
+                    <input type="text" id="chan-name" required placeholder="Ví dụ: Kênh TikTok Phim Kinh Dị"
+                           class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tone dịch</label>
+                        <select id="chan-tone" class="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-xs text-slate-300 focus:outline-none focus:border-purple-500">
+                            <!-- Dynamically populated -->
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Giọng đọc (TTS)</label>
+                        <select id="chan-voice" class="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-xs text-slate-300 focus:outline-none focus:border-purple-500">
+                            <!-- Dynamically populated -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tốc độ đọc</label>
+                        <select id="chan-rate" class="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-xs text-slate-300 focus:outline-none focus:border-purple-500">
+                            <!-- Dynamically populated -->
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cao độ</label>
+                        <select id="chan-pitch" class="bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-xs text-slate-300 focus:outline-none focus:border-purple-500">
+                            <!-- Dynamically populated -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nhạc nền (BGM)</label>
+                        <input type="text" id="chan-bgm" placeholder="Ví dụ: funny_loop"
+                               class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Logo nước</label>
+                        <input type="text" id="chan-logo" placeholder="Đường dẫn file logo.png"
+                               class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 py-1">
+                    <input type="checkbox" id="chan-mask" checked class="rounded border-slate-800 text-purple-600 focus:ring-0 focus:ring-offset-0 bg-slate-950 w-4 h-4">
+                    <label for="chan-mask" class="text-[11px] text-slate-300 font-medium">Che phụ đề cũ tiếng Trung ở dưới</label>
+                </div>
+
+                <div class="flex gap-2.5 mt-2 justify-end">
+                    <button type="button" onclick="cancelChannelEdit()" class="bg-white/5 hover:bg-white/10 text-slate-300 px-4 py-2 rounded-lg text-xs font-semibold transition-colors">
+                        Hủy
+                    </button>
+                    <button type="submit" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors">
+                        Lưu Kênh
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Script logic -->
     <script>
         let currentTab = 'dashboard';
@@ -377,6 +465,8 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             loadJobs();
+            loadChannels();
+            loadGlobalConfig();
             // Poll jobs status every 4 seconds
             setInterval(loadJobs, 4000);
         });
@@ -836,11 +926,20 @@
 
                 groups[folder].forEach(video => {
                     const item = document.createElement('div');
-                    item.className = "flex items-center justify-between text-[10px] text-slate-400 hover:text-white hover:bg-white/5 px-2 py-1 rounded cursor-pointer transition-colors library-video-item";
+                    item.setAttribute('draggable', 'true');
+                    item.className = "flex items-center justify-between text-[10px] text-slate-400 hover:text-white hover:bg-white/5 px-2 py-1 rounded cursor-pointer transition-colors library-video-item active:scale-[0.98] select-none";
                     item.dataset.name = video.name.toLowerCase();
                     item.onclick = () => selectLibraryVideo(video.absolute_path, item);
+                    item.ondragstart = (e) => {
+                        e.dataTransfer.setData('text/plain', video.absolute_path);
+                        e.dataTransfer.effectAllowed = 'copy';
+                        item.classList.add('opacity-50');
+                    };
+                    item.ondragend = () => {
+                        item.classList.remove('opacity-50');
+                    };
                     item.innerHTML = `
-                        <span class="truncate max-w-[190px]" title="${video.name}">${video.name}</span>
+                        <span class="truncate max-w-[180px]" title="${video.name}">${video.name}</span>
                         <span class="text-[9px] text-slate-500 font-mono flex-shrink-0 ml-2">${video.size_mb} MB</span>
                     `;
                     fileList.appendChild(item);
@@ -937,6 +1036,246 @@
             } catch (err) {
                 console.error("Failed to load logs:", err);
             }
+        }
+
+        let channelsData = [];
+
+        async function loadChannels() {
+            try {
+                const response = await fetch('/api/channels');
+                if (!response.ok) return;
+                channelsData = await response.json();
+                renderChannelsGrid();
+            } catch (err) {
+                console.error("Failed to load channels:", err);
+            }
+        }
+
+        function renderChannelsGrid() {
+            const grid = document.getElementById('channels-grid');
+            grid.innerHTML = '';
+            
+            if (channelsData.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full border-2 border-dashed border-white/5 rounded-xl p-6 text-center text-xs text-slate-500">
+                        Chưa có kênh cấu hình nào. Hãy bấm "Quản lý Kênh" để thêm kênh mới.
+                    </div>
+                `;
+                return;
+            }
+
+            channelsData.forEach(chan => {
+                const card = document.createElement('div');
+                card.className = "border-2 border-dashed border-purple-500/20 bg-purple-950/10 rounded-xl p-4 flex flex-col gap-2 hover:border-purple-500/60 hover:bg-purple-950/20 transition-all cursor-pointer select-none drop-zone-card";
+                card.ondragover = handleDragOver;
+                card.ondragleave = handleDragLeave;
+                card.ondrop = (e) => handleDrop(e, chan.id);
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="font-semibold text-xs text-white">${chan.name}</span>
+                        <span class="text-[9px] bg-purple-500/20 text-purple-300 px-1.5 py-0.2 rounded font-mono uppercase tracking-wider">${chan.tone}</span>
+                    </div>
+                    <div class="flex flex-col gap-0.5 text-[10px] text-slate-400 font-sans">
+                        <div class="flex justify-between"><span>Giọng đọc:</span> <span class="text-slate-300 truncate max-w-[120px]" title="${chan.voice}">${chan.voice.split('-')[2] || chan.voice}</span></div>
+                        <div class="flex justify-between"><span>Tốc độ:</span> <span class="text-slate-300">${chan.rate}</span></div>
+                        <div class="flex justify-between"><span>Nhạc BGM:</span> <span class="text-slate-300 truncate max-w-[120px]">${chan.bgm || 'Không có'}</span></div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            const card = e.currentTarget;
+            card.classList.remove('border-purple-500/20', 'bg-purple-950/10');
+            card.classList.add('border-purple-400', 'bg-purple-500/10', 'shadow-lg', 'shadow-purple-500/10');
+        }
+
+        function handleDragLeave(e) {
+            const card = e.currentTarget;
+            card.classList.remove('border-purple-400', 'bg-purple-500/10', 'shadow-lg', 'shadow-purple-500/10');
+            card.classList.add('border-purple-500/20', 'bg-purple-950/10');
+        }
+
+        async function handleDrop(e, channelId) {
+            e.preventDefault();
+            const card = e.currentTarget;
+            card.classList.remove('border-purple-400', 'bg-purple-500/10', 'shadow-lg', 'shadow-purple-500/10');
+            card.classList.add('border-purple-500/20', 'bg-purple-950/10');
+
+            const inputVideo = e.dataTransfer.getData('text/plain');
+            if (!inputVideo) return;
+
+            // Visual feedback on drop
+            card.classList.add('animate-pulse', 'border-emerald-500', 'text-emerald-400');
+            setTimeout(() => {
+                card.classList.remove('animate-pulse', 'border-emerald-500', 'text-emerald-400');
+            }, 1000);
+
+            try {
+                const response = await fetch(`/api/channels/${channelId}/process`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ input_video: inputVideo })
+                });
+                const res = await response.json();
+                if (response.ok) {
+                    await loadJobs();
+                    // Open progress panel for the newly started job
+                    openDetailPanel(res.job_id);
+                } else {
+                    alert("Lỗi kéo thả: " + res.detail);
+                }
+            } catch (err) {
+                alert("Lỗi kết nối server: " + err.message);
+            }
+        }
+
+        function openChannelManager() {
+            document.getElementById('channel-modal').classList.remove('hidden');
+            renderModalChannelsList();
+            cancelChannelEdit();
+        }
+
+        function closeChannelManager() {
+            document.getElementById('channel-modal').classList.add('hidden');
+        }
+
+        function renderModalChannelsList() {
+            const list = document.getElementById('modal-channel-list');
+            list.innerHTML = '';
+            
+            channelsData.forEach(chan => {
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between bg-white/5 border border-white/5 rounded-lg px-3 py-2 text-xs";
+                row.innerHTML = `
+                    <div class="flex flex-col">
+                        <span class="font-semibold text-slate-200">${chan.name}</span>
+                        <span class="text-[9px] text-slate-400 font-mono">${chan.voice.split('-')[2] || chan.voice} | ${chan.tone}</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="editChannel('${chan.id}')" class="text-purple-400 hover:text-purple-300 font-semibold text-[11px]">Sửa</button>
+                        <button type="button" onclick="deleteChannel('${chan.id}')" class="text-rose-400 hover:text-rose-300 font-semibold text-[11px]">Xóa</button>
+                    </div>
+                `;
+                list.appendChild(row);
+            });
+        }
+
+        function editChannel(id) {
+            const chan = channelsData.find(c => c.id === id);
+            if (!chan) return;
+            
+            document.getElementById('edit-channel-id').value = chan.id;
+            document.getElementById('chan-name').value = chan.name;
+            document.getElementById('chan-tone').value = chan.tone;
+            document.getElementById('chan-voice').value = chan.voice;
+            document.getElementById('chan-rate').value = chan.rate;
+            document.getElementById('chan-pitch').value = chan.pitch;
+            document.getElementById('chan-bgm').value = chan.bgm || '';
+            document.getElementById('chan-logo').value = chan.logo || '';
+            document.getElementById('chan-mask').checked = chan.mask;
+            
+            document.getElementById('channel-modal-title').innerText = "Chỉnh Sửa Kênh: " + chan.name;
+        }
+
+        function cancelChannelEdit() {
+            document.getElementById('edit-channel-id').value = '';
+            document.getElementById('channel-form').reset();
+            document.getElementById('channel-modal-title').innerText = "Quản Lý Kênh Cấu Hình";
+        }
+
+        async function saveChannel(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-channel-id').value;
+            const name = document.getElementById('chan-name').value.trim();
+            const tone = document.getElementById('chan-tone').value;
+            const voice = document.getElementById('chan-voice').value;
+            const rate = document.getElementById('chan-rate').value;
+            const pitch = document.getElementById('chan-pitch').value;
+            const bgm = document.getElementById('chan-bgm').value.trim() || null;
+            const logo = document.getElementById('chan-logo').value.trim() || null;
+            const mask = document.getElementById('chan-mask').checked;
+
+            const payload = { name, tone, voice, rate, pitch, bgm, logo, mask };
+            const url = id ? `/api/channels/${id}` : '/api/channels';
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (response.ok) {
+                    await loadChannels();
+                    renderModalChannelsList();
+                    cancelChannelEdit();
+                } else {
+                    const err = await response.json();
+                    alert("Lỗi khi lưu kênh: " + err.detail);
+                }
+            } catch (err) {
+                alert("Lỗi kết nối: " + err.message);
+            }
+        }
+
+        async function deleteChannel(id) {
+            if (!confirm("Bạn có chắc chắn muốn xóa kênh cấu hình này không?")) return;
+            try {
+                const response = await fetch(`/api/channels/${id}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    await loadChannels();
+                    renderModalChannelsList();
+                    cancelChannelEdit();
+                } else {
+                    const err = await response.json();
+                    alert("Lỗi khi xóa: " + err.detail);
+                }
+            } catch (err) {
+                alert("Lỗi kết nối: " + err.message);
+            }
+        }
+
+        let globalConfig = {};
+
+        async function loadGlobalConfig() {
+            try {
+                const response = await fetch('/api/config');
+                if (!response.ok) return;
+                globalConfig = await response.json();
+                
+                // Populate Job Form Selects
+                populateSelect('tone', globalConfig.tones, 'review_phim');
+                populateSelect('voice', globalConfig.voices, 'vi-VN-HoaiMyNeural');
+                populateSelect('rate', globalConfig.rates, '+0%');
+                populateSelect('pitch', globalConfig.pitches, '+0Hz');
+                
+                // Populate Channel Form Selects
+                populateSelect('chan-tone', globalConfig.tones, 'review_phim');
+                populateSelect('chan-voice', globalConfig.voices, 'vi-VN-HoaiMyNeural');
+                populateSelect('chan-rate', globalConfig.rates, '+0%');
+                populateSelect('chan-pitch', globalConfig.pitches, '+0Hz');
+            } catch (err) {
+                console.error("Failed to load global config:", err);
+            }
+        }
+
+        function populateSelect(elementId, items, defaultValue) {
+            const select = document.getElementById(elementId);
+            if (!select) return;
+            select.innerHTML = '';
+            items.forEach(item => {
+                const opt = new Option(item.name, item.id);
+                if (item.id === defaultValue) {
+                    opt.selected = true;
+                }
+                select.add(opt);
+            });
         }
     </script>
 </body>
