@@ -26,6 +26,23 @@ logger = get_logger("Pipeline")
 
 import logging
 
+def _find_chrome_profile_for_email(email: str) -> Optional[str]:
+    chrome_user_data = Path(os.environ.get("LOCALAPPDATA", "")) / "Google" / "Chrome" / "User Data"
+    if not chrome_user_data.exists():
+        return None
+    for profile_dir in chrome_user_data.iterdir():
+        if not profile_dir.is_dir() or (profile_dir.name != "Default" and not profile_dir.name.startswith("Profile ")):
+            continue
+        preferences = profile_dir / "Preferences"
+        if not preferences.exists():
+            continue
+        try:
+            if email.lower() in preferences.read_text(encoding="utf-8", errors="ignore").lower():
+                return profile_dir.name
+        except Exception:
+            continue
+    return None
+
 class FlushingFileHandler(logging.FileHandler):
     def emit(self, record):
         super().emit(record)
@@ -42,6 +59,12 @@ class PipelineRunner:
         self.mixer = AudioMixer()
         self.render_service = RenderService()
         self.translator = LLMTranslateProvider()
+
+    def _log_segment_progress(self, action: str, index: int, total: int, segment: Segment, text: str = ""):
+        preview = (text or segment.source_text or "").replace("\n", " ").strip()
+        if len(preview) > 90:
+            preview = preview[:87] + "..."
+        logger.info(f"{action} [{index}/{total}] segment #{segment.id}: {preview}")
 
     def _get_dest_video(self, work_dir: Path) -> Path:
         """Safely resolves the input video path in the work directory."""
@@ -72,7 +95,15 @@ class PipelineRunner:
         pitch: str = "+0Hz",
         bgm_name: str = None,
         logo_path: Path = None,
-        mask_subtitle: bool = True
+        mask_subtitle: bool = True,
+        tts_enabled: bool = True,
+        subtitles_enabled: bool = True,
+        subtitle_cover_mode: str = "text_box_only",
+        subtitle_bg_opacity: float = 0.42,
+        subtitle_mask_padding_x: int = 20,
+        subtitle_mask_padding_y: int = 12,
+        ocr_sample_interval_sec: float = 0.75,
+        ocr_crop_bottom_ratio: float = 0.45,
     ):
         job = self.store.load_job(job_id)
         if not job:
@@ -105,6 +136,7 @@ class PipelineRunner:
                 logger.info(f"Applying preset BGM '{bgm_name}' for tone '{tone}'")
 
         job.status = "running"
+        job.steps.setdefault("subtitle_layout", "pending")
         self.store.save_job(job)
         
         job_dir = self.projects_dir / job_id
@@ -117,9 +149,14 @@ class PipelineRunner:
         try:
             import logging
             log_file = job_dir / "run.log"
-            file_handler = FlushingFileHandler(str(log_file), encoding="utf-8")
+            file_handler = FlushingFileHandler(str(log_file), mode="w", encoding="utf-8")
             file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-            logger.addHandler(file_handler)
+            root_logger = logging.getLogger()
+            root_logger.setLevel(logging.INFO)
+            logger.setLevel(logging.INFO)
+            file_handler.setLevel(logging.INFO)
+            root_logger.addHandler(file_handler)
+            logger.info(f"=== Starting job {job_id} ===")
             
             # Step 1: Intake
             check_cancellation()
@@ -135,6 +172,7 @@ class PipelineRunner:
                     is_douyin = "douyin.com" in job.input_path or "v.douyin.com" in job.input_path
                     if not is_douyin:
                         logger.info("Using yt-dlp to download URL with console feedback...")
+                        is_bilibili = "bilibili.com" in job.input_path or "b23.tv" in job.input_path
                         class YTDLPLogger:
                             def debug(self, msg):
                                 if msg.startswith('[download]'):
@@ -153,11 +191,41 @@ class PipelineRunner:
                             'logger': YTDLPLogger(),
                             'quiet': False
                         }
+                        if is_bilibili:
+                            logger.info("Bilibili URL detected. Trying yt-dlp with cookies from your logged-in Chrome profile.")
                         def run_ytdl():
-                            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                                ydl.download([job.input_path])
-                        await asyncio.get_event_loop().run_in_executor(None, run_ytdl)
-                        info = {"title": job_id, "duration": 0}
+                            attempts = []
+                            if is_bilibili:
+                                chrome_profile = _find_chrome_profile_for_email("tam.mapp04@gmail.com")
+                                if chrome_profile:
+                                    logger.info(f"Found Chrome profile for tam.mapp04@gmail.com: {chrome_profile}")
+                                    attempts.append((f"Chrome cookies ({chrome_profile})", {'cookiesfrombrowser': ('chrome', chrome_profile)}))
+                                attempts.extend([
+                                    ("Chrome cookies", {'cookiesfrombrowser': ('chrome',)}),
+                                    ("Edge cookies", {'cookiesfrombrowser': ('edge',)}),
+                                ])
+                            attempts.append(("no browser cookies", {}))
+
+                            last_error = None
+                            for label, extra_opts in attempts:
+                                try:
+                                    logger.info(f"yt-dlp download attempt: {label}")
+                                    opts = dict(ydl_opts)
+                                    opts.update(extra_opts)
+                                    with yt_dlp.YoutubeDL(opts) as ydl:
+                                        ydl.download([job.input_path])
+                                    logger.info(f"yt-dlp download succeeded using {label}.")
+                                    return
+                                except Exception as e:
+                                    last_error = e
+                                    logger.warning(f"yt-dlp download failed using {label}: {e}")
+                            if is_bilibili:
+                                logger.info("All yt-dlp Bilibili attempts failed. Falling back to Chrome/Playwright downloader.")
+                                from app.services.downloader import download_bilibili_with_playwright
+                                return download_bilibili_with_playwright(job.input_path, dest_video)
+                            raise last_error
+                        browser_info = await asyncio.get_event_loop().run_in_executor(None, run_ytdl)
+                        info = browser_info or {"title": job_id, "duration": 0}
                     else:
                         from app.services.downloader import PlaywrightDownloaderService
                         downloader = PlaywrightDownloaderService()
@@ -228,16 +296,20 @@ class PipelineRunner:
                 if input_srt.exists():
                     logger.info("Loading existing sidecar SRT...")
                     subs = pysrt.open(str(input_srt), encoding="utf-8")
+                    logger.info(f"Found {len(subs)} subtitle lines in sidecar SRT.")
                     segments = []
                     for idx, sub in enumerate(subs):
-                        segments.append(Segment(
+                        segment = Segment(
                             id=idx + 1,
                             start_ms=sub.start.ordinal,
                             end_ms=sub.end.ordinal,
                             source_text=sub.text,
                             status="pending"
-                        ))
+                        )
+                        segments.append(segment)
+                        self._log_segment_progress("Recognized", idx + 1, len(subs), segment)
                     self.store.save_transcript(job_id, segments)
+                    logger.info(f"Step 4 completed: recognized/imported {len(segments)} dialogue lines.")
                     job.steps["transcribe"] = "completed"
                     self.store.save_job(job)
                 else:
@@ -256,14 +328,17 @@ class PipelineRunner:
                         )
                         segments = []
                         for idx, s in enumerate(segments_iter):
-                            segments.append(Segment(
+                            segment = Segment(
                                 id=idx + 1,
                                 start_ms=int(s.start * 1000),
                                 end_ms=int(s.end * 1000),
                                 source_text=s.text.strip(),
                                 status="pending"
-                            ))
+                            )
+                            segments.append(segment)
+                            self._log_segment_progress("Recognized", idx + 1, idx + 1, segment)
                         self.store.save_transcript(job_id, segments)
+                        logger.info(f"Step 4 completed: recognized {len(segments)} dialogue lines.")
                         
                         # Generate sidecar input.srt in work dir
                         subs = pysrt.SubRipFile()
@@ -298,7 +373,11 @@ class PipelineRunner:
                 if not segments:
                     logger.warning("No transcript segments found to translate.")
                 else:
+                    logger.info(f"Step 5 starting: translating {len(segments)} dialogue lines.")
                     segments = self.translator.translate(segments, tone)
+                    for idx, segment in enumerate(segments, start=1):
+                        self._log_segment_progress("Translated", idx, len(segments), segment, segment.translated_text)
+                    logger.info(f"Step 5 completed: translated {len(segments)} dialogue lines.")
                     
                 self.store.save_translated(job_id, segments)
                 job.steps["translate"] = "completed"
@@ -312,7 +391,12 @@ class PipelineRunner:
                 logger.info("--- Step 6: TTS ---")
                 
                 segments = self.store.load_translated(job_id)
-                if segments:
+                if not tts_enabled:
+                    logger.info("TTS disabled for this job; keeping original audio/BGM only.")
+                    for segment in segments:
+                        segment.tts_path = None
+                    self.store.save_translated(job_id, segments)
+                elif segments:
                     segments = await self.tts_service.generate_voiceovers(
                         segments=segments,
                         work_dir=work_dir,
@@ -386,10 +470,20 @@ class PipelineRunner:
                 
             # Step 8: Render Video
             check_cancellation()
+            if subtitles_enabled and job.steps.get("subtitle_layout", "pending") == "pending":
+                job.current_step = "subtitle_layout"
+                job.status = "waiting_for_subtitle_layout"
+                self.store.save_job(job)
+                logger.info("--- Step 8: Subtitle Layout ---")
+                logger.info("Basic processing completed. Waiting for user to choose subtitle position before final render.")
+                return
+
             if job.steps.get("render", "pending") == "pending":
                 job.current_step = "render"
+                job.steps["subtitle_layout"] = "completed"
+                job.status = "running"
                 self.store.save_job(job)
-                logger.info("--- Step 8: Render ---")
+                logger.info("--- Step 9: Render ---")
                 
                 segments = self.store.load_translated(job_id)
                 
@@ -420,7 +514,16 @@ class PipelineRunner:
                     output_path=final_video,
                     metadata=metadata,
                     logo_path=logo_path,
-                    mask_subtitle=mask_subtitle
+                    mask_subtitle=mask_subtitle,
+                    render_subtitles=subtitles_enabled,
+                    subtitle_layout=job.config_snapshot.get("subtitle_layout") if job.config_snapshot else None,
+                    subtitle_cover_mode=subtitle_cover_mode,
+                    subtitle_bg_opacity=subtitle_bg_opacity,
+                    subtitle_mask_padding_x=subtitle_mask_padding_x,
+                    subtitle_mask_padding_y=subtitle_mask_padding_y,
+                    ocr_sample_interval_sec=ocr_sample_interval_sec,
+                    ocr_crop_bottom_ratio=ocr_crop_bottom_ratio,
+                    debug_dir=job_dir / "debug" / "subtitle_detection",
                 )
                 
                 job.steps["render"] = "completed"
@@ -431,7 +534,7 @@ class PipelineRunner:
             if job.steps.get("metadata", "pending") == "pending":
                 job.current_step = "metadata"
                 self.store.save_job(job)
-                logger.info("--- Step 9: Metadata & Captioning ---")
+                logger.info("--- Step 10: Metadata & Captioning ---")
                 
                 segments = self.store.load_translated(job_id)
                 
@@ -482,5 +585,5 @@ class PipelineRunner:
             raise e
         finally:
             if 'file_handler' in locals():
-                logger.removeHandler(file_handler)
+                logging.getLogger().removeHandler(file_handler)
                 file_handler.close()

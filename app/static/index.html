@@ -77,7 +77,7 @@
             </div>
 
             <!-- Sidebar Tab Switcher -->
-            <div class="flex bg-slate-950/60 p-1 rounded-xl border border-white/5 flex-shrink-0">
+            <div class="hidden flex bg-slate-950/60 p-1 rounded-xl border border-white/5 flex-shrink-0">
                 <button type="button" onclick="switchSidebarTab('config')" id="btn-sidebar-config"
                     class="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-white/10 text-white transition-all text-center">
                     ⚙️ Cấu Hàng
@@ -88,8 +88,38 @@
                 </button>
             </div>
 
-            <!-- Main configuration form -->
-            <form id="job-form" onsubmit="submitJob(event)" class="flex flex-col gap-5">
+            <form id="job-form" onsubmit="submitJob(event)" class="flex flex-col gap-4">
+                <div class="flex flex-col gap-2">
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Video links</label>
+                    <textarea id="input_video_url" rows="5" placeholder="Dán 1 hoặc nhiều link, mỗi dòng 1 link..."
+                        class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500 resize-none"></textarea>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="addUrlToQueue()"
+                            class="flex-1 bg-purple-600/25 text-purple-300 border border-purple-500/20 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-purple-600 hover:text-white transition-all active:scale-[0.98]">Thêm vào hàng chờ</button>
+                        <button type="button" onclick="openManageChannelsModal()"
+                            class="bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-lg py-2 px-3 text-xs font-semibold text-slate-200 transition-all">Kênh</button>
+                    </div>
+                </div>
+
+                <div id="queue-drop-zone"
+                    class="border border-dashed border-slate-700/60 rounded-xl p-3 bg-slate-900/40 flex flex-col gap-3 transition-all min-h-[150px]">
+                    <div id="queue-empty-placeholder" class="flex flex-col items-center justify-center gap-2 py-8 text-slate-500 text-center">
+                        <svg class="w-8 h-8 opacity-40 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        <span class="text-[10px] font-medium leading-relaxed">Video chuẩn bị thêm vào hàng chờ sẽ nằm ở đây</span>
+                    </div>
+                    <div id="queue-list" class="w-full flex flex-col gap-3 hidden"></div>
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-semibold text-sm py-2.5 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all shadow-md pulse-glow">
+                    Bắt đầu Việt hóa
+                </button>
+            </form>
+
+            <!-- Legacy form kept hidden for reference while the unified per-video flow is active. -->
+            <form id="legacy-job-form" class="hidden flex flex-col gap-5">
 
                 <!-- Tab 1: Config Fields -->
                 <div id="sidebar-tab-config" class="flex flex-col gap-5">
@@ -285,6 +315,52 @@
                     class="bg-black/50 border border-white/5 rounded-xl p-4 font-mono text-[11px] text-slate-300 h-64 overflow-y-auto whitespace-pre-wrap">Đang tải nhật ký...</pre>
             </div>
 
+            <div id="subtitle-layout-section" class="hidden flex flex-col gap-4 bg-white/5 border border-purple-500/20 rounded-xl p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h4 class="text-xs font-bold text-purple-300 uppercase tracking-widest">Chon Vi Tri Phu De</h4>
+                        <p class="text-[10px] text-slate-400 mt-1">Keo/tha va resize box phu de, sau do bam render.</p>
+                    </div>
+                    <button type="button" onclick="resetSubtitleLayoutBox()"
+                        class="bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold px-2.5 py-1.5 rounded text-slate-300">Reset</button>
+                </div>
+
+                <div id="subtitle-preview-wrap" class="relative mx-auto w-full max-w-[260px] aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 select-none">
+                    <video id="subtitle-preview-video" class="absolute inset-0 w-full h-full object-contain" controls muted playsinline preload="metadata"></video>
+                    <div id="subtitle-layout-box"
+                        class="absolute cursor-move border border-purple-300/80 bg-black/30 rounded-lg shadow-lg flex items-center justify-center text-center px-2"
+                        style="left:8%; top:72%; width:84%; height:11%;">
+                        <div class="pointer-events-none text-white font-extrabold leading-tight text-[13px]" style="text-shadow: 0 2px 3px #000, 0 0 2px #000;">
+                            Ba nam truoc, khoi nghiep that bai, no<br>
+                            <span class="text-[10px] font-semibold text-white/80">[Keo tha de chinh vi tri phu de]</span>
+                        </div>
+                        <div id="subtitle-layout-resize"
+                            class="absolute right-0 bottom-0 w-4 h-4 cursor-se-resize rounded-tl bg-purple-400/80"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Nen phu de</label>
+                        <input id="subtitle-layout-opacity" type="range" min="0.30" max="0.45" step="0.01" value="0.42"
+                            oninput="previewSubtitleBackplateOpacity(this.value)" class="w-full">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Preset</label>
+                        <div class="grid grid-cols-3 gap-1">
+                            <button type="button" onclick="setSubtitlePreset('low')" class="bg-slate-900 border border-slate-700 rounded py-1 text-[10px]">Thap</button>
+                            <button type="button" onclick="setSubtitlePreset('middle')" class="bg-slate-900 border border-slate-700 rounded py-1 text-[10px]">Giua</button>
+                            <button type="button" onclick="setSubtitlePreset('high')" class="bg-slate-900 border border-slate-700 rounded py-1 text-[10px]">Cao</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" onclick="continueRenderWithSubtitleLayout()" id="btn-continue-render"
+                    class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-semibold text-sm py-2.5 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all shadow-md">
+                    Tiep Tuc Render Video
+                </button>
+            </div>
+
             <!-- Completed Sections (Loaded only when completed) -->
             <div id="detail-completed-section" class="flex flex-col gap-6 hidden">
                 <!-- Local Settings Overrides for Re-Rendering -->
@@ -350,6 +426,19 @@
                     <div id="transcript-container"
                         class="flex flex-col gap-3 max-h-80 overflow-y-auto border border-white/5 rounded-xl bg-black/20 p-3">
                         <!-- Populated segments -->
+                    </div>
+                </div>
+
+                <div class="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col gap-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Vi tri phu de</h4>
+                            <p id="subtitle-layout-summary" class="text-[10px] text-slate-400 mt-1">Preset: Giua | Opacity: 42%</p>
+                        </div>
+                        <button type="button" onclick="openCompletedSubtitleLayoutEditor()"
+                            class="bg-purple-600/25 text-purple-300 border border-purple-500/20 px-3 py-1.5 rounded-lg text-[11px] font-bold hover:bg-purple-600 hover:text-white transition-all">
+                            Chinh Vi Tri Phu De
+                        </button>
                     </div>
                 </div>
 

@@ -17,6 +17,8 @@ from playwright.sync_api import sync_playwright
 
 logger = logging.getLogger("Downloader")
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 def normalize_douyin_url(url: str) -> str:
     """Convert various Douyin URL formats to a standard format yt-dlp/playwright can handle."""
     parsed = urllib.parse.urlparse(url)
@@ -205,6 +207,137 @@ class PlaywrightDownloaderService:
         await loop.run_in_executor(None, do_download)
         logger.info(f"Video downloaded successfully to: {dest_path}")
         return info
+
+
+def _pick_bilibili_stream(playinfo: dict) -> tuple[str, Optional[str], dict]:
+    dash = (playinfo or {}).get("data", {}).get("dash") or (playinfo or {}).get("dash") or {}
+    videos = dash.get("video") or []
+    audios = dash.get("audio") or []
+    if not videos:
+        durl = (playinfo or {}).get("data", {}).get("durl") or (playinfo or {}).get("durl") or []
+        if durl:
+            return durl[0].get("url"), None, {"duration": 0, "title": "Bilibili Video"}
+        raise RuntimeError("Bilibili playinfo does not contain a video stream.")
+
+    def score_video(item):
+        return (
+            int(item.get("height") or 0),
+            int(item.get("bandwidth") or 0),
+            int(item.get("id") or 0),
+        )
+
+    def score_audio(item):
+        return int(item.get("bandwidth") or 0)
+
+    video = sorted(videos, key=score_video, reverse=True)[0]
+    audio = sorted(audios, key=score_audio, reverse=True)[0] if audios else None
+    return video.get("baseUrl") or video.get("base_url"), (audio.get("baseUrl") or audio.get("base_url")) if audio else None, {
+        "duration": int(((playinfo or {}).get("data", {}).get("timelength") or 0) / 1000),
+        "title": "Bilibili Video",
+    }
+
+
+def download_bilibili_with_playwright(url: str, dest_path: Path) -> dict:
+    """Download Bilibili through a real Chrome session when yt-dlp cannot read browser cookies."""
+    profile_dir = PROJECT_ROOT / "projects" / "browser_profiles" / "bilibili_chrome"
+    profile_dir.mkdir(parents=True, exist_ok=True)
+    tmp_dir = dest_path.parent
+    video_part = tmp_dir / "bilibili_video_part.m4s"
+    audio_part = tmp_dir / "bilibili_audio_part.m4s"
+
+    with sync_playwright() as p:
+        logger.info(f"Opening Chrome for Bilibili with AutoTool profile: {profile_dir}")
+        context = p.chromium.launch_persistent_context(
+            user_data_dir=str(profile_dir),
+            channel="chrome",
+            headless=False,
+            viewport={"width": 1280, "height": 720},
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        page = context.new_page()
+        playinfo = None
+
+        def handle_response(response):
+            nonlocal playinfo
+            if playinfo:
+                return
+            if "/x/player/wbi/playurl" in response.url or "/x/player/playurl" in response.url:
+                try:
+                    data = response.json()
+                    if data.get("data"):
+                        playinfo = data
+                except Exception:
+                    pass
+
+        page.on("response", handle_response)
+        logger.info(f"Navigating Bilibili page: {url}")
+        page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        logger.info("Waiting for Bilibili video data. If Chrome asks you to log in, log in once in the opened window.")
+
+        for _ in range(24):
+            if playinfo:
+                break
+            try:
+                playinfo = page.evaluate("() => window.__playinfo__ || null")
+            except Exception:
+                playinfo = None
+            if playinfo:
+                break
+            page.wait_for_timeout(5000)
+
+        title = page.title() or "Bilibili Video"
+        cookies = context.cookies()
+        context.close()
+
+    if not playinfo:
+        raise RuntimeError("Could not read Bilibili playinfo from Chrome. Please log in in the opened Chrome window and retry.")
+
+    video_url, audio_url, info = _pick_bilibili_stream(playinfo)
+    info["title"] = title
+    if not video_url:
+        raise RuntimeError("Could not find Bilibili video stream URL.")
+
+    jar = requests.cookies.RequestsCookieJar()
+    for c in cookies:
+        jar.set(c["name"], c["value"], domain=c.get("domain"), path=c.get("path", "/"))
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": url,
+        "Origin": "https://www.bilibili.com",
+    }
+
+    def download_file(src_url: str, out_path: Path):
+        logger.info(f"Downloading Bilibili stream part: {out_path.name}")
+        with requests.get(src_url, headers=headers, cookies=jar, stream=True, timeout=60) as r:
+            r.raise_for_status()
+            with open(out_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        f.write(chunk)
+
+    download_file(video_url, video_part)
+    if audio_url:
+        download_file(audio_url, audio_part)
+        logger.info("Merging Bilibili video and audio streams with ffmpeg...")
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", str(video_part), "-i", str(audio_part), "-c", "copy", str(dest_path)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+    else:
+        video_part.replace(dest_path)
+
+    for part in (video_part, audio_part):
+        try:
+            if part.exists():
+                part.unlink()
+        except Exception:
+            pass
+
+    logger.info(f"Bilibili video downloaded successfully to: {dest_path}")
+    return info
 
 
 def auto_generate_douyin_cookies(cookie_file_path: Path) -> bool:

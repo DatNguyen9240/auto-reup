@@ -8,7 +8,8 @@ let selectedSegments = [];
 let refreshInterval = null;
 let globalConfig = {};
 let libraryVideos = [];
-let videoQueue = [];
+let pendingVideoItems = [];
+let videoQueue = pendingVideoItems;
 let currentFilterChannelId = localStorage.getItem('currentFilterChannelId') || 'default';
 
 // SPA HTML Views Map
@@ -157,6 +158,9 @@ function renderJobsList() {
         const completedSteps = Object.values(job.steps).filter(s => s === 'completed').length;
         const pct = Math.round((completedSteps / totalSteps) * 100);
         const createdTime = new Date(job.created_at).toLocaleString();
+        const snapshot = job.config_snapshot || {};
+        const platformLabel = snapshot.platform || job.platform_folder || '';
+        const channelLabel = (globalChannels.find(c => c.id === snapshot.channel_id || c.id === job.channel_id) || {}).name || '';
 
 
 
@@ -224,6 +228,7 @@ function renderJobsList() {
             </div>
 
             <div class="flex flex-col gap-1">
+                ${(platformLabel || channelLabel) ? `<div class="flex flex-wrap gap-1 text-[9px] text-slate-400"><span>${platformLabel || 'Local'}</span>${channelLabel ? `<span>• ${channelLabel}</span>` : ''}</div>` : ''}
                 <div class="flex justify-between text-[10px] text-slate-400">
                     <span>Tiến độ</span>
                     <span>${pct}% (${completedSteps}/${totalSteps})</span>
@@ -283,9 +288,7 @@ async function openDetailPanel(jobId) {
         panel.classList.remove('translate-x-full');
     }, 50);
 
-    // Poll logs and details status every 2 seconds
-    if (refreshInterval) clearInterval(refreshInterval);
-    refreshInterval = setInterval(async () => {
+    const refreshDetailStatus = async () => {
         if (!selectedJobId) return;
         
         // Refresh job details
@@ -303,7 +306,7 @@ async function openDetailPanel(jobId) {
 
         if (freshJob.status === 'completed') {
             clearInterval(refreshInterval);
-            document.getElementById('detail-logs-section').classList.add('hidden');
+            document.getElementById('detail-logs-section').classList.remove('hidden');
             document.getElementById('detail-completed-section').classList.remove('hidden');
             
             // Set video player src path
@@ -315,7 +318,12 @@ async function openDetailPanel(jobId) {
             clearInterval(refreshInterval);
             showToast("Tiến trình Job đã kết thúc thất bại hoặc bị ngắt.", "error");
         }
-    }, 2000);
+    };
+
+    // Poll logs and details status every 2 seconds
+    if (refreshInterval) clearInterval(refreshInterval);
+    await refreshDetailStatus();
+    refreshInterval = setInterval(refreshDetailStatus, 2000);
 }
 
 // Close details modal overlay
@@ -1093,6 +1101,605 @@ function filterJobsByChannel(channelId) {
     currentFilterChannelId = channelId;
     localStorage.setItem('currentFilterChannelId', channelId);
     renderJobsList();
+}
+
+// Unified per-video pending flow. These definitions intentionally override the
+// older global queue helpers above while keeping the existing drag/drop callers.
+function detectPlatform(url) {
+    const value = (url || '').toLowerCase();
+    if (value.includes('douyin.com')) return 'Douyin';
+    if (value.includes('bilibili.com') || value.includes('b23.tv')) return 'Bilibili';
+    if (value.includes('xiaohongshu.com') || value.includes('xhslink.com')) return 'Xiaohongshu';
+    if (value.includes('youtube.com') || value.includes('youtu.be')) return 'YouTube';
+    return 'Unknown';
+}
+
+function defaultPendingConfig() {
+    return {
+        tone: 'review_phim',
+        voice: 'vi-VN-HoaiMyNeural',
+        rate: '+0%',
+        pitch: '+0Hz',
+        bgm: '',
+        logo: '',
+        channel_id: '',
+        platform_folder: '',
+        subtitle_cover_mode: 'text_box_only',
+        subtitle_bg_opacity: 0.42,
+        subtitle_mask_padding_x: 20,
+        subtitle_mask_padding_y: 12,
+        ocr_sample_interval_sec: 0.75,
+        ocr_crop_bottom_ratio: 0.45,
+        tts_enabled: true,
+        subtitles_enabled: true,
+        mask: true
+    };
+}
+
+function createPendingVideoItem(url) {
+    return {
+        id: `pending_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+        url,
+        normalized_url: url,
+        platform: detectPlatform(url),
+        config: defaultPendingConfig()
+    };
+}
+
+function optionList(options, selected, emptyLabel = null) {
+    const rows = [];
+    if (emptyLabel !== null) rows.push(`<option value="">${emptyLabel}</option>`);
+    (options || []).forEach(opt => {
+        const value = opt.id ?? opt.value ?? opt;
+        const name = opt.name ?? opt.label ?? opt;
+        rows.push(`<option value="${value}" ${String(value) === String(selected) ? 'selected' : ''}>${name}</option>`);
+    });
+    return rows.join('');
+}
+
+function pendingBgmOptions(selected) {
+    const select = document.getElementById('detail-bgm') || document.getElementById('bgm');
+    const values = [];
+    if (select) {
+        Array.from(select.options).forEach(opt => {
+            if (opt.value) values.push({ id: opt.value, name: opt.textContent });
+        });
+    }
+    return optionList(values, selected, 'Không BGM');
+}
+
+function pendingLogoOptions(selected) {
+    return optionList((globalConfig.logos || []).map(logo => ({ id: logo, name: logo })), selected, 'Không logo');
+}
+
+function pendingChannelOptions(selected) {
+    return optionList((globalChannels || []).map(c => ({ id: c.id, name: c.name })), selected, 'Output mặc định');
+}
+
+function updatePendingConfig(id, key, value) {
+    const item = pendingVideoItems.find(entry => entry.id === id);
+    if (!item) return;
+    if (['subtitle_bg_opacity', 'subtitle_mask_padding_x', 'subtitle_mask_padding_y', 'ocr_sample_interval_sec', 'ocr_crop_bottom_ratio'].includes(key)) {
+        const parsed = parseFloat(value);
+        item.config[key] = Number.isFinite(parsed) ? parsed : item.config[key];
+    } else if (['tts_enabled', 'subtitles_enabled', 'mask'].includes(key)) {
+        item.config[key] = Boolean(value);
+    } else {
+        item.config[key] = value;
+    }
+}
+
+function applyPendingConfigToAll(id) {
+    const source = pendingVideoItems.find(entry => entry.id === id);
+    if (!source) return;
+    pendingVideoItems.forEach(item => {
+        if (item.id !== id) item.config = { ...source.config };
+    });
+    renderQueueList();
+    showToast('Đã áp dụng cấu hình cho tất cả video', 'success');
+}
+
+function importSearchedVideo(url) {
+    if (!pendingVideoItems.some(item => item.url === url)) {
+        pendingVideoItems.push(createPendingVideoItem(url));
+        videoQueue = pendingVideoItems;
+        renderQueueList();
+        showToast('Đã thêm video vào hàng chờ', 'success');
+    } else {
+        showToast('Video này đã nằm trong hàng chờ', 'warning');
+    }
+}
+
+function renderQueueList() {
+    const list = document.getElementById('queue-list');
+    const placeholder = document.getElementById('queue-empty-placeholder');
+    if (!list || !placeholder) return;
+
+    if (pendingVideoItems.length === 0) {
+        list.innerHTML = '';
+        list.classList.add('hidden');
+        placeholder.classList.remove('hidden');
+        return;
+    }
+
+    placeholder.classList.add('hidden');
+    list.classList.remove('hidden');
+    list.innerHTML = '';
+
+    pendingVideoItems.forEach((entry, idx) => {
+        const cfg = entry.config;
+        const name = entry.url.split(/[\\/]/).pop() || entry.url;
+        const row = document.createElement('div');
+        row.className = 'bg-slate-950 border border-white/5 rounded-xl p-3 flex flex-col gap-3 text-xs';
+        row.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <div class="text-[10px] font-bold text-purple-300 uppercase">${idx + 1}. ${entry.platform}</div>
+                    <div class="text-slate-200 font-semibold truncate" title="${entry.url}">${name}</div>
+                </div>
+                <button type="button" onclick="removeVideoFromQueue('${entry.id}')" class="text-slate-500 hover:text-rose-400 p-1 transition-colors">Xóa</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <select onchange="updatePendingConfig('${entry.id}','tone',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${optionList(globalConfig.tones, cfg.tone)}</select>
+                <select onchange="updatePendingConfig('${entry.id}','voice',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${optionList(globalConfig.voices, cfg.voice)}</select>
+                <select onchange="updatePendingConfig('${entry.id}','rate',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${optionList(globalConfig.rates, cfg.rate)}</select>
+                <select onchange="updatePendingConfig('${entry.id}','pitch',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${optionList(globalConfig.pitches, cfg.pitch)}</select>
+                <select onchange="updatePendingConfig('${entry.id}','bgm',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${pendingBgmOptions(cfg.bgm)}</select>
+                <select onchange="updatePendingConfig('${entry.id}','logo',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${pendingLogoOptions(cfg.logo)}</select>
+                <select onchange="updatePendingConfig('${entry.id}','channel_id',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${pendingChannelOptions(cfg.channel_id)}</select>
+                <select onchange="updatePendingConfig('${entry.id}','platform_folder',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">
+                    <option value="" ${!cfg.platform_folder ? 'selected' : ''}>Không chia</option><option value="TikTok" ${cfg.platform_folder === 'TikTok' ? 'selected' : ''}>TikTok</option><option value="YouTube" ${cfg.platform_folder === 'YouTube' ? 'selected' : ''}>YouTube</option><option value="Facebook" ${cfg.platform_folder === 'Facebook' ? 'selected' : ''}>Facebook</option><option value="Douyin" ${cfg.platform_folder === 'Douyin' ? 'selected' : ''}>Douyin</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <select onchange="updatePendingConfig('${entry.id}','subtitle_cover_mode',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">
+                    <option value="text_box_only" ${cfg.subtitle_cover_mode !== 'none' ? 'selected' : ''}>Text box only</option><option value="none" ${cfg.subtitle_cover_mode === 'none' ? 'selected' : ''}>None</option>
+                </select>
+                <input type="number" min="0" max="1" step="0.01" value="${cfg.subtitle_bg_opacity}" onchange="updatePendingConfig('${entry.id}','subtitle_bg_opacity',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-100">
+            </div>
+            <div class="flex items-center justify-between gap-2 text-[10px] text-slate-400">
+                <label><input type="checkbox" ${cfg.tts_enabled ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','tts_enabled',this.checked)"> TTS</label>
+                <label><input type="checkbox" ${cfg.subtitles_enabled ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','subtitles_enabled',this.checked)"> Subtitle</label>
+                <button type="button" onclick="applyPendingConfigToAll('${entry.id}')" class="text-purple-300 hover:text-white font-semibold">Áp dụng cho tất cả</button>
+            </div>
+        `;
+        list.appendChild(row);
+    });
+}
+
+function removeVideoFromQueue(id) {
+    pendingVideoItems = pendingVideoItems.filter(item => item.id !== id);
+    videoQueue = pendingVideoItems;
+    renderQueueList();
+}
+
+function addUrlToQueue() {
+    const input = document.getElementById('input_video_url');
+    if (!input) return;
+    const urls = input.value.split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+    if (urls.length === 0) {
+        showToast('Vui lòng nhập ít nhất một link', 'error');
+        return;
+    }
+    let added = 0;
+    urls.forEach(url => {
+        if (!pendingVideoItems.some(item => item.url === url)) {
+            pendingVideoItems.push(createPendingVideoItem(url));
+            added += 1;
+        }
+    });
+    videoQueue = pendingVideoItems;
+    input.value = '';
+    renderQueueList();
+    showToast(`Đã thêm ${added} video vào hàng chờ`, 'success');
+}
+
+function setupQueueDragNDrop() {
+    const zone = document.getElementById('queue-drop-zone');
+    if (!zone) return;
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        zone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            zone.classList.add('border-purple-500', 'bg-purple-500/10');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        zone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            zone.classList.remove('border-purple-500', 'bg-purple-500/10');
+        }, false);
+    });
+
+    zone.addEventListener('drop', (e) => {
+        const url = e.dataTransfer.getData('text/plain');
+        if (url) importSearchedVideo(url);
+    });
+}
+
+// --- Manual subtitle layout preview flow ---
+const DEFAULT_SUBTITLE_LAYOUT = { x: 0.08, y: 0.72, width: 0.84, height: 0.11 };
+let subtitleLayoutEditorReady = false;
+let subtitleLayoutEditorListenersBound = false;
+let subtitleLayoutEditorJobId = null;
+let subtitleLayoutState = { ...DEFAULT_SUBTITLE_LAYOUT, background_opacity: 0.42, preset: 'middle' };
+let isEditingSubtitleLayout = false;
+let subtitleLayoutSubmitMode = 'initial';
+
+function isWaitingForSubtitleLayout(job) {
+    return job && (job.status === 'waiting_for_subtitle_layout' || job.status === 'awaiting_subtitle_layout');
+}
+
+function getSubtitleLayoutBoxPercent() {
+    const box = document.getElementById('subtitle-layout-box');
+    const wrap = document.getElementById('subtitle-preview-wrap');
+    if (!box || !wrap) return DEFAULT_SUBTITLE_LAYOUT;
+    const b = box.getBoundingClientRect();
+    const w = wrap.getBoundingClientRect();
+    return {
+        x: Math.max(0, Math.min(0.95, (b.left - w.left) / w.width)),
+        y: Math.max(0, Math.min(0.95, (b.top - w.top) / w.height)),
+        width: Math.max(0.10, Math.min(1, b.width / w.width)),
+        height: Math.max(0.04, Math.min(0.40, b.height / w.height))
+    };
+}
+
+function applySubtitleLayoutBox(layout = DEFAULT_SUBTITLE_LAYOUT) {
+    const box = document.getElementById('subtitle-layout-box');
+    if (!box) return;
+    box.style.left = `${(layout.x ?? DEFAULT_SUBTITLE_LAYOUT.x) * 100}%`;
+    box.style.top = `${(layout.y ?? DEFAULT_SUBTITLE_LAYOUT.y) * 100}%`;
+    box.style.width = `${(layout.width ?? DEFAULT_SUBTITLE_LAYOUT.width) * 100}%`;
+    box.style.height = `${(layout.height ?? DEFAULT_SUBTITLE_LAYOUT.height) * 100}%`;
+}
+
+function saveSubtitleLayoutLocalState() {
+    const opacity = parseFloat(document.getElementById('subtitle-layout-opacity')?.value || subtitleLayoutState.background_opacity || '0.42');
+    subtitleLayoutState = {
+        ...subtitleLayoutState,
+        ...getSubtitleLayoutBoxPercent(),
+        background_opacity: Number.isFinite(opacity) ? opacity : 0.42
+    };
+}
+
+function updateSubtitleLayoutSummary(job) {
+    const summary = document.getElementById('subtitle-layout-summary');
+    if (!summary) return;
+    const snapshot = job?.config_snapshot || {};
+    const opacity = Math.round((snapshot.subtitle_bg_opacity ?? subtitleLayoutState.background_opacity ?? 0.42) * 100);
+    const preset = snapshot.subtitle_preset || subtitleLayoutState.preset || 'middle';
+    const presetLabel = { low: 'Thap', middle: 'Giua', high: 'Cao', custom: 'Custom' }[preset] || preset;
+    summary.innerText = `Preset: ${presetLabel} | Opacity: ${opacity}%`;
+}
+
+function resetSubtitleLayoutBox() {
+    subtitleLayoutState = { ...DEFAULT_SUBTITLE_LAYOUT, background_opacity: subtitleLayoutState.background_opacity ?? 0.42, preset: 'middle' };
+    applySubtitleLayoutBox(DEFAULT_SUBTITLE_LAYOUT);
+}
+
+function setSubtitlePreset(preset) {
+    const presets = {
+        low: { x: 0.08, y: 0.78, width: 0.84, height: 0.10 },
+        middle: { x: 0.08, y: 0.72, width: 0.84, height: 0.11 },
+        high: { x: 0.08, y: 0.64, width: 0.84, height: 0.11 }
+    };
+    subtitleLayoutState = { ...subtitleLayoutState, ...(presets[preset] || DEFAULT_SUBTITLE_LAYOUT), preset };
+    applySubtitleLayoutBox(subtitleLayoutState);
+}
+
+function previewSubtitleBackplateOpacity(value) {
+    const box = document.getElementById('subtitle-layout-box');
+    if (box) box.style.background = `rgba(0,0,0,${value})`;
+    subtitleLayoutState.background_opacity = parseFloat(value) || subtitleLayoutState.background_opacity;
+}
+
+function setSubtitleEditorSubmitMode(mode) {
+    subtitleLayoutSubmitMode = mode || 'initial';
+    const btn = document.getElementById('btn-continue-render');
+    if (!btn) return;
+    btn.innerText = subtitleLayoutSubmitMode === 'rerender'
+        ? 'Render Lai Voi Vi Tri Moi'
+        : 'Tiep Tuc Render Video';
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function updateSubtitlePreviewText() {
+    const box = document.getElementById('subtitle-layout-box');
+    const textWrap = box?.querySelector('div.pointer-events-none');
+    if (!textWrap) return;
+    const sample = (selectedSegments || []).find(seg => (seg.translated_text || seg.text || '').trim());
+    const text = (sample?.translated_text || sample?.text || 'Ba nam truoc, khoi nghiep that bai, no').trim();
+    textWrap.innerHTML = `${escapeHtml(text)}<br><span class="text-[10px] font-semibold text-white/80">[Keo tha de chinh vi tri phu de]</span>`;
+}
+
+function setupSubtitleLayoutEditor(job) {
+    const section = document.getElementById('subtitle-layout-section');
+    const video = document.getElementById('subtitle-preview-video');
+    const box = document.getElementById('subtitle-layout-box');
+    const resize = document.getElementById('subtitle-layout-resize');
+    const wrap = document.getElementById('subtitle-preview-wrap');
+    if (!section || !video || !box || !resize || !wrap) return;
+
+    section.classList.remove('hidden');
+
+    const isNewEditorJob = subtitleLayoutEditorJobId !== job.job_id;
+    if (isNewEditorJob) {
+        subtitleLayoutEditorJobId = job.job_id;
+        const saved = job.config_snapshot?.subtitle_layout || DEFAULT_SUBTITLE_LAYOUT;
+        const savedOpacity = job.config_snapshot?.subtitle_bg_opacity ?? 0.42;
+        const savedPreset = job.config_snapshot?.subtitle_preset || 'middle';
+        subtitleLayoutState = { ...DEFAULT_SUBTITLE_LAYOUT, ...saved, background_opacity: savedOpacity, preset: savedPreset };
+        if (!video.src || !video.src.includes(job.job_id)) {
+            video.src = `/api/jobs/${job.job_id}/preview-video`;
+        }
+        const opacityInput = document.getElementById('subtitle-layout-opacity');
+        if (opacityInput) opacityInput.value = subtitleLayoutState.background_opacity;
+        applySubtitleLayoutBox(subtitleLayoutState);
+        previewSubtitleBackplateOpacity(subtitleLayoutState.background_opacity);
+    }
+    updateSubtitlePreviewText();
+
+    if (subtitleLayoutEditorListenersBound) return;
+    subtitleLayoutEditorListenersBound = true;
+
+    let mode = null;
+    let start = null;
+    const onPointerDown = (e, nextMode) => {
+        isEditingSubtitleLayout = true;
+        mode = nextMode;
+        const rect = wrap.getBoundingClientRect();
+        const b = box.getBoundingClientRect();
+        start = {
+            mouseX: e.clientX,
+            mouseY: e.clientY,
+            x: b.left - rect.left,
+            y: b.top - rect.top,
+            w: b.width,
+            h: b.height,
+            wrapW: rect.width,
+            wrapH: rect.height
+        };
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    box.addEventListener('pointerdown', (e) => {
+        if (e.target === resize) return;
+        onPointerDown(e, 'move');
+    });
+    resize.addEventListener('pointerdown', (e) => onPointerDown(e, 'resize'));
+
+    document.addEventListener('pointermove', (e) => {
+        if (!mode || !start) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const dx = e.clientX - start.mouseX;
+        const dy = e.clientY - start.mouseY;
+        if (mode === 'move') {
+            const nx = Math.max(0, Math.min(start.wrapW - start.w, start.x + dx));
+            const ny = Math.max(0, Math.min(start.wrapH - start.h, start.y + dy));
+            box.style.left = `${(nx / start.wrapW) * 100}%`;
+            box.style.top = `${(ny / start.wrapH) * 100}%`;
+        } else {
+            const nw = Math.max(start.wrapW * 0.20, Math.min(start.wrapW - start.x, start.w + dx));
+            const nh = Math.max(start.wrapH * 0.05, Math.min(start.wrapH * 0.40, start.h + dy));
+            box.style.width = `${(nw / start.wrapW) * 100}%`;
+            box.style.height = `${(nh / start.wrapH) * 100}%`;
+        }
+    });
+
+    document.addEventListener('pointerup', (e) => {
+        if (mode) {
+            e.preventDefault();
+            e.stopPropagation();
+            saveSubtitleLayoutLocalState();
+        }
+        mode = null;
+        start = null;
+        setTimeout(() => {
+            isEditingSubtitleLayout = false;
+        }, 150);
+    });
+}
+
+async function continueRenderWithSubtitleLayout() {
+    if (!selectedJobId) return;
+    const btn = document.getElementById('btn-continue-render');
+    saveSubtitleLayoutLocalState();
+    const opacity = subtitleLayoutState.background_opacity;
+    const layout = { ...subtitleLayoutState };
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Dang render...';
+    }
+    try {
+        const endpoint = subtitleLayoutSubmitMode === 'rerender'
+            ? `/api/jobs/${selectedJobId}/rerender-subtitle-layout`
+            : `/api/jobs/${selectedJobId}/subtitle-layout`;
+        const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                subtitle_x_percent: layout.x,
+                subtitle_y_percent: layout.y,
+                subtitle_width_percent: layout.width,
+                subtitle_height_percent: layout.height,
+                subtitle_bg_opacity: opacity,
+                background_opacity: opacity,
+                preset: layout.preset || 'custom'
+            })
+        });
+        if (!resp.ok) {
+            const err = await resp.json();
+            throw new Error(err.detail || 'Khong the tiep tuc render');
+        }
+        document.getElementById('subtitle-layout-section')?.classList.add('hidden');
+        subtitleLayoutEditorJobId = null;
+        subtitleLayoutEditorReady = false;
+        isEditingSubtitleLayout = false;
+        if (subtitleLayoutSubmitMode === 'rerender') {
+            const player = document.getElementById('detail-video-player');
+            if (player) player.src = `/api/jobs/${selectedJobId}/video?v=${Date.now()}`;
+            const freshJob = await (await fetch(`/api/jobs/${selectedJobId}`)).json();
+            updateSubtitleLayoutSummary(freshJob);
+            showToast('Da render lai video voi vi tri phu de moi', 'success');
+        } else {
+            showToast('Da luu vi tri phu de, dang render video...', 'success');
+        }
+        await loadJobs();
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = subtitleLayoutSubmitMode === 'rerender'
+                ? 'Render Lai Voi Vi Tri Moi'
+                : 'Tiep Tuc Render Video';
+        }
+    }
+}
+
+async function openCompletedSubtitleLayoutEditor() {
+    if (!selectedJobId) return;
+    const job = await (await fetch(`/api/jobs/${selectedJobId}`)).json();
+    document.getElementById('subtitle-layout-section')?.classList.remove('hidden');
+    setSubtitleEditorSubmitMode('rerender');
+    subtitleLayoutEditorJobId = null;
+    setupSubtitleLayoutEditor(job);
+    const section = document.getElementById('subtitle-layout-section');
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function updatePipelineSteps(job) {
+    const list = document.getElementById('pipeline-steps-list');
+    if (!list) return;
+    list.innerHTML = '';
+    const friendlyNames = {
+        intake: '1. Tai / Nhap video',
+        analyze: '2. Phan tich khung hinh',
+        extract_audio: '3. Tach am thanh goc',
+        transcribe: '4. Nhan dien giong noi (ASR)',
+        translate: '5. Dich thuat phu de (AI)',
+        tts: '6. Sinh giong noi moi (TTS)',
+        mix_audio: '7. Tron am thanh & nhac nen',
+        subtitle_layout: '8. Chon vi tri phu de',
+        render: '9. Render video doc 9:16',
+        metadata: '10. Tieu de & HashTags (AI)'
+    };
+    for (const step of Object.keys(friendlyNames)) {
+        const status = job.steps?.[step] || 'pending';
+        let statusIcon = '<span class="text-slate-600">Dang cho</span>';
+        let textStyle = 'text-slate-400';
+        if (status === 'completed') {
+            statusIcon = '<span class="text-emerald-400 font-bold">Hoan tat</span>';
+            textStyle = 'text-slate-300';
+        } else if (status === 'failed') {
+            statusIcon = '<span class="text-rose-400 font-bold">That bai</span>';
+            textStyle = 'text-white font-semibold';
+        } else if (step === job.current_step && job.status === 'running') {
+            statusIcon = '<span class="text-purple-400 font-bold animate-pulse">Dang xu ly</span>';
+            textStyle = 'text-white font-semibold';
+        } else if (step === job.current_step && isWaitingForSubtitleLayout(job)) {
+            statusIcon = '<span class="text-purple-300 font-bold animate-pulse">Cho ban chon</span>';
+            textStyle = 'text-white font-semibold';
+        }
+        const li = document.createElement('div');
+        li.className = `flex justify-between items-center text-xs py-1.5 border-b border-white/5 ${textStyle}`;
+        li.innerHTML = `<span>${friendlyNames[step]}</span> ${statusIcon}`;
+        list.appendChild(li);
+    }
+}
+
+async function openDetailPanel(jobId) {
+    selectedJobId = jobId;
+    const job = jobsData.find(j => j.job_id === jobId) || await (await fetch(`/api/jobs/${jobId}`)).json();
+    if (!job) return;
+
+    document.getElementById('detail-job-id-badge').innerText = job.job_id;
+    document.getElementById('detail-job-title').innerText = job.input_path.split(/[\\/]/).pop();
+    document.getElementById('detail-completed-section')?.classList.add('hidden');
+    document.getElementById('subtitle-layout-section')?.classList.add('hidden');
+    document.getElementById('detail-logs-section')?.classList.remove('hidden');
+    updatePipelineSteps(job);
+
+    const panel = document.getElementById('detail-panel');
+    panel.classList.remove('hidden');
+    setTimeout(() => panel.classList.remove('translate-x-full'), 50);
+
+    const refreshDetailStatus = async () => {
+        if (!selectedJobId) return;
+        const freshJob = await (await fetch(`/api/jobs/${selectedJobId}`)).json();
+
+        if (!isEditingSubtitleLayout) {
+            updatePipelineSteps(freshJob);
+        }
+
+        const logResp = await fetch(`/api/jobs/${selectedJobId}/logs`);
+        const logData = await logResp.json();
+        const consoleBox = document.getElementById('detail-console');
+        if (consoleBox && !isEditingSubtitleLayout) {
+            consoleBox.innerText = logData.logs || logData.content || 'Chua co nhat ky hoat dong.';
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        if (isWaitingForSubtitleLayout(freshJob)) {
+            document.getElementById('subtitle-layout-section')?.classList.remove('hidden');
+            setSubtitleEditorSubmitMode('initial');
+            if (!isEditingSubtitleLayout) {
+                setupSubtitleLayoutEditor(freshJob);
+            }
+        } else {
+            document.getElementById('subtitle-layout-section')?.classList.add('hidden');
+        }
+
+        if (freshJob.status === 'completed') {
+            clearInterval(refreshInterval);
+            document.getElementById('detail-completed-section')?.classList.remove('hidden');
+            updateSubtitleLayoutSummary(freshJob);
+            const player = document.getElementById('detail-video-player');
+            if (player) player.src = `/api/jobs/${selectedJobId}/video`;
+            loadTranscript(selectedJobId);
+            loadAIcaption(selectedJobId);
+        } else if (freshJob.status === 'failed') {
+            clearInterval(refreshInterval);
+            showToast('Job da ket thuc that bai hoac bi ngat.', 'error');
+        }
+    };
+
+    if (refreshInterval) clearInterval(refreshInterval);
+    await refreshDetailStatus();
+    refreshInterval = setInterval(refreshDetailStatus, 3500);
+}
+
+function closeDetailPanel() {
+    const panel = document.getElementById('detail-panel');
+    panel.classList.add('translate-x-full');
+    setTimeout(() => {
+        panel.classList.add('hidden');
+        selectedJobId = null;
+        subtitleLayoutEditorJobId = null;
+        subtitleLayoutEditorReady = false;
+        isEditingSubtitleLayout = false;
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+        }
+        const detailPlayer = document.getElementById('detail-video-player');
+        if (detailPlayer) detailPlayer.src = '';
+        const previewPlayer = document.getElementById('subtitle-preview-video');
+        if (previewPlayer) previewPlayer.src = '';
+    }, 300);
 }
 
 

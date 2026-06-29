@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     original_volume: float = 0.25
     tts_volume: float = 1.0
     bgm_volume: float = 0.4
+
+    # Subtitle cover / OCR detection defaults
+    subtitle_cover_mode: str = "auto_detect_old_text"
+    subtitle_bg_opacity: float = 0.42
+    subtitle_mask_padding_x: int = 20
+    subtitle_mask_padding_y: int = 12
+    ocr_sample_interval_sec: float = 0.75
+    ocr_crop_bottom_ratio: float = 0.45
     
     # App root folder
     auto_tool_root: Path = Path(__file__).resolve().parent.parent

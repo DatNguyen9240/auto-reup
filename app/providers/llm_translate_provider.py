@@ -48,9 +48,12 @@ class LLMTranslateProvider(TranslateProvider):
             if fallback_enabled:
                 logger.warning("Gemini API key is not configured, but fallback translation is enabled.")
                 return
-            raise TranslationError("Gemini API key is not configured. Please set the GEMINI_API_KEY environment variable.")
+            logger.warning("Gemini API key is not configured. Translation will fail until GEMINI_API_KEY is set.")
 
     def generate_content(self, prompt: str, model: str = 'gemini-2.5-flash', mime_type: Optional[str] = None, schema: Optional[BaseModel] = None):
+        if not self.api_keys:
+            raise TranslationError("Gemini API key is not configured. Please set the GEMINI_API_KEY environment variable.")
+
         response = None
         last_error = None
         

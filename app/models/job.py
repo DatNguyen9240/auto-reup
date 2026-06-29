@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 class Job(BaseModel):
@@ -18,6 +18,7 @@ class Job(BaseModel):
         "translate": "pending",
         "tts": "pending",
         "mix_audio": "pending",
+        "subtitle_layout": "pending",
         "render": "pending",
         "metadata": "pending"
     })
@@ -25,3 +26,4 @@ class Job(BaseModel):
     channel_folder: Optional[str] = None
     platform_folder: Optional[str] = None
     channel_id: Optional[str] = None
+    config_snapshot: Dict[str, Any] = Field(default_factory=dict)

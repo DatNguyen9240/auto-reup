@@ -65,8 +65,18 @@ class JobCreateRequest(BaseModel):
     bgm: Optional[str] = None
     logo: Optional[str] = None
     mask: bool = True
+    tts_enabled: bool = True
+    subtitles_enabled: bool = True
+    subtitle_cover_mode: str = settings.subtitle_cover_mode
+    subtitle_bg_opacity: float = settings.subtitle_bg_opacity
+    subtitle_mask_padding_x: int = settings.subtitle_mask_padding_x
+    subtitle_mask_padding_y: int = settings.subtitle_mask_padding_y
+    ocr_sample_interval_sec: float = settings.ocr_sample_interval_sec
+    ocr_crop_bottom_ratio: float = settings.ocr_crop_bottom_ratio
     channel_folder: Optional[str] = None
     platform_folder: Optional[str] = None
+    channel_id: Optional[str] = None
+    config_snapshot: Optional[Dict[str, Any]] = None
 
 class SegmentUpdateRequest(BaseModel):
     segments: List[Segment]
@@ -78,8 +88,54 @@ class SegmentUpdateRequest(BaseModel):
     bgm: Optional[str] = None
     logo: Optional[str] = None
     mask: bool = True
+    tts_enabled: bool = True
+    subtitles_enabled: bool = True
+    subtitle_cover_mode: str = settings.subtitle_cover_mode
+    subtitle_bg_opacity: float = settings.subtitle_bg_opacity
+    subtitle_mask_padding_x: int = settings.subtitle_mask_padding_x
+    subtitle_mask_padding_y: int = settings.subtitle_mask_padding_y
+    ocr_sample_interval_sec: float = settings.ocr_sample_interval_sec
+    ocr_crop_bottom_ratio: float = settings.ocr_crop_bottom_ratio
     channel_folder: Optional[str] = None
     platform_folder: Optional[str] = None
+
+class SubtitleLayoutRequest(BaseModel):
+    subtitle_x_percent: float = 0.08
+    subtitle_y_percent: float = 0.72
+    subtitle_width_percent: float = 0.84
+    subtitle_height_percent: float = 0.11
+    subtitle_bg_opacity: float = 0.42
+    background_opacity: Optional[float] = None
+    preset: str = "custom"
+
+def _normalize_subtitle_layout(req: SubtitleLayoutRequest) -> Dict[str, Any]:
+    layout = {
+        "x": max(0.0, min(0.95, req.subtitle_x_percent)),
+        "y": max(0.0, min(0.95, req.subtitle_y_percent)),
+        "width": max(0.10, min(1.0, req.subtitle_width_percent)),
+        "height": max(0.04, min(0.40, req.subtitle_height_percent)),
+    }
+    layout["width"] = min(layout["width"], 1.0 - layout["x"])
+    layout["height"] = min(layout["height"], 1.0 - layout["y"])
+    opacity = req.background_opacity if req.background_opacity is not None else req.subtitle_bg_opacity
+    return {
+        "layout": layout,
+        "opacity": max(0.0, min(1.0, opacity)),
+        "preset": req.preset or "custom",
+    }
+
+def _save_subtitle_layout_snapshot(job: Job, req: SubtitleLayoutRequest) -> Dict[str, Any]:
+    normalized = _normalize_subtitle_layout(req)
+    snapshot = dict(job.config_snapshot or {})
+    snapshot["subtitle_layout"] = normalized["layout"]
+    snapshot["subtitle_bg_opacity"] = normalized["opacity"]
+    snapshot["subtitle_preset"] = normalized["preset"]
+    snapshot["subtitle_cover_mode"] = "text_box_only"
+    job.config_snapshot = snapshot
+    store.save_job(job)
+    with open(store.get_job_dir(job.job_id) / "job_config.json", "w", encoding="utf-8") as f:
+        json.dump(snapshot, f, indent=2, ensure_ascii=False)
+    return normalized
     
 
 pipeline_lock = threading.Lock()
@@ -92,7 +148,15 @@ def run_pipeline_in_thread(
     pitch: str,
     bgm_name: Optional[str],
     logo_path: Optional[Path],
-    mask_subtitle: bool
+    mask_subtitle: bool,
+    tts_enabled: bool = True,
+    subtitles_enabled: bool = True,
+    subtitle_cover_mode: str = settings.subtitle_cover_mode,
+    subtitle_bg_opacity: float = settings.subtitle_bg_opacity,
+    subtitle_mask_padding_x: int = settings.subtitle_mask_padding_x,
+    subtitle_mask_padding_y: int = settings.subtitle_mask_padding_y,
+    ocr_sample_interval_sec: float = settings.ocr_sample_interval_sec,
+    ocr_crop_bottom_ratio: float = settings.ocr_crop_bottom_ratio,
 ):
     running_jobs.add(job_id)
     try:
@@ -108,7 +172,15 @@ def run_pipeline_in_thread(
                     pitch=pitch,
                     bgm_name=bgm_name,
                     logo_path=logo_path,
-                    mask_subtitle=mask_subtitle
+                    mask_subtitle=mask_subtitle,
+                    tts_enabled=tts_enabled,
+                    subtitles_enabled=subtitles_enabled,
+                    subtitle_cover_mode=subtitle_cover_mode,
+                    subtitle_bg_opacity=subtitle_bg_opacity,
+                    subtitle_mask_padding_x=subtitle_mask_padding_x,
+                    subtitle_mask_padding_y=subtitle_mask_padding_y,
+                    ocr_sample_interval_sec=ocr_sample_interval_sec,
+                    ocr_crop_bottom_ratio=ocr_crop_bottom_ratio,
                 ))
                 
                 # Copy output to central outputs folder
@@ -172,21 +244,194 @@ async def create_job(req: JobCreateRequest):
     if not job:
         job = runner.create_job(str(input_path) if not is_url else input_video, job_id)
     
+    config_snapshot = req.config_snapshot or req.model_dump(exclude={"config_snapshot"})
     job.status = "created"
     job.channel_folder = req.channel_folder
     job.platform_folder = req.platform_folder
+    job.channel_id = req.channel_id
+    job.config_snapshot = config_snapshot
+    job.steps.setdefault("subtitle_layout", "pending")
     for step in job.steps:
         job.steps[step] = "pending"
     job.errors = []
     store.save_job(job)
+    with open(store.get_job_dir(job_id) / "job_config.json", "w", encoding="utf-8") as f:
+        json.dump(config_snapshot, f, indent=2, ensure_ascii=False)
 
     thread = threading.Thread(
         target=run_pipeline_in_thread,
-        args=(job_id, req.tone, req.voice, req.rate, req.pitch, req.bgm, logo_path, req.mask)
+        args=(
+            job_id, req.tone, req.voice, req.rate, req.pitch, req.bgm, logo_path, req.mask,
+            req.tts_enabled, req.subtitles_enabled,
+            req.subtitle_cover_mode, req.subtitle_bg_opacity, req.subtitle_mask_padding_x,
+            req.subtitle_mask_padding_y, req.ocr_sample_interval_sec, req.ocr_crop_bottom_ratio
+        )
     )
     thread.start()
 
     return {"job_id": job_id, "status": "running", "message": "Job started successfully"}
+
+@app.get("/api/jobs/{job_id}/preview-video")
+def get_preview_video(job_id: str):
+    job_dir = store.get_job_dir(job_id)
+    work_dir = job_dir / "work"
+    candidates = sorted(work_dir.glob("input.*"))
+    if not candidates:
+        raise HTTPException(status_code=404, detail="Preview video is not ready yet")
+    return FileResponse(candidates[0])
+
+@app.post("/api/jobs/{job_id}/subtitle-layout")
+async def save_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
+    job = store.load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+    if job.job_id in running_jobs:
+        raise HTTPException(status_code=400, detail="Job is still running. Wait until subtitle layout step.")
+
+    normalized = _save_subtitle_layout_snapshot(job, req)
+    snapshot = dict(job.config_snapshot or {})
+    job.steps.setdefault("subtitle_layout", "pending")
+    job.steps["subtitle_layout"] = "completed"
+    job.steps["render"] = "pending"
+    job.steps["metadata"] = "pending"
+    job.status = "created"
+    job.current_step = "render"
+    job.errors = []
+    store.save_job(job)
+
+    logo_path = None
+    logo = snapshot.get("logo")
+    if logo:
+        overlay_path = PROJECT_ROOT / "examples" / "overlay" / logo
+        logo_path = overlay_path if overlay_path.exists() and overlay_path.is_file() else Path(logo)
+        if logo_path and not logo_path.is_absolute():
+            logo_path = PROJECT_ROOT / logo_path
+
+    thread = threading.Thread(
+        target=run_pipeline_in_thread,
+        args=(
+            job_id,
+            snapshot.get("tone", "review_phim"),
+            snapshot.get("voice", settings.default_voice),
+            snapshot.get("rate", settings.default_rate),
+            snapshot.get("pitch", settings.default_pitch),
+            snapshot.get("bgm") or None,
+            logo_path,
+            bool(snapshot.get("mask", True)),
+            bool(snapshot.get("tts_enabled", True)),
+            bool(snapshot.get("subtitles_enabled", True)),
+            "text_box_only",
+            float(snapshot.get("subtitle_bg_opacity", req.subtitle_bg_opacity)),
+            int(snapshot.get("subtitle_mask_padding_x", settings.subtitle_mask_padding_x)),
+            int(snapshot.get("subtitle_mask_padding_y", settings.subtitle_mask_padding_y)),
+            float(snapshot.get("ocr_sample_interval_sec", settings.ocr_sample_interval_sec)),
+            float(snapshot.get("ocr_crop_bottom_ratio", settings.ocr_crop_bottom_ratio)),
+        )
+    )
+    thread.start()
+    return {"status": "rendering", "message": "Subtitle layout saved. Final render started.", "layout": normalized["layout"]}
+
+@app.post("/api/jobs/{job_id}/rerender-subtitle-layout")
+def rerender_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
+    job = store.load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+    if job_id in running_jobs:
+        raise HTTPException(status_code=400, detail="Job is currently running")
+
+    job_dir = store.get_job_dir(job_id)
+    work_dir = job_dir / "work"
+    output_dir = job_dir / "output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    normalized = _save_subtitle_layout_snapshot(job, req)
+    snapshot = dict(job.config_snapshot or {})
+
+    try:
+        dest_candidates = sorted(work_dir.glob("input.*"))
+        if not dest_candidates:
+            raise HTTPException(status_code=404, detail="Source video artifact not found")
+        dest_video = dest_candidates[0]
+
+        audio_path = work_dir / "mixed_audio.wav"
+        if not audio_path.exists():
+            raise HTTPException(status_code=404, detail="Mixed audio artifact not found")
+
+        metadata_path = work_dir / "metadata.json"
+        if not metadata_path.exists():
+            raise HTTPException(status_code=404, detail="Metadata artifact not found")
+        with open(metadata_path, "r", encoding="utf-8") as f:
+            metadata = json.load(f)
+
+        output_srt = work_dir / "output.srt"
+        segments = store.load_translated(job_id)
+        if segments:
+            import pysrt
+            subs = pysrt.SubRipFile()
+            for s in segments:
+                sub = pysrt.SubRipItem(
+                    index=s.id,
+                    start=pysrt.SubRipTime(milliseconds=s.start_ms),
+                    end=pysrt.SubRipTime(milliseconds=s.end_ms),
+                    text=s.translated_text
+                )
+                subs.append(sub)
+            subs.save(str(output_srt), encoding="utf-8")
+        elif not output_srt.exists():
+            raise HTTPException(status_code=404, detail="Translated subtitle artifact not found")
+
+        logo_path = None
+        logo = snapshot.get("logo")
+        if logo:
+            overlay_path = PROJECT_ROOT / "examples" / "overlay" / logo
+            logo_path = overlay_path if overlay_path.exists() and overlay_path.is_file() else Path(logo)
+            if logo_path and not logo_path.is_absolute():
+                logo_path = PROJECT_ROOT / logo_path
+
+        job.status = "running"
+        job.current_step = "render"
+        job.steps.setdefault("subtitle_layout", "completed")
+        job.steps["subtitle_layout"] = "completed"
+        job.steps["render"] = "pending"
+        store.save_job(job)
+        running_jobs.add(job_id)
+
+        final_video = output_dir / "final.mp4"
+        temp_video = output_dir / "final_layout_tmp.mp4"
+        if temp_video.exists():
+            temp_video.unlink(missing_ok=True)
+        runner.render_service.render(
+            video_path=dest_video,
+            audio_path=audio_path,
+            srt_path=output_srt,
+            output_path=temp_video,
+            metadata=metadata,
+            logo_path=logo_path,
+            mask_subtitle=bool(snapshot.get("mask", True)),
+            render_subtitles=bool(snapshot.get("subtitles_enabled", True)),
+            subtitle_layout=normalized["layout"],
+            subtitle_cover_mode="text_box_only",
+            subtitle_bg_opacity=normalized["opacity"],
+        )
+        os.replace(temp_video, final_video)
+
+        job = store.load_job(job_id) or job
+        job.status = "completed"
+        job.current_step = "metadata"
+        job.steps["render"] = "completed"
+        job.steps["metadata"] = "completed"
+        job.output_path = str(final_video.resolve())
+        store.save_job(job)
+        return {"status": "completed", "message": "Video re-rendered with new subtitle layout", "layout": normalized["layout"]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        job.status = "failed"
+        job.errors.append(f"Subtitle layout re-render failed: {e}")
+        store.save_job(job)
+        raise HTTPException(status_code=500, detail=f"Subtitle layout re-render failed: {e}")
+    finally:
+        running_jobs.discard(job_id)
 
 @app.get("/api/jobs")
 def list_jobs():
@@ -257,7 +502,12 @@ async def update_transcript(job_id: str, req: SegmentUpdateRequest):
 
         thread = threading.Thread(
             target=run_pipeline_in_thread,
-            args=(job_id, req.tone, req.voice, req.rate, req.pitch, req.bgm, logo_path, req.mask)
+            args=(
+                job_id, req.tone, req.voice, req.rate, req.pitch, req.bgm, logo_path, req.mask,
+                req.tts_enabled, req.subtitles_enabled,
+                req.subtitle_cover_mode, req.subtitle_bg_opacity, req.subtitle_mask_padding_x,
+                req.subtitle_mask_padding_y, req.ocr_sample_interval_sec, req.ocr_crop_bottom_ratio
+            )
         )
         thread.start()
         return {"status": "re-running", "message": "Transcript saved and pipeline restarted from TTS step"}
@@ -722,11 +972,45 @@ def get_job_logs(job_id: str):
     job = store.load_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-        
+
     log_file = store.get_job_dir(job_id) / "run.log"
-    if not log_file.exists():
-        return {"logs": "Chưa có nhật ký hoạt động."}
-        
+    if not log_file.exists() or log_file.stat().st_size == 0:
+        lines = [
+            f"Job: {job.job_id}",
+            f"Trạng thái: {job.status}",
+            f"Bước hiện tại: {job.current_step or 'không có'}",
+            ""
+        ]
+        step_names = {
+            "intake": "1. Tải / Nhập video",
+            "analyze": "2. Phân tích khung hình",
+            "extract_audio": "3. Tách âm thanh gốc",
+            "transcribe": "4. Nhận diện giọng nói (ASR)",
+            "translate": "5. Dịch thuật phụ đề (AI)",
+            "tts": "6. Sinh giọng nói mới (TTS)",
+            "mix_audio": "7. Trộn âm thanh & nhạc nền",
+            "render": "8. Render video dọc 9:16",
+            "metadata": "9. Tiêu đề & HashTags (AI)",
+        }
+        for step, name in step_names.items():
+            lines.append(f"{name}: {job.steps.get(step, 'pending')}")
+
+        transcript = store.load_transcript(job_id)
+        translated = store.load_translated(job_id)
+        if transcript:
+            lines.append("")
+            lines.append(f"Bước 4: đã nhận diện/import {len(transcript)} câu thoại.")
+        if translated:
+            lines.append(f"Bước 5: đã dịch {len(translated)} câu thoại.")
+            tts_done = sum(1 for segment in translated if segment.tts_path)
+            if tts_done:
+                lines.append(f"Bước 6: đã tạo giọng đọc {tts_done}/{len(translated)} câu.")
+        if job.errors:
+            lines.append("")
+            lines.append("Lỗi:")
+            lines.extend(job.errors)
+        return {"logs": "\n".join(lines)}
+
     try:
         with open(log_file, "r", encoding="utf-8") as f:
             content = f.read()

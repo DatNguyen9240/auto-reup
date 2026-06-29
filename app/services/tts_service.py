@@ -69,6 +69,7 @@ class TTSService:
         for idx, segment in enumerate(segments):
             if not segment.tts_text.strip():
                 segment.status = "tts_generated"
+                logger.info(f"[{idx+1}/{len(segments)}] Skipping empty TTS segment {segment.id}.")
                 continue
                 
             logger.info(f"[{idx+1}/{len(segments)}] Generating voiceover for segment {segment.id}: '{segment.tts_text[:30]}...'")
@@ -135,6 +136,7 @@ class TTSService:
                     
             segment.tts_path = str(final_path)
             segment.status = "tts_generated"
+            logger.info(f"[{idx+1}/{len(segments)}] Completed voiceover for segment {segment.id}: {final_path.name}")
             
             # Rate-limiting guard: Add a short sleep between consecutive synthesis requests
             await asyncio.sleep(0.5)
