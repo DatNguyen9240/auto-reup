@@ -16,7 +16,8 @@ let currentFilterChannelId = localStorage.getItem('currentFilterChannelId') || '
 const VIEWS = {
     dashboard: 'views/dashboard.html',
     search: 'views/search.html',
-    cookies: 'views/cookies.html'
+    cookies: 'views/cookies.html',
+    channels: 'views/channels.html'
 };
 
 // Initialize application on DOM ready
@@ -26,6 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadGlobalConfig();
     await loadBgmList();
     await loadChannels();
+    await checkApiKeysOnStartup();
 
     // Read initial tab from URL hash (defaults to dashboard)
     const initialTab = window.location.hash.replace('#', '') || 'dashboard';
@@ -54,6 +56,7 @@ async function switchTab(tab) {
     const btnDashboard = document.getElementById('btn-tab-dashboard');
     const btnCookies = document.getElementById('btn-tab-cookies');
     const btnSearch = document.getElementById('btn-tab-search');
+    const btnChannels = document.getElementById('btn-tab-channels');
     
     if (btnDashboard) {
         btnDashboard.className = tab === 'dashboard' 
@@ -67,6 +70,11 @@ async function switchTab(tab) {
     }
     if (btnSearch) {
         btnSearch.className = tab === 'search' 
+            ? "px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 text-white transition-all" 
+            : "px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all";
+    }
+    if (btnChannels) {
+        btnChannels.className = tab === 'channels' 
             ? "px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 text-white transition-all" 
             : "px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all";
     }
@@ -103,6 +111,8 @@ async function switchTab(tab) {
                 if (typeof populateDashboardFilterChannel === 'function') {
                     populateDashboardFilterChannel();
                 }
+            } else if (tab === 'channels') {
+                await initChannelsView();
             }
             
             // Populate dynamic selects
@@ -166,12 +176,20 @@ function renderJobsList() {
 
 
         let deleteButton = '';
+        let resumeButton = '';
         if (job.status !== 'running') {
             deleteButton = `
                 <button onclick="deleteJob('${job.job_id}')" class="hover:bg-rose-500/10 text-rose-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-500/20 hover:border-rose-500/40 transition-all">
                     Xóa
                 </button>
             `;
+            if (job.status === 'failed' || job.status === 'cancelled') {
+                resumeButton = `
+                    <button onclick="resumeJob('${job.job_id}')" class="bg-purple-600/20 hover:bg-purple-600/80 text-purple-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg border border-purple-500/30 transition-all">
+                        ▶️ Tiếp tục
+                    </button>
+                `;
+            }
         } else {
             deleteButton = `
                 <button onclick="cancelJob('${job.job_id}')" class="hover:bg-amber-500/10 text-amber-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-500/20 hover:border-amber-500/40 transition-all">
@@ -242,6 +260,7 @@ function renderJobsList() {
             <div class="flex flex-wrap items-center justify-between gap-2 mt-1 pt-3 border-t border-white/5">
                 <span class="text-[10px] text-slate-400 font-medium">${createdTime}</span>
                 <div class="flex flex-wrap items-center gap-2">
+                    ${resumeButton}
                     ${completedActionsHtml}
                     ${deleteButton}
                     <button onclick="openDetailPanel('${job.job_id}')" class="bg-white/5 hover:bg-white/10 hover:text-white text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/5 transition-all">
@@ -599,12 +618,12 @@ function populateDestChannelSelects() {
 
 // Populate logo selects dynamically from global configuration
 function populateAllLogoSelects() {
-    const selects = ['logo', 'chan-logo', 'detail-logo'];
+    const selects = ['logo', 'chan-logo', 'detail-logo', 'subtitle-asset-select'];
     selects.forEach(selectId => {
         const select = document.getElementById(selectId);
         if (select && globalConfig && globalConfig.logos) {
             const curVal = select.value;
-            select.innerHTML = '<option value="">Không sử dụng Logo</option>';
+            select.innerHTML = '<option value="">Không sử dụng</option>';
             globalConfig.logos.forEach(logo => {
                 const opt = new Option(logo, logo);
                 select.add(opt);
@@ -933,24 +952,33 @@ function detectPlatform(url) {
 }
 
 function defaultPendingConfig() {
+    const getVal = (id, fallback) => {
+        const el = document.getElementById(id);
+        return el ? el.value : fallback;
+    };
+    const getChecked = (id, fallback) => {
+        const el = document.getElementById(id);
+        return el ? el.checked : fallback;
+    };
+
     return {
-        tone: 'review_phim',
-        voice: 'vi-VN-HoaiMyNeural',
-        rate: '+0%',
-        pitch: '+0Hz',
-        bgm: '',
-        logo: '',
-        channel_id: '',
-        platform_folder: '',
-        subtitle_cover_mode: 'text_box_only',
-        subtitle_bg_opacity: 0.42,
-        subtitle_mask_padding_x: 20,
-        subtitle_mask_padding_y: 12,
-        ocr_sample_interval_sec: 0.75,
-        ocr_crop_bottom_ratio: 0.45,
-        tts_enabled: true,
-        subtitles_enabled: true,
-        mask: true
+        tone: getVal('tone', 'review_phim'),
+        voice: getVal('voice', 'vi-VN-HoaiMyNeural'),
+        rate: getVal('rate', '+0%'),
+        pitch: getVal('pitch', '+0Hz'),
+        bgm: getVal('bgm', ''),
+        logo: getVal('logo', ''),
+        channel_id: getVal('dest_channel', ''),
+        platform_folder: getVal('dest_platform', ''),
+        subtitle_cover_mode: getVal('subtitle_cover_mode', 'text_box_only'),
+        subtitle_bg_opacity: parseFloat(getVal('subtitle_bg_opacity', '0.20')),
+        subtitle_mask_padding_x: parseInt(getVal('subtitle_mask_padding_x', '20')),
+        subtitle_mask_padding_y: parseInt(getVal('subtitle_mask_padding_y', '12')),
+        ocr_sample_interval_sec: parseFloat(getVal('ocr_sample_interval_sec', '0.75')),
+        ocr_crop_bottom_ratio: parseFloat(getVal('ocr_crop_bottom_ratio', '0.45')),
+        tts_enabled: getChecked('tts_enabled', true),
+        subtitles_enabled: getChecked('subtitles_enabled', true),
+        mask: getChecked('mask', true)
     };
 }
 
@@ -1063,18 +1091,13 @@ function renderQueueList() {
                 <select onchange="updatePendingConfig('${entry.id}','rate',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${optionList(globalConfig.rates, cfg.rate)}</select>
                 <select onchange="updatePendingConfig('${entry.id}','pitch',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${optionList(globalConfig.pitches, cfg.pitch)}</select>
                 <select onchange="updatePendingConfig('${entry.id}','bgm',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${pendingBgmOptions(cfg.bgm)}</select>
-                <select onchange="updatePendingConfig('${entry.id}','logo',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${pendingLogoOptions(cfg.logo)}</select>
+
                 <select onchange="updatePendingConfig('${entry.id}','channel_id',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${pendingChannelOptions(cfg.channel_id)}</select>
                 <select onchange="updatePendingConfig('${entry.id}','platform_folder',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">
                     <option value="" ${!cfg.platform_folder ? 'selected' : ''}>Không chia</option><option value="TikTok" ${cfg.platform_folder === 'TikTok' ? 'selected' : ''}>TikTok</option><option value="YouTube" ${cfg.platform_folder === 'YouTube' ? 'selected' : ''}>YouTube</option><option value="Facebook" ${cfg.platform_folder === 'Facebook' ? 'selected' : ''}>Facebook</option><option value="Douyin" ${cfg.platform_folder === 'Douyin' ? 'selected' : ''}>Douyin</option>
                 </select>
             </div>
-            <div class="grid grid-cols-2 gap-2">
-                <select onchange="updatePendingConfig('${entry.id}','subtitle_cover_mode',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">
-                    <option value="text_box_only" ${cfg.subtitle_cover_mode !== 'none' ? 'selected' : ''}>Chỉ hộp chữ</option><option value="none" ${cfg.subtitle_cover_mode === 'none' ? 'selected' : ''}>Không dùng</option>
-                </select>
-                <input type="number" min="0" max="1" step="0.01" value="${cfg.subtitle_bg_opacity}" onchange="updatePendingConfig('${entry.id}','subtitle_bg_opacity',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-100">
-            </div>
+
             <div class="flex items-center justify-between gap-2 text-[10px] text-slate-400">
                 <label><input type="checkbox" ${cfg.tts_enabled ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','tts_enabled',this.checked)"> TTS</label>
                 <label><input type="checkbox" ${cfg.subtitles_enabled ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','subtitles_enabled',this.checked)"> Phụ đề</label>
@@ -1143,7 +1166,7 @@ const DEFAULT_SUBTITLE_LAYOUT = { x: 0.08, y: 0.72, width: 0.84, height: 0.11 };
 let subtitleLayoutEditorReady = false;
 let subtitleLayoutEditorListenersBound = false;
 let subtitleLayoutEditorJobId = null;
-let subtitleLayoutState = { ...DEFAULT_SUBTITLE_LAYOUT, background_opacity: 0.42, preset: 'middle' };
+let subtitleLayoutState = { ...DEFAULT_SUBTITLE_LAYOUT, background_opacity: 0.20, preset: 'middle' };
 let isEditingSubtitleLayout = false;
 let subtitleLayoutSubmitMode = 'initial';
 
@@ -1175,11 +1198,11 @@ function applySubtitleLayoutBox(layout = DEFAULT_SUBTITLE_LAYOUT) {
 }
 
 function saveSubtitleLayoutLocalState() {
-    const opacity = parseFloat(document.getElementById('subtitle-layout-opacity')?.value || subtitleLayoutState.background_opacity || '0.42');
+    const opacity = parseFloat(document.getElementById('subtitle-layout-opacity')?.value || subtitleLayoutState.background_opacity || '0.20');
     subtitleLayoutState = {
         ...subtitleLayoutState,
         ...getSubtitleLayoutBoxPercent(),
-        background_opacity: Number.isFinite(opacity) ? opacity : 0.42
+        background_opacity: Number.isFinite(opacity) ? opacity : 0.20
     };
 }
 
@@ -1187,30 +1210,25 @@ function updateSubtitleLayoutSummary(job) {
     const summary = document.getElementById('subtitle-layout-summary');
     if (!summary) return;
     const snapshot = job?.config_snapshot || {};
-    const opacity = Math.round((snapshot.subtitle_bg_opacity ?? subtitleLayoutState.background_opacity ?? 0.42) * 100);
-    const preset = snapshot.subtitle_preset || subtitleLayoutState.preset || 'middle';
-    const presetLabel = { low: 'Thấp', middle: 'Giữa', high: 'Cao', custom: 'Tùy chỉnh' }[preset] || preset;
-    summary.innerText = `Preset: ${presetLabel} | Opacity: ${opacity}%`;
+    const opacity = Math.round((snapshot.subtitle_bg_opacity ?? subtitleLayoutState.background_opacity ?? 0.20) * 100);
+    summary.innerText = `Opacity: ${opacity}%`;
 }
 
 function resetSubtitleLayoutBox() {
-    subtitleLayoutState = { ...DEFAULT_SUBTITLE_LAYOUT, background_opacity: subtitleLayoutState.background_opacity ?? 0.42, preset: 'middle' };
+    subtitleLayoutState = { ...DEFAULT_SUBTITLE_LAYOUT, background_opacity: subtitleLayoutState.background_opacity ?? 0.20, preset: 'custom' };
     applySubtitleLayoutBox(DEFAULT_SUBTITLE_LAYOUT);
-}
-
-function setSubtitlePreset(preset) {
-    const presets = {
-        low: { x: 0.08, y: 0.78, width: 0.84, height: 0.10 },
-        middle: { x: 0.08, y: 0.72, width: 0.84, height: 0.11 },
-        high: { x: 0.08, y: 0.64, width: 0.84, height: 0.11 }
-    };
-    subtitleLayoutState = { ...subtitleLayoutState, ...(presets[preset] || DEFAULT_SUBTITLE_LAYOUT), preset };
-    applySubtitleLayoutBox(subtitleLayoutState);
 }
 
 function previewSubtitleBackplateOpacity(value) {
     const box = document.getElementById('subtitle-layout-box');
-    if (box) box.style.background = `rgba(0,0,0,${value})`;
+    if (box) {
+        const plate = box.querySelector('.subtitle-plate-bg');
+        if (plate) {
+            plate.style.background = `rgba(0,0,0,${value})`;
+            plate.style.backdropFilter = `blur(10px)`;
+            plate.style.webkitBackdropFilter = `blur(10px)`;
+        }
+    }
     subtitleLayoutState.background_opacity = parseFloat(value) || subtitleLayoutState.background_opacity;
 }
 
@@ -1234,7 +1252,7 @@ function escapeHtml(value) {
 
 function updateSubtitlePreviewText() {
     const box = document.getElementById('subtitle-layout-box');
-    const textWrap = box?.querySelector('div.pointer-events-none');
+    const textWrap = box?.querySelector('.subtitle-plate-bg');
     if (!textWrap) return;
     const sample = (selectedSegments || []).find(seg => (seg.translated_text || seg.text || '').trim());
     const text = (sample?.translated_text || sample?.text || 'Ba năm trước, khởi nghiệp thất bại, nợ').trim();
@@ -1255,7 +1273,7 @@ function setupSubtitleLayoutEditor(job) {
     if (isNewEditorJob) {
         subtitleLayoutEditorJobId = job.job_id;
         const saved = job.config_snapshot?.subtitle_layout || DEFAULT_SUBTITLE_LAYOUT;
-        const savedOpacity = job.config_snapshot?.subtitle_bg_opacity ?? 0.42;
+        const savedOpacity = job.config_snapshot?.subtitle_bg_opacity ?? 0.20;
         const savedPreset = job.config_snapshot?.subtitle_preset || 'middle';
         subtitleLayoutState = { ...DEFAULT_SUBTITLE_LAYOUT, ...saved, background_opacity: savedOpacity, preset: savedPreset };
         if (!video.src || !video.src.includes(job.job_id)) {
@@ -1265,6 +1283,73 @@ function setupSubtitleLayoutEditor(job) {
         if (opacityInput) opacityInput.value = subtitleLayoutState.background_opacity;
         applySubtitleLayoutBox(subtitleLayoutState);
         previewSubtitleBackplateOpacity(subtitleLayoutState.background_opacity);
+        
+        // Populate inputs if saved in snapshot
+        const selectAsset = document.getElementById('subtitle-asset-select');
+        const opacityInputAsset = document.getElementById('subtitle-asset-opacity');
+        const assetEl = document.getElementById('subtitle-asset-box');
+        
+        const savedAsset = job.config_snapshot?.asset || '';
+        const savedAssetLayout = job.config_snapshot?.asset_layout || { x_percent: 0.40, y_percent: 0.08, width_percent: 0.20, height_percent: 0.08, opacity: 1.0 };
+        
+        subtitleAssetBoxState = { ...savedAssetLayout };
+        
+        // Dynamically load assets (combines global and channel-specific folders)
+        if (selectAsset) {
+            selectAsset.innerHTML = '<option value="">Không sử dụng</option>';
+            fetch(`/api/jobs/${job.job_id}/assets`)
+                .then(r => r.json())
+                .then(assets => {
+                    (assets || []).forEach(logo => {
+                        const opt = new Option(logo, logo);
+                        selectAsset.add(opt);
+                    });
+                    selectAsset.value = savedAsset;
+                    onChangeSubtitleAsset(savedAsset);
+                })
+                .catch(err => console.error("Failed to load job-specific assets:", err));
+        }
+        
+        if (opacityInputAsset) {
+            opacityInputAsset.value = subtitleAssetBoxState.opacity;
+            onChangeSubtitleAssetOpacity(subtitleAssetBoxState.opacity);
+        }
+        
+        if (assetEl) {
+            assetEl.style.left = `${subtitleAssetBoxState.x_percent * 100}%`;
+            assetEl.style.top = `${subtitleAssetBoxState.y_percent * 100}%`;
+            assetEl.style.width = `${subtitleAssetBoxState.width_percent * 100}%`;
+            assetEl.style.height = `${subtitleAssetBoxState.height_percent * 100}%`;
+        }
+        
+        // Clear any existing blur boxes from previous jobs
+        document.querySelectorAll('.subtitle-blur-box-instance').forEach(el => el.remove());
+        subtitleBlurBoxes = [];
+        nextBlurBoxId = 1;
+        activeBlurBoxId = null;
+        
+        // Load multiple blur masks from snapshot
+        const savedBlurMasks = job.config_snapshot?.blur_masks || [];
+        savedBlurMasks.forEach(mask => {
+            const newBox = {
+                id: nextBlurBoxId++,
+                x_percent: mask.x_percent ?? 0.40,
+                y_percent: mask.y_percent ?? 0.15,
+                width_percent: mask.width_percent ?? 0.20,
+                height_percent: mask.height_percent ?? 0.08,
+                opacity: mask.opacity ?? 0.6
+            };
+            subtitleBlurBoxes.push(newBox);
+            createBlurBoxElement(newBox);
+        });
+        
+        renderBlurMasksList();
+        if (subtitleBlurBoxes.length > 0) {
+            selectBlurMask(subtitleBlurBoxes[0].id);
+        } else {
+            const controls = document.getElementById('active-blur-controls');
+            if (controls) controls.classList.add('hidden');
+        }
     }
     updateSubtitlePreviewText();
 
@@ -1317,7 +1402,7 @@ function setupSubtitleLayoutEditor(job) {
         }
     });
 
-    document.addEventListener('pointerup', (e) => {
+        document.addEventListener('pointerup', (e) => {
         if (mode) {
             e.preventDefault();
             e.stopPropagation();
@@ -1329,6 +1414,97 @@ function setupSubtitleLayoutEditor(job) {
             isEditingSubtitleLayout = false;
         }, 150);
     });
+
+    // Setup draggable and resizable asset box in review screen
+    const assetBox = document.getElementById('subtitle-asset-box');
+    const assetResize = document.getElementById('subtitle-asset-resize');
+    if (assetBox && assetResize) {
+        let dragging = false;
+        let resizing = false;
+        let startX = 0, startY = 0;
+        let startLeft = 0, startTop = 0;
+        let startWidth = 0, startHeight = 0;
+        
+        assetBox.addEventListener('pointerdown', (e) => {
+            if (e.target === assetResize) return;
+            e.preventDefault();
+            e.stopPropagation();
+            dragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = parseFloat(assetBox.style.left) || 0;
+            startTop = parseFloat(assetBox.style.top) || 0;
+            
+            const onAssetMove = (moveEvent) => {
+                if (!dragging) return;
+                const rect = wrap.getBoundingClientRect();
+                let deltaX = moveEvent.clientX - startX;
+                let deltaY = moveEvent.clientY - startY;
+                
+                let newLeftPx = (startLeft / 100) * rect.width + deltaX;
+                let newTopPx = (startTop / 100) * rect.height + deltaY;
+                
+                newLeftPx = Math.max(0, Math.min(rect.width - assetBox.offsetWidth, newLeftPx));
+                newTopPx = Math.max(0, Math.min(rect.height - assetBox.offsetHeight, newTopPx));
+                
+                subtitleAssetBoxState.x_percent = newLeftPx / rect.width;
+                subtitleAssetBoxState.y_percent = newTopPx / rect.height;
+                
+                assetBox.style.left = `${subtitleAssetBoxState.x_percent * 100}%`;
+                assetBox.style.top = `${subtitleAssetBoxState.y_percent * 100}%`;
+            };
+            
+            const onAssetUp = () => {
+                dragging = false;
+                document.removeEventListener('pointermove', onAssetMove);
+                document.removeEventListener('pointerup', onAssetUp);
+            };
+            
+            document.addEventListener('pointermove', onAssetMove);
+            document.addEventListener('pointerup', onAssetUp);
+        });
+        
+        assetResize.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            resizing = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startWidth = parseFloat(assetBox.style.width) || 20;
+            startHeight = parseFloat(assetBox.style.height) || 8;
+            
+            const onAssetResizeMove = (moveEvent) => {
+                if (!resizing) return;
+                const rect = wrap.getBoundingClientRect();
+                let deltaX = moveEvent.clientX - startX;
+                let deltaY = moveEvent.clientY - startY;
+                
+                let newWidthPx = (startWidth / 100) * rect.width + deltaX;
+                let newHeightPx = (startHeight / 100) * rect.height + deltaY;
+                
+                let leftPx = parseFloat(assetBox.style.left) / 100 * rect.width;
+                let topPx = parseFloat(assetBox.style.top) / 100 * rect.height;
+                
+                newWidthPx = Math.max(rect.width * 0.05, Math.min(rect.width - leftPx, newWidthPx));
+                newHeightPx = Math.max(rect.height * 0.02, Math.min(rect.height - topPx, newHeightPx));
+                
+                subtitleAssetBoxState.width_percent = newWidthPx / rect.width;
+                subtitleAssetBoxState.height_percent = newHeightPx / rect.height;
+                
+                assetBox.style.width = `${subtitleAssetBoxState.width_percent * 100}%`;
+                assetBox.style.height = `${subtitleAssetBoxState.height_percent * 100}%`;
+            };
+            
+            const onAssetResizeUp = () => {
+                resizing = false;
+                document.removeEventListener('pointermove', onAssetResizeMove);
+                document.removeEventListener('pointerup', onAssetResizeUp);
+            };
+            
+            document.addEventListener('pointermove', onAssetResizeMove);
+            document.addEventListener('pointerup', onAssetResizeUp);
+        });
+    }
 }
 
 async function continueRenderWithSubtitleLayout() {
@@ -1345,18 +1521,35 @@ async function continueRenderWithSubtitleLayout() {
         const endpoint = subtitleLayoutSubmitMode === 'rerender'
             ? `/api/jobs/${selectedJobId}/rerender-subtitle-layout`
             : `/api/jobs/${selectedJobId}/subtitle-layout`;
+        const assetName = document.getElementById('subtitle-asset-select')?.value || '';
+        
+        const payload = {
+            subtitle_x_percent: layout.x,
+            subtitle_y_percent: layout.y,
+            subtitle_width_percent: layout.width,
+            subtitle_height_percent: layout.height,
+            subtitle_bg_opacity: opacity,
+            background_opacity: opacity,
+            preset: layout.preset || 'custom'
+        };
+        
+        if (assetName) {
+            payload.asset = assetName;
+            payload.asset_x_percent = subtitleAssetBoxState.x_percent;
+            payload.asset_y_percent = subtitleAssetBoxState.y_percent;
+            payload.asset_width_percent = subtitleAssetBoxState.width_percent;
+            payload.asset_height_percent = subtitleAssetBoxState.height_percent;
+            payload.asset_opacity = subtitleAssetBoxState.opacity;
+        } else {
+            payload.asset = "";
+        }
+        
+        payload.blur_masks = subtitleBlurBoxes;
+        
         const resp = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                subtitle_x_percent: layout.x,
-                subtitle_y_percent: layout.y,
-                subtitle_width_percent: layout.width,
-                subtitle_height_percent: layout.height,
-                subtitle_bg_opacity: opacity,
-                background_opacity: opacity,
-                preset: layout.preset || 'custom'
-            })
+            body: JSON.stringify(payload)
         });
         if (!resp.ok) {
             const err = await resp.json();
@@ -1450,6 +1643,7 @@ async function openDetailPanel(jobId) {
     document.getElementById('subtitle-layout-section')?.classList.add('hidden');
     document.getElementById('detail-logs-section')?.classList.remove('hidden');
     updatePipelineSteps(job);
+    renderOutputsList(job);
 
     const panel = document.getElementById('detail-panel');
     panel.classList.remove('hidden');
@@ -1461,6 +1655,7 @@ async function openDetailPanel(jobId) {
 
         if (!isEditingSubtitleLayout) {
             updatePipelineSteps(freshJob);
+            renderOutputsList(freshJob);
         }
 
         const logResp = await fetch(`/api/jobs/${selectedJobId}/logs`);
@@ -1479,6 +1674,16 @@ async function openDetailPanel(jobId) {
             }
         } else {
             document.getElementById('subtitle-layout-section')?.classList.add('hidden');
+        }
+
+        const activeStatuses = new Set(['queued', 'processing', 'rendering', 'running']);
+        const rerunBtn = document.getElementById('btn-detail-rerun');
+        if (rerunBtn) {
+            if (!activeStatuses.has(freshJob.status) && freshJob.status !== 'created') {
+                rerunBtn.classList.remove('hidden');
+            } else {
+                rerunBtn.classList.add('hidden');
+            }
         }
 
         if (freshJob.status === 'completed') {
@@ -1591,7 +1796,8 @@ function renderJobsList() {
             ? `<button onclick="resumeJob('${job.job_id}')" class="hover:bg-emerald-500/10 text-emerald-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 transition-all">Bắt đầu xử lý</button>`
             : activeStatuses.has(job.status)
                 ? `<button onclick="cancelJob('${job.job_id}')" class="hover:bg-amber-500/10 text-amber-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-500/20 hover:border-amber-500/40 transition-all">Ngắt</button>`
-                : `<button onclick="deleteJob('${job.job_id}')" class="hover:bg-rose-500/10 text-rose-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-500/20 hover:border-rose-500/40 transition-all">Xóa</button>`;
+                : `<button onclick="rerunJob('${job.job_id}')" class="hover:bg-purple-500/10 text-purple-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all">Chạy lại</button>
+                   <button onclick="deleteJob('${job.job_id}')" class="hover:bg-rose-500/10 text-rose-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-500/20 hover:border-rose-500/40 transition-all">Xóa</button>`;
         const channelDropdown = job.status === 'completed'
             ? `<select onchange="publishJob('${job.job_id}', this.value); this.selectedIndex = 0;" class="appearance-none bg-slate-900 hover:bg-slate-800 text-slate-200 text-[10px] font-semibold py-1.5 pl-3 pr-8 rounded-lg cursor-pointer transition-all focus:outline-none border border-slate-700/60 hover:border-purple-500/50">
                     <option value="" disabled selected>${channelLabel ? 'Kênh: ' + channelLabel : 'Chuyển vào kênh'}</option>
@@ -1741,4 +1947,1010 @@ function closeDetailPanel() {
         const previewPlayer = document.getElementById('subtitle-preview-video');
         if (previewPlayer) previewPlayer.src = '';
     }, 300);
+}
+
+function renderOutputsList(job) {
+    const container = document.getElementById('outputs-list-container');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const snapshot = job.config_snapshot || {};
+    const selectedOutputs = snapshot.selected_outputs || [];
+    
+    if (selectedOutputs.length === 0) {
+        container.innerHTML = '<div class="text-[10px] text-slate-500 text-center py-2">Chưa cấu hình output nào.</div>';
+        return;
+    }
+    
+    selectedOutputs.forEach(outType => {
+        const outData = job.outputs?.[outType] || {
+            output_type: outType,
+            render_status: 'pending',
+            upload_status: 'pending'
+        };
+        
+        const friendlyOutNames = {
+            "fb_reels": "Facebook Reels (9:16)",
+            "yt_shorts": "YouTube Shorts (9:16)",
+            "yt_video": "YouTube Video (16:9)"
+        };
+        
+        const friendlyName = friendlyOutNames[outType] || outType;
+        
+        let statusBadge = '';
+        if (outData.render_status === 'completed') {
+            statusBadge = '<span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/10 px-2 py-0.5 rounded-lg font-bold">Hoàn thành</span>';
+        } else if (outData.render_status === 'rendering') {
+            statusBadge = '<span class="text-[10px] bg-purple-500/20 text-purple-400 border border-purple-500/10 px-2 py-0.5 rounded-lg font-bold animate-pulse">Đang Render...</span>';
+        } else if (outData.render_status === 'failed') {
+            statusBadge = '<span class="text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/10 px-2 py-0.5 rounded-lg font-bold">Thất bại</span>';
+        } else {
+            statusBadge = '<span class="text-[10px] bg-slate-800 text-slate-400 border border-slate-700/60 px-2 py-0.5 rounded-lg font-bold">Đang chờ</span>';
+        }
+        
+        const div = document.createElement('div');
+        div.className = "flex flex-col gap-2 p-3 bg-white/5 border border-white/5 rounded-xl text-xs";
+        
+        let buttonsHtml = '';
+        if (outData.render_status === 'completed') {
+            buttonsHtml += `
+                <button onclick="playOutputVideo('${job.job_id}', '${outType}')" class="bg-purple-600 hover:bg-purple-500 text-white text-[10px] px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 transition-all active:scale-[0.98]">
+                    ▶ Xem & Tải
+                </button>
+            `;
+        }
+        
+        // Show Crop/Reframe button if target is 9:16 and input is horizontal
+        const isHorizontal = job.input_aspect_type === 'horizontal';
+        const isVerticalOutput = outType === 'fb_reels' || outType === 'yt_shorts';
+        if (isHorizontal && isVerticalOutput) {
+            buttonsHtml += `
+                <button onclick="openCropEditor('${job.job_id}', '${outType}')" class="bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 text-[10px] px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 transition-all active:scale-[0.98]">
+                    ✂️ Cắt 9:16
+                </button>
+            `;
+        }
+        
+        buttonsHtml += `
+            <button onclick="renderSpecificOutput('${job.job_id}', '${outType}')" class="bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 text-[10px] px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 transition-all active:scale-[0.98] ml-auto">
+                ⚡ Render Lại
+            </button>
+        `;
+        
+        // Output metadata for copy
+        let metadataHtml = '';
+        if (job.steps.metadata === 'completed') {
+            if (outType === 'yt_shorts') {
+                metadataHtml = `
+                    <div class="mt-2 flex flex-col gap-2 border-t border-white/5 pt-2.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-semibold uppercase">Tiêu đề YouTube Shorts</span>
+                            <button onclick="copyText(this, '${escapeHtml(snapshot.youtube_shorts_title || '')}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300">${escapeHtml(snapshot.youtube_shorts_title || '')}</div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-semibold uppercase">Mô tả Shorts</span>
+                            <button onclick="copyText(this, '${escapeHtml(snapshot.youtube_shorts_description || '')}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300 whitespace-pre-wrap">${escapeHtml(snapshot.youtube_shorts_description || '')}</div>
+                    </div>
+                `;
+            } else if (outType === 'yt_video') {
+                metadataHtml = `
+                    <div class="mt-2 flex flex-col gap-2 border-t border-white/5 pt-2.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-semibold uppercase">Tiêu đề YouTube Video</span>
+                            <button onclick="copyText(this, '${escapeHtml(snapshot.youtube_video_title || '')}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300">${escapeHtml(snapshot.youtube_video_title || '')}</div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-semibold uppercase">Mô tả YouTube Video</span>
+                            <button onclick="copyText(this, '${escapeHtml(snapshot.youtube_video_description || '')}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300 whitespace-pre-wrap">${escapeHtml(snapshot.youtube_video_description || '')}</div>
+                    </div>
+                `;
+            } else if (outType === 'fb_reels') {
+                metadataHtml = `
+                    <div class="mt-2 flex flex-col gap-2 border-t border-white/5 pt-2.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] text-slate-400 font-semibold uppercase">Caption Reels</span>
+                            <button onclick="copyText(this, '${escapeHtml(snapshot.facebook_caption || '')} ${escapeHtml(snapshot.facebook_hashtags || '')}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300 whitespace-pre-wrap">${escapeHtml(snapshot.facebook_caption || '')} ${escapeHtml(snapshot.facebook_hashtags || '')}</div>
+                    </div>
+                `;
+            }
+        }
+        
+        div.innerHTML = `
+            <div class="flex justify-between items-center">
+                <span class="font-semibold text-slate-200">${friendlyName}</span>
+                ${statusBadge}
+            </div>
+            <div class="flex gap-2 items-center">
+                ${buttonsHtml}
+            </div>
+            ${metadataHtml}
+        `;
+        container.appendChild(div);
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;")
+        .replace(/\n/g, "\\n");
+}
+
+function copyText(btn, text) {
+    navigator.clipboard.writeText(text.replace(/\\n/g, "\n")).then(() => {
+        const originalText = btn.innerText;
+        btn.innerText = "Copied!";
+        setTimeout(() => {
+            btn.innerText = originalText;
+        }, 1500);
+    });
+}
+
+function playOutputVideo(jobId, outputType) {
+    const video = document.getElementById('detail-video-player');
+    video.src = `/api/jobs/${jobId}/video?output_type=${outputType}`;
+    video.play();
+    showToast(`Đang phát video format ${outputType}`, "success");
+}
+
+let isDraggingCrop = false;
+let dragStartLeft = 0;
+let dragStartX = 0;
+let activeCropJobId = null;
+let activeCropOutputType = null;
+
+function openCropEditor(jobId, outputType) {
+    activeCropJobId = jobId;
+    activeCropOutputType = outputType;
+    
+    const job = jobsData.find(j => j.job_id === jobId);
+    if (!job) return;
+    
+    const snapshot = job.config_snapshot || {};
+    const reframeMode = snapshot[`${outputType}_reframe_mode`] || 'manual_crop';
+    document.getElementById('crop-reframe-mode').value = reframeMode;
+    toggleReframeMode(reframeMode);
+    
+    const video = document.getElementById('crop-video-player');
+    video.src = `/api/jobs/${jobId}/preview-video`;
+    video.play();
+    
+    const overlay = document.getElementById('crop-overlay-box');
+    const shadeLeft = document.getElementById('crop-shade-left');
+    const shadeRight = document.getElementById('crop-shade-right');
+    
+    // Load current crop coordinates if any
+    const crop = snapshot[`${outputType}_crop`] || {
+        crop_x_percent: 0.342,
+        crop_y_percent: 0.0,
+        crop_width_percent: 0.316,
+        crop_height_percent: 1.0
+    };
+    
+    const workspaceWidth = 640;
+    const overlayWidth = 202.5; // 360 * 9 / 16
+    
+    const currentLeft = crop.crop_x_percent * workspaceWidth;
+    overlay.style.left = `${currentLeft}px`;
+    overlay.style.width = `${overlayWidth}px`;
+    
+    shadeLeft.style.width = `${currentLeft}px`;
+    shadeRight.style.left = `${currentLeft + overlayWidth}px`;
+    shadeRight.style.width = `${workspaceWidth - (currentLeft + overlayWidth)}px`;
+    
+    document.getElementById('crop-modal').classList.remove('hidden');
+    
+    // Drag setup
+    overlay.onmousedown = (e) => {
+        e.preventDefault();
+        isDraggingCrop = true;
+        dragStartX = e.clientX;
+        dragStartLeft = parseFloat(overlay.style.left) || 0;
+        
+        document.onmousemove = (moveEvent) => {
+            if (!isDraggingCrop) return;
+            let deltaX = moveEvent.clientX - dragStartX;
+            let newLeft = dragStartLeft + deltaX;
+            
+            // Bound check
+            newLeft = Math.max(0, Math.min(workspaceWidth - overlayWidth, newLeft));
+            overlay.style.left = `${newLeft}px`;
+            
+            shadeLeft.style.width = `${newLeft}px`;
+            shadeRight.style.left = `${newLeft + overlayWidth}px`;
+            shadeRight.style.width = `${workspaceWidth - (newLeft + overlayWidth)}px`;
+        };
+        
+        document.onmouseup = () => {
+            isDraggingCrop = false;
+            document.onmousemove = null;
+            document.onmouseup = null;
+        };
+    };
+}
+
+function closeCropModal() {
+    document.getElementById('crop-modal').classList.add('hidden');
+    const video = document.getElementById('crop-video-player');
+    video.pause();
+    video.src = '';
+}
+
+function resetCrop() {
+    const workspaceWidth = 640;
+    const overlayWidth = 202.5;
+    const centerLeft = (workspaceWidth - overlayWidth) / 2;
+    
+    const overlay = document.getElementById('crop-overlay-box');
+    const shadeLeft = document.getElementById('crop-shade-left');
+    const shadeRight = document.getElementById('crop-shade-right');
+    
+    overlay.style.left = `${centerLeft}px`;
+    shadeLeft.style.width = `${centerLeft}px`;
+    shadeRight.style.left = `${centerLeft + overlayWidth}px`;
+    shadeRight.style.width = `${workspaceWidth - (centerLeft + overlayWidth)}px`;
+}
+
+async function saveCrop() {
+    const overlay = document.getElementById('crop-overlay-box');
+    const left = parseFloat(overlay.style.left) || 0;
+    
+    const workspaceWidth = 640;
+    const overlayWidth = 202.5;
+    
+    // Calculate percentages
+    const cropX = left / workspaceWidth;
+    const cropY = 0.0;
+    const cropW = overlayWidth / workspaceWidth;
+    const cropH = 1.0;
+    
+    const reframeMode = document.getElementById('crop-reframe-mode').value;
+    
+    await saveCropConfig(activeCropJobId, activeCropOutputType, reframeMode, cropX, cropY, cropW, cropH);
+    closeCropModal();
+}
+
+function toggleReframeMode(val) {
+    const overlay = document.getElementById('crop-overlay-box');
+    const shadeLeft = document.getElementById('crop-shade-left');
+    const shadeRight = document.getElementById('crop-shade-right');
+    if (val === 'blur_background') {
+        overlay.classList.add('hidden');
+        shadeLeft.classList.add('hidden');
+        shadeRight.classList.add('hidden');
+    } else {
+        overlay.classList.remove('hidden');
+        shadeLeft.classList.remove('hidden');
+        shadeRight.classList.remove('hidden');
+    }
+}
+
+async function checkApiKeysOnStartup() {
+    try {
+        const response = await fetch('/api/config/key-check');
+        if (response.ok) {
+            const data = await response.json();
+            if (!data.configured) {
+                // Main key is empty: highlight config button and alert
+                const btn = document.getElementById('btn-tab-keys');
+                if (btn) {
+                    btn.classList.add('animate-pulse', 'border', 'border-purple-500', 'text-purple-300');
+                }
+                showToast("Cảnh báo: Chưa cấu hình Gemini API Key chính!", "error");
+            }
+            
+            // Prefill inputs
+            document.getElementById('gemini-key-1').value = data.gemini_api_key || '';
+            for (let i = 2; i <= 10; i++) {
+                const el = document.getElementById(`gemini-key-${i}`);
+                if (el) el.value = data[`gemini_api_key_${i}`] || '';
+            }
+        }
+    } catch (e) {
+        console.error("Failed to check keys:", e);
+    }
+}
+
+function openKeysModal() {
+    document.getElementById('keys-modal').classList.remove('hidden');
+    checkKeysStatus();
+}
+
+async function checkKeysStatus() {
+    for (let i = 1; i <= 10; i++) {
+        const el = document.getElementById(`key-status-${i}`);
+        if (el) {
+            el.className = "text-[9px] font-bold text-indigo-400 float-right animate-pulse";
+            el.innerText = "⏳ Đang kiểm tra...";
+        }
+    }
+    
+    try {
+        const res = await fetch('/api/config/key-status');
+        if (res.ok) {
+            const data = await res.json();
+            for (let i = 1; i <= 10; i++) {
+                const status = data[`key_${i}`];
+                const el = document.getElementById(`key-status-${i}`);
+                if (el) {
+                    el.className = "text-[9px] font-bold float-right";
+                    el.classList.remove('animate-pulse');
+                    if (status === 'hoat_dong') {
+                        el.classList.add('text-emerald-400');
+                        el.innerText = '🟢 Hoạt động';
+                    } else if (status === 'het_quota') {
+                        el.classList.add('text-amber-400');
+                        el.innerText = '🟡 Hết quota (429)';
+                    } else if (status === 'khong_hop_le') {
+                        el.classList.add('text-rose-400');
+                        el.innerText = '❌ Không hợp lệ';
+                    } else if (status === 'chua_cau_hinh') {
+                        el.classList.add('text-slate-500');
+                        el.innerText = '⚪ Chưa nhập';
+                    } else {
+                        el.classList.add('text-rose-400');
+                        el.innerText = status || '❌ Lỗi';
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Failed to check keys status:", e);
+        for (let i = 1; i <= 10; i++) {
+            const el = document.getElementById(`key-status-${i}`);
+            if (el) {
+                el.className = "text-[9px] font-bold text-rose-500 float-right";
+                el.innerText = "❌ Lỗi kết nối";
+            }
+        }
+    }
+}
+
+function closeKeysModal() {
+    document.getElementById('keys-modal').classList.add('hidden');
+}
+
+async function saveGeminiKeys() {
+    const k1 = document.getElementById('gemini-key-1').value.trim();
+    const payload = { key: k1 };
+    
+    for (let i = 2; i <= 10; i++) {
+        const el = document.getElementById(`gemini-key-${i}`);
+        payload[`key${i}`] = el ? el.value.trim() : '';
+    }
+    
+    if (!k1) {
+        showToast("Lỗi: Gemini API Key chính không được để trống!", "error");
+        return;
+    }
+    
+    showToast("Đang lưu API keys...", "info");
+    try {
+        const res = await fetch('/api/config/save-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            showToast("Đã lưu cấu hình xoay tua API Keys thành công!", "success");
+            
+            // Remove pulse highlight from button if fixed
+            const btn = document.getElementById('btn-tab-keys');
+            if (btn) {
+                btn.classList.remove('animate-pulse', 'border', 'border-purple-500', 'text-purple-300');
+            }
+            
+            closeKeysModal();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || "Không thể lưu API Keys", "error");
+        }
+    } catch (e) {
+        showToast("Lỗi kết nối: " + e.message, "error");
+    }
+}
+
+let isDraggingLogo = false;
+let logoDragStartX = 0;
+let logoDragStartY = 0;
+let logoDragStartLeft = 0;
+let logoDragStartTop = 0;
+
+window.logoLayout = null; // Stores { x_percent, y_percent }
+
+function openLogoPositionEditor() {
+    const modal = document.getElementById('logo-position-modal');
+    if (!modal) return;
+    
+    const container = document.getElementById('logo-workspace-container');
+    const box = document.getElementById('logo-draggable-box');
+    const video = document.getElementById('logo-position-video-player');
+    
+    // Set video background if any video is queued
+    if (pendingVideoItems && pendingVideoItems.length > 0) {
+        const item = pendingVideoItems[0];
+        // If it's a local path, we can request preview
+        if (item.url && !item.url.startsWith('http')) {
+            video.src = `/api/videos/preview?path=${encodeURIComponent(item.url)}`;
+            video.play().catch(e => console.log("Failed playing preview:", e));
+        } else {
+            video.src = '';
+        }
+    } else {
+        video.src = '';
+    }
+    
+    // Load pre-existing layout if any
+    const layout = window.logoLayout || { x_percent: 0.4375, y_percent: 0.055 };
+    
+    const workspaceWidth = 640;
+    const workspaceHeight = 360;
+    const boxWidth = 80;
+    const boxHeight = 45;
+    
+    const currentLeft = layout.x_percent * workspaceWidth;
+    const currentTop = layout.y_percent * workspaceHeight;
+    
+    box.style.left = `${currentLeft}px`;
+    box.style.top = `${currentTop}px`;
+    
+    document.getElementById('logo-pos-x-val').innerText = `${(layout.x_percent * 100).toFixed(1)}%`;
+    document.getElementById('logo-pos-y-val').innerText = `${(layout.y_percent * 100).toFixed(1)}%`;
+    
+    modal.classList.remove('hidden');
+    
+    // Setup mouse dragging logic
+    box.onmousedown = (e) => {
+        e.preventDefault();
+        isDraggingLogo = true;
+        
+        logoDragStartX = e.clientX;
+        logoDragStartY = e.clientY;
+        logoDragStartLeft = parseFloat(box.style.left) || 0;
+        logoDragStartTop = parseFloat(box.style.top) || 0;
+        
+        document.onmousemove = (moveEvent) => {
+            if (!isDraggingLogo) return;
+            
+            let deltaX = moveEvent.clientX - logoDragStartX;
+            let deltaY = moveEvent.clientY - logoDragStartY;
+            
+            let newLeft = logoDragStartLeft + deltaX;
+            let newTop = logoDragStartTop + deltaY;
+            
+            // Bounds check
+            newLeft = Math.max(0, Math.min(workspaceWidth - boxWidth, newLeft));
+            newTop = Math.max(0, Math.min(workspaceHeight - boxHeight, newTop));
+            
+            box.style.left = `${newLeft}px`;
+            box.style.top = `${newTop}px`;
+            
+            // Update UI coordinates labels
+            const xPct = newLeft / workspaceWidth;
+            const yPct = newTop / workspaceHeight;
+            document.getElementById('logo-pos-x-val').innerText = `${(xPct * 100).toFixed(1)}%`;
+            document.getElementById('logo-pos-y-val').innerText = `${(yPct * 100).toFixed(1)}%`;
+        };
+        
+        document.onmouseup = () => {
+            isDraggingLogo = false;
+            document.onmousemove = null;
+            document.onmouseup = null;
+        };
+    };
+}
+
+function closeLogoPositionModal() {
+    document.getElementById('logo-position-modal').classList.add('hidden');
+    const video = document.getElementById('logo-position-video-player');
+    video.pause();
+    video.src = '';
+}
+
+function resetLogoPosition() {
+    const workspaceWidth = 640;
+    const workspaceHeight = 360;
+    const boxWidth = 80;
+    const boxHeight = 45;
+    
+    const centerLeft = (workspaceWidth - boxWidth) / 2;
+    const topOffset = 20; // 5.5%
+    
+    const box = document.getElementById('logo-draggable-box');
+    box.style.left = `${centerLeft}px`;
+    box.style.top = `${topOffset}px`;
+    
+    document.getElementById('logo-pos-x-val').innerText = `${((centerLeft / workspaceWidth) * 100).toFixed(1)}%`;
+    document.getElementById('logo-pos-y-val').innerText = `${((topOffset / workspaceHeight) * 100).toFixed(1)}%`;
+}
+
+function saveLogoPosition() {
+    const box = document.getElementById('logo-draggable-box');
+    const left = parseFloat(box.style.left) || 0;
+    const top = parseFloat(box.style.top) || 0;
+    
+    const workspaceWidth = 640;
+    const workspaceHeight = 360;
+    
+    const xPct = left / workspaceWidth;
+    const yPct = top / workspaceHeight;
+    
+    window.logoLayout = {
+        x_percent: parseFloat(xPct.toFixed(4)),
+        y_percent: parseFloat(yPct.toFixed(4))
+    };
+    
+    showToast("Đã lưu vị trí logo thành công!", "success");
+    closeLogoPositionModal();
+}
+
+let subtitleAssetBoxState = { x_percent: 0.40, y_percent: 0.08, width_percent: 0.20, height_percent: 0.08, opacity: 1.0 };
+
+function onChangeSubtitleAsset(assetName) {
+    const box = document.getElementById('subtitle-asset-box');
+    const opacityContainer = document.getElementById('subtitle-asset-opacity-container');
+    if (!box) return;
+    const span = box.querySelector('span');
+    if (assetName) {
+        box.classList.remove('hidden');
+        if (opacityContainer) opacityContainer.classList.add('hidden');
+        box.style.backgroundImage = `url('/api/assets/file?name=${encodeURIComponent(assetName)}&job_id=${selectedJobId || ''}')`;
+        box.style.backgroundSize = 'contain';
+        box.style.backgroundRepeat = 'no-repeat';
+        box.style.backgroundPosition = 'center';
+        if (span) span.style.display = 'none';
+        subtitleAssetBoxState.opacity = 1.0;
+        box.style.opacity = 1.0;
+    } else {
+        box.classList.add('hidden');
+        if (opacityContainer) opacityContainer.classList.add('hidden');
+        box.style.backgroundImage = '';
+        if (span) span.style.display = 'block';
+    }
+}
+
+function onChangeSubtitleAssetOpacity(opacity) {
+    const box = document.getElementById('subtitle-asset-box');
+    if (!box) return;
+    subtitleAssetBoxState.opacity = 1.0;
+    box.style.opacity = 1.0;
+}
+
+let subtitleBlurBoxes = [];
+let activeBlurBoxId = null;
+let nextBlurBoxId = 1;
+
+function addNewBlurMask() {
+    const wrap = document.getElementById('subtitle-preview-wrap');
+    if (!wrap) return;
+    
+    const newBox = {
+        id: nextBlurBoxId++,
+        x_percent: 0.40,
+        y_percent: 0.15,
+        width_percent: 0.20,
+        height_percent: 0.08,
+        opacity: 0.6
+    };
+    
+    subtitleBlurBoxes.push(newBox);
+    createBlurBoxElement(newBox);
+    renderBlurMasksList();
+    selectBlurMask(newBox.id);
+}
+
+function createBlurBoxElement(boxData) {
+    const wrap = document.getElementById('subtitle-preview-wrap');
+    if (!wrap) return;
+    
+    const box = document.createElement('div');
+    box.id = `subtitle-blur-box-${boxData.id}`;
+    box.className = 'subtitle-blur-box-instance absolute cursor-move border border-dashed border-indigo-400/80 bg-white/10 shadow-lg flex items-center justify-center text-center rounded select-none';
+    box.style.left = `${boxData.x_percent * 100}%`;
+    box.style.top = `${boxData.y_percent * 100}%`;
+    box.style.width = `${boxData.width_percent * 100}%`;
+    box.style.height = `${boxData.height_percent * 100}%`;
+    box.style.zIndex = '10';
+    
+    const blurPx = boxData.opacity * 30;
+    box.style.backdropFilter = `blur(${blurPx}px)`;
+    box.style.webkitBackdropFilter = `blur(${blurPx}px)`;
+    
+    box.innerHTML = `
+        <span class="text-[8px] font-bold text-indigo-200 uppercase pointer-events-none select-none">HỘP LÀM MỜ #${boxData.id}</span>
+        <div id="subtitle-blur-resize-${boxData.id}" class="subtitle-blur-resize-handle absolute right-0 bottom-0 w-3 h-3 cursor-se-resize rounded-tl bg-indigo-500/95"></div>
+    `;
+    
+    wrap.appendChild(box);
+    
+    let dragging = false;
+    let startX = 0, startY = 0;
+    let startLeft = 0, startTop = 0;
+    
+    box.addEventListener('pointerdown', (e) => {
+        const resizeHandle = document.getElementById(`subtitle-blur-resize-${boxData.id}`);
+        if (e.target === resizeHandle) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        selectBlurMask(boxData.id);
+        dragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = parseFloat(box.style.left) || 0;
+        startTop = parseFloat(box.style.top) || 0;
+        
+        const onMove = (mv) => {
+            if (!dragging) return;
+            const rect = wrap.getBoundingClientRect();
+            let deltaX = mv.clientX - startX;
+            let deltaY = mv.clientY - startY;
+            
+            let newLeftPx = (startLeft / 100) * rect.width + deltaX;
+            let newTopPx = (startTop / 100) * rect.height + deltaY;
+            
+            newLeftPx = Math.max(0, Math.min(rect.width - box.offsetWidth, newLeftPx));
+            newTopPx = Math.max(0, Math.min(rect.height - box.offsetHeight, newTopPx));
+            
+            boxData.x_percent = newLeftPx / rect.width;
+            boxData.y_percent = newTopPx / rect.height;
+            
+            box.style.left = `${boxData.x_percent * 100}%`;
+            box.style.top = `${boxData.y_percent * 100}%`;
+        };
+        
+        const onUp = () => {
+            dragging = false;
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onUp);
+        };
+        
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+    });
+    
+    const resizeHandle = document.getElementById(`subtitle-blur-resize-${boxData.id}`);
+    if (resizeHandle) {
+        let resizing = false;
+        let startW = 0, startH = 0;
+        
+        resizeHandle.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            selectBlurMask(boxData.id);
+            resizing = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startW = parseFloat(box.style.width) || 20;
+            startH = parseFloat(box.style.height) || 8;
+            
+            const onResizeMove = (mv) => {
+                if (!resizing) return;
+                const rect = wrap.getBoundingClientRect();
+                let deltaX = mv.clientX - startX;
+                let deltaY = mv.clientY - startY;
+                
+                let newWidthPx = (startW / 100) * rect.width + deltaX;
+                let newHeightPx = (startH / 100) * rect.height + deltaY;
+                
+                let leftPx = parseFloat(box.style.left) / 100 * rect.width;
+                let topPx = parseFloat(box.style.top) / 100 * rect.height;
+                
+                newWidthPx = Math.max(rect.width * 0.05, Math.min(rect.width - leftPx, newWidthPx));
+                newHeightPx = Math.max(rect.height * 0.02, Math.min(rect.height - topPx, newHeightPx));
+                
+                boxData.width_percent = newWidthPx / rect.width;
+                boxData.height_percent = newHeightPx / rect.height;
+                
+                box.style.width = `${boxData.width_percent * 100}%`;
+                box.style.height = `${boxData.height_percent * 100}%`;
+            };
+            
+            const onResizeUp = () => {
+                resizing = false;
+                document.removeEventListener('pointermove', onResizeMove);
+                document.removeEventListener('pointerup', onResizeUp);
+            };
+            
+            document.addEventListener('pointermove', onResizeMove);
+            document.addEventListener('pointerup', onResizeUp);
+        });
+    }
+}
+
+function selectBlurMask(id) {
+    activeBlurBoxId = id;
+    
+    document.querySelectorAll('.subtitle-blur-box-instance').forEach(el => {
+        if (el.id === `subtitle-blur-box-${id}`) {
+            el.classList.remove('border-dashed', 'border-indigo-400/80');
+            el.classList.add('border-solid', 'border-indigo-500', 'ring-1', 'ring-indigo-500/50');
+            const handle = el.querySelector('.subtitle-blur-resize-handle');
+            if (handle) handle.classList.remove('hidden');
+        } else {
+            el.classList.remove('border-solid', 'border-indigo-500', 'ring-1', 'ring-indigo-500/50');
+            el.classList.add('border-dashed', 'border-indigo-400/80');
+            const handle = el.querySelector('.subtitle-blur-resize-handle');
+            if (handle) handle.classList.add('hidden');
+        }
+    });
+    
+    const boxData = subtitleBlurBoxes.find(b => b.id === id);
+    if (!boxData) return;
+    
+    const controls = document.getElementById('active-blur-controls');
+    const title = document.getElementById('active-blur-title');
+    const opacitySlider = document.getElementById('active-blur-opacity-slider');
+    
+    if (controls && title && opacitySlider) {
+        controls.classList.remove('hidden');
+        title.innerText = `Chỉnh sửa Hộp #${id}`;
+        opacitySlider.value = boxData.opacity;
+    }
+    renderBlurMasksList();
+}
+
+function deleteActiveBlurMask() {
+    if (activeBlurBoxId === null) return;
+    deleteBlurMask(activeBlurBoxId);
+}
+
+function deleteBlurMask(id) {
+    subtitleBlurBoxes = subtitleBlurBoxes.filter(b => b.id !== id);
+    const el = document.getElementById(`subtitle-blur-box-${id}`);
+    if (el) el.remove();
+    
+    if (activeBlurBoxId === id) {
+        activeBlurBoxId = null;
+        const controls = document.getElementById('active-blur-controls');
+        if (controls) controls.classList.add('hidden');
+    }
+    
+    renderBlurMasksList();
+    if (subtitleBlurBoxes.length > 0 && activeBlurBoxId === null) {
+        selectBlurMask(subtitleBlurBoxes[0].id);
+    }
+}
+
+function onActiveBlurOpacityChange(opacity) {
+    if (activeBlurBoxId === null) return;
+    const boxData = subtitleBlurBoxes.find(b => b.id === activeBlurBoxId);
+    if (!boxData) return;
+    
+    boxData.opacity = parseFloat(opacity);
+    
+    const el = document.getElementById(`subtitle-blur-box-${activeBlurBoxId}`);
+    if (el) {
+        const blurPx = boxData.opacity * 30;
+        el.style.backdropFilter = `blur(${blurPx}px)`;
+        el.style.webkitBackdropFilter = `blur(${blurPx}px)`;
+    }
+    renderBlurMasksList();
+}
+
+function renderBlurMasksList() {
+    const container = document.getElementById('blur-masks-list');
+    if (!container) return;
+    
+    if (subtitleBlurBoxes.length === 0) {
+        container.innerHTML = '<span class="italic text-[10px] text-slate-500">Chưa có hộp làm mờ nào được thêm.</span>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    subtitleBlurBoxes.forEach(b => {
+        const isSelected = b.id === activeBlurBoxId;
+        const pill = document.createElement('div');
+        pill.className = `flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium transition cursor-pointer select-none ${isSelected ? 'bg-indigo-600/30 border border-indigo-500 text-indigo-200' : 'bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:bg-slate-800'}`;
+        
+        pill.innerHTML = `
+            <span onclick="selectBlurMask(${b.id})">Hộp #${b.id} (Mờ: ${Math.round(b.opacity * 100)}%)</span>
+            <button type="button" onclick="event.stopPropagation(); deleteBlurMask(${b.id})" class="text-slate-400 hover:text-rose-400 font-bold ml-0.5">×</button>
+        `;
+        
+        container.appendChild(pill);
+    });
+}
+
+async function rerunJob(jobId) {
+    try {
+        const resp = await fetch(`/api/jobs/${jobId}/rerun`, { method: 'POST' });
+        if (resp.ok) {
+            showToast("Đã gửi yêu cầu chạy lại công việc!", "success");
+            await loadJobs();
+        } else {
+            const err = await resp.json();
+            showToast(err.detail || "Không thể chạy lại công việc", "error");
+        }
+    } catch (e) {
+        showToast("Lỗi kết nối: " + e.message, "error");
+    }
+}
+
+async function rerunDetailJob() {
+    if (!selectedJobId) return;
+    const btn = document.getElementById('btn-detail-rerun');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = 'Đang gửi...';
+    }
+    try {
+        const resp = await fetch(`/api/jobs/${selectedJobId}/rerun`, { method: 'POST' });
+        if (resp.ok) {
+            showToast("Đã gửi yêu cầu chạy lại công việc!", "success");
+            closeDetailPanel();
+            await loadJobs();
+        } else {
+            const err = await resp.json();
+            showToast(err.detail || "Không thể chạy lại công việc", "error");
+        }
+    } catch (e) {
+        showToast("Lỗi kết nối: " + e.message, "error");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = '🔄 Chạy lại';
+        }
+    }
+}
+
+// Channels management CRUD page helpers
+async function initChannelsView() {
+    // Render list cards
+    renderChannelsListView();
+}
+
+function renderChannelsListView() {
+    const listContainer = document.getElementById('modal-channel-list');
+    if (!listContainer) return;
+    
+    listContainer.innerHTML = '';
+    
+    if (globalChannels.length === 0) {
+        listContainer.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500 border border-dashed border-white/5 rounded-2xl">Chưa có cấu hình kênh nào. Nhập thông tin bên trái để tạo mới!</div>';
+        return;
+    }
+    
+    globalChannels.forEach(c => {
+        const card = document.createElement('div');
+        card.className = "glass-card rounded-2xl p-5 border border-white/5 hover:border-purple-500/30 transition-all duration-300 flex flex-col justify-between gap-4";
+        card.innerHTML = `
+            <div class="flex flex-col gap-2">
+                <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                    <span class="font-outfit font-bold text-sm text-slate-200">📺 ${escapeHtml(c.name)}</span>
+                    <div class="flex gap-2">
+                        <button onclick="editChannel('${c.id}')" class="text-[10px] text-purple-400 font-semibold hover:underline">Sửa</button>
+                        <button onclick="deleteChannelData('${c.id}')" class="text-[10px] text-rose-400 font-semibold hover:underline">Xóa</button>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-1 text-[10px] text-slate-400 font-mono">
+                    <div class="truncate">📁 Thư mục: ${escapeHtml(c.path)}</div>
+                </div>
+            </div>
+            <button onclick="openChannelLocalFolder('${c.id}')" class="w-full py-1.5 bg-white/5 hover:bg-purple-600/30 rounded-lg text-[10px] font-semibold text-slate-300 border border-white/5 transition-all flex items-center justify-center gap-1.5">
+                📁 Mở thư mục kênh
+            </button>
+        `;
+        listContainer.appendChild(card);
+    });
+}
+
+function editChannel(id) {
+    const chan = globalChannels.find(c => c.id === id);
+    if (!chan) return;
+    
+    document.getElementById('chan-modal-title').innerText = "Chỉnh Sửa Kênh";
+    document.getElementById('edit-channel-id').value = chan.id;
+    document.getElementById('chan-name').value = chan.name;
+    document.getElementById('chan-path').value = chan.path;
+}
+
+function cancelChannelEdit() {
+    document.getElementById('chan-modal-title').innerText = "Cấu Hình Kênh Mới";
+    document.getElementById('edit-channel-id').value = "";
+    document.getElementById('channel-form').reset();
+}
+
+async function saveChannel(event) {
+    if (event) event.preventDefault();
+    
+    const id = document.getElementById('edit-channel-id').value;
+    const name = document.getElementById('chan-name').value.trim();
+    const path = document.getElementById('chan-path').value.trim();
+    
+    const payload = {
+        name, path
+    };
+    
+    try {
+        let resp;
+        if (id) {
+            resp = await fetch(`/api/channels/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        } else {
+            resp = await fetch('/api/channels', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        }
+        
+        if (resp.ok) {
+            showToast("Lưu cấu hình kênh thành công!", "success");
+            cancelChannelEdit();
+            await loadChannels();
+            renderChannelsListView();
+        } else {
+            const err = await resp.json();
+            showToast(err.detail || "Không thể lưu kênh", "error");
+        }
+    } catch (e) {
+        showToast("Lỗi kết nối máy chủ: " + e.message, "error");
+    }
+}
+
+async function deleteChannelData(id) {
+    const confirmed = confirm("Bạn có chắc chắn muốn xóa kênh này? Cấu hình mặc định của kênh sẽ bị loại bỏ.");
+    if (!confirmed) return;
+    
+    try {
+        const resp = await fetch(`/api/channels/${id}`, { method: 'DELETE' });
+        if (resp.ok) {
+            showToast("Đã xóa kênh thành công!", "success");
+            await loadChannels();
+            renderChannelsListView();
+        } else {
+            const err = await resp.json();
+            showToast(err.detail || "Không thể xóa kênh", "error");
+        }
+    } catch (e) {
+        showToast("Lỗi kết nối: " + e.message, "error");
+    }
+}
+
+async function openChannelLocalFolder(id) {
+    try {
+        const resp = await fetch(`/api/channels/${id}/open`, { method: 'POST' });
+        if (resp.ok) {
+            showToast("Đang mở thư mục kênh...", "success");
+        } else {
+            const err = await resp.json();
+            showToast(err.detail || "Không thể mở thư mục", "error");
+        }
+    } catch (e) {
+        showToast("Lỗi kết nối: " + e.message, "error");
+    }
+}
+
+async function resumeJob(jobId) {
+    showToast("Đang gửi yêu cầu tiếp tục dự án...", "info");
+    try {
+        const resp = await fetch(`/api/jobs/${jobId}/resume`, { method: 'POST' });
+        if (resp.ok) {
+            showToast("Đã gửi yêu cầu tiếp tục thành công!", "success");
+            await loadJobs();
+        } else {
+            const err = await resp.json();
+            showToast(err.detail || "Không thể tiếp tục dự án", "error");
+        }
+    } catch (e) {
+        showToast("Lỗi kết nối: " + e.message, "error");
+    }
 }

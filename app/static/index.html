@@ -63,6 +63,14 @@
                 class="px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all">
                 Công cụ Cookie
             </button>
+            <button onclick="switchTab('channels')" id="btn-tab-channels"
+                class="px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all">
+                Quản lý kênh
+            </button>
+            <button onclick="openKeysModal()" id="btn-tab-keys"
+                class="px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all flex items-center gap-1">
+                🔑 Cấu hình Key
+            </button>
         </nav>
     </header>
 
@@ -178,12 +186,33 @@
                             </select>
                         </div>
                         <div>
-                            <label
-                                class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Watermark
-                                Logo</label>
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Watermark Logo</label>
+                                <div class="flex gap-2">
+                                    <button type="button" onclick="openLogoPositionEditor()" class="text-[9px] text-amber-400 hover:text-amber-300 font-semibold transition-colors">📐 Căn vị trí</button>
+                                    <label class="text-[9px] text-purple-400 hover:text-purple-300 font-semibold cursor-pointer transition-colors flex items-center gap-0.5">
+                                        📥 Tải logo
+                                        <input type="file" id="logo-file-input" onchange="uploadLogo(this)" class="hidden" accept=".png,.jpg,.jpeg">
+                                    </label>
+                                </div>
+                            </div>
                             <select id="logo"
                                 class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
                                 <option value="">Không sử dụng Logo</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Logo Position Block -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Vị trí Logo/Hình ảnh</label>
+                            <select id="logo_position"
+                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                                <option value="top_center" selected>Góc trên - Ở giữa</option>
+                                <option value="top_left">Góc trên - Bên trái</option>
+                                <option value="top_right">Góc trên - Bên phải</option>
+                                <option value="bottom_left">Góc dưới - Bên trái</option>
+                                <option value="bottom_right">Góc dưới - Bên phải</option>
                             </select>
                         </div>
                     </div>
@@ -201,6 +230,25 @@
                                 <option value="Facebook">Facebook</option>
                                 <option value="Douyin">Douyin</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <!-- Output Formats Selection Checkboxes -->
+                    <div class="flex flex-col gap-2">
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Định Dạng Output Cần Tạo</label>
+                        <div class="flex flex-col gap-2 bg-slate-900/60 border border-white/5 rounded-xl p-3">
+                            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                                <input type="checkbox" id="out-fb-reels" value="fb_reels" checked class="rounded border-slate-700 bg-slate-900 text-purple-600 focus:ring-purple-500/50">
+                                <span>Facebook Reels (9:16)</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                                <input type="checkbox" id="out-yt-shorts" value="yt_shorts" class="rounded border-slate-700 bg-slate-900 text-purple-600 focus:ring-purple-500/50">
+                                <span>YouTube Shorts (9:16)</span>
+                            </label>
+                            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                                <input type="checkbox" id="out-yt-video" value="yt_video" class="rounded border-slate-700 bg-slate-900 text-purple-600 focus:ring-purple-500/50">
+                                <span>YouTube Video thường (16:9)</span>
+                            </label>
                         </div>
                     </div>
 
@@ -271,13 +319,18 @@
                     id="detail-job-id-badge">JOB ID</span>
                 <h3 class="font-outfit font-bold text-lg text-white mt-1" id="detail-job-title">Chi tiết công việc</h3>
             </div>
-            <button onclick="closeDetailPanel()"
-                class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
-                    </path>
-                </svg>
-            </button>
+            <div class="flex items-center gap-2">
+                <button onclick="rerunDetailJob()" id="btn-detail-rerun" class="hidden px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-[11px] rounded-lg transition-all flex items-center gap-1 shadow-sm">
+                    🔄 Chạy lại
+                </button>
+                <button onclick="closeDetailPanel()"
+                    class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <!-- Panel Body -->
@@ -312,30 +365,67 @@
                 <div id="subtitle-preview-wrap" class="relative mx-auto w-full max-w-[260px] aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 select-none">
                     <video id="subtitle-preview-video" class="absolute inset-0 w-full h-full object-contain" controls muted playsinline preload="metadata"></video>
                     <div id="subtitle-layout-box"
-                        class="absolute cursor-move border border-purple-300/80 bg-black/30 rounded-lg shadow-lg flex items-center justify-center text-center px-2"
+                        class="absolute cursor-move border border-dashed border-purple-500/40 bg-transparent flex items-center justify-center text-center select-none"
                         style="left:8%; top:72%; width:84%; height:11%;">
-                        <div class="pointer-events-none text-white font-extrabold leading-tight text-[13px]" style="text-shadow: 0 2px 3px #000, 0 0 2px #000;">
+                        <div class="subtitle-plate-bg pointer-events-none text-white font-extrabold leading-tight text-[13px] bg-black/40 rounded-lg shadow-lg px-2.5 py-1" style="backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-shadow: 0 1px 2px #000;">
                             Ba nam truoc, khoi nghiep that bai, no<br>
-                            <span class="text-[10px] font-semibold text-white/80">[Kéo thả để chỉnh vị trí phụ đề]</span>
+                            <span class="text-[9px] font-semibold text-white/70">[Kéo thả để chỉnh vị trí phụ đề]</span>
                         </div>
                         <div id="subtitle-layout-resize"
                             class="absolute right-0 bottom-0 w-4 h-4 cursor-se-resize rounded-tl bg-purple-400/80"></div>
                     </div>
+                    <!-- Draggable Resizable Asset Box (Logo/Sticker/Blur) -->
+                    <div id="subtitle-asset-box"
+                        class="hidden absolute cursor-move border border-dashed border-amber-400 bg-amber-400/20 shadow-lg flex items-center justify-center text-center rounded select-none"
+                        style="left:40%; top:8%; width:20%; height:8%; z-index:10;">
+                        <span class="text-[9px] font-bold text-amber-200 uppercase pointer-events-none select-none">ASSET</span>
+                        <div id="subtitle-asset-resize"
+                            class="absolute right-0 bottom-0 w-3.5 h-3.5 cursor-se-resize rounded-tl bg-amber-400/80"></div>
+                    </div>
+                </div>
+
+                <div class="hidden">
+                    <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Độ đậm nhạt nền phụ đề (Opacity)</label>
+                    <input id="subtitle-layout-opacity" type="range" min="0.0" max="1.0" step="0.05" value="0.20"
+                        oninput="previewSubtitleBackplateOpacity(this.value)" class="w-full">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Nền phụ đề</label>
-                        <input id="subtitle-layout-opacity" type="range" min="0.30" max="0.45" step="0.01" value="0.42"
-                            oninput="previewSubtitleBackplateOpacity(this.value)" class="w-full">
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Hình ảnh chèn (Assets)</label>
+                        <select id="subtitle-asset-select" onchange="onChangeSubtitleAsset(this.value)" class="w-full bg-slate-900 border border-slate-700/60 rounded p-1 text-[11px] text-slate-100">
+                            <option value="">Không sử dụng</option>
+                        </select>
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Preset</label>
-                        <div class="grid grid-cols-3 gap-1">
-                            <button type="button" onclick="setSubtitlePreset('low')" class="bg-slate-900 border border-slate-700 rounded py-1 text-[10px]">Thấp</button>
-                            <button type="button" onclick="setSubtitlePreset('middle')" class="bg-slate-900 border border-slate-700 rounded py-1 text-[10px]">Giữa</button>
-                            <button type="button" onclick="setSubtitlePreset('high')" class="bg-slate-900 border border-slate-700 rounded py-1 text-[10px]">Cao</button>
+                    <div id="subtitle-asset-opacity-container" class="hidden">
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Độ đậm nhạt (Opacity)</label>
+                        <input id="subtitle-asset-opacity" type="range" min="0.1" max="1.0" step="0.05" value="1.0"
+                            oninput="onChangeSubtitleAssetOpacity(this.value)" class="w-full">
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-800/80">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Hộp làm mờ nhòe (Blur Masks)</h4>
+                        <button type="button" onclick="addNewBlurMask()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow transition">
+                            ➕ Thêm hộp làm mờ
+                        </button>
+                    </div>
+                    
+                    <div id="active-blur-controls" class="hidden bg-slate-900/60 border border-slate-800 rounded p-2 mb-2">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span id="active-blur-title" class="text-[10px] font-bold text-indigo-400">Chỉnh sửa Hộp #1</span>
+                            <button type="button" onclick="deleteActiveBlurMask()" class="text-rose-400 hover:text-rose-300 text-[10px] underline">Xóa</button>
                         </div>
+                        <div class="mt-1">
+                            <label class="block text-[9px] font-semibold text-slate-400 uppercase mb-0.5">Độ mờ nhòe (Blur)</label>
+                            <input id="active-blur-opacity-slider" type="range" min="0.1" max="1.0" step="0.05" value="0.6"
+                                oninput="onActiveBlurOpacityChange(this.value)" class="w-full">
+                        </div>
+                    </div>
+                    
+                    <div id="blur-masks-list" class="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto pr-1">
+                        <span class="italic text-[10px] text-slate-500">Chưa có hộp làm mờ nào được thêm.</span>
                     </div>
                 </div>
 
@@ -423,6 +513,16 @@
                             class="bg-purple-600/25 text-purple-300 border border-purple-500/20 px-3 py-1.5 rounded-lg text-[11px] font-bold hover:bg-purple-600 hover:text-white transition-all">
                             Chỉnh vị trí phụ đề
                         </button>
+                    </div>
+                </div>
+
+                <!-- 2.5 Outputs list -->
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Danh Sách Output Video</h4>
+                    </div>
+                    <div id="outputs-list-container" class="flex flex-col gap-3 bg-black/20 rounded-xl p-3.5 border border-white/5">
+                        <!-- Dynamically populated output items -->
                     </div>
                 </div>
 
@@ -583,6 +683,166 @@
                     <div class="flex justify-end gap-2.5 mt-2">
                         <button id="confirm-btn-cancel" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-white/5 rounded-xl text-xs font-semibold transition-all">Hủy</button>
                         <button id="confirm-btn-ok" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-rose-500 hover:opacity-90 text-white rounded-xl text-xs font-semibold transition-all active:scale-[0.98]">Xác nhận</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Crop Editor Popup Modal -->
+            <div id="crop-modal" class="hidden fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+                <div class="glass-card max-w-4xl w-full rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-slate-950">
+                    <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-outfit font-bold text-base text-white">Thiết Lập Vùng Crop Dọc (9:16)</h3>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Kéo thả khung màu tím để điều chỉnh tâm vùng crop trên video gốc ngang.</p>
+                        </div>
+                        <button onclick="closeCropModal()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="p-6 flex flex-col lg:flex-row gap-6 items-center justify-center bg-black/40">
+                        <!-- Crop Workspace -->
+                        <div id="crop-workspace-container" class="relative bg-slate-900 border border-white/5 rounded-xl overflow-hidden max-w-full flex justify-center items-center" style="width: 640px; height: 360px;">
+                            <video id="crop-video-player" class="absolute w-full h-full object-contain pointer-events-none animate-fade-in" muted loop></video>
+                            
+                            <!-- Shading overlays -->
+                            <div id="crop-shade-left" class="absolute left-0 top-0 bottom-0 bg-black/75 pointer-events-none"></div>
+                            <div id="crop-shade-right" class="absolute right-0 top-0 bottom-0 bg-black/75 pointer-events-none"></div>
+                            
+                            <!-- Draggable Crop Overlay -->
+                            <div id="crop-overlay-box" class="absolute top-0 bottom-0 border-2 border-dashed border-purple-500 shadow-2xl cursor-move flex items-center justify-center group" style="width: 202.5px; left: 218.75px;">
+                                <div class="bg-purple-600/35 text-purple-200 text-[10px] px-2 py-0.5 rounded font-bold uppercase pointer-events-none select-none opacity-60 group-hover:opacity-100 transition-opacity">9:16 CROP ZONE</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Control panel -->
+                        <div class="w-full lg:w-60 flex flex-col gap-4 flex-shrink-0">
+                            <div class="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col gap-3">
+                                <h4 class="text-xs font-bold text-slate-300 uppercase">Thiết Lập Reframe</h4>
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 mb-1">Chế Độ Render</label>
+                                    <select id="crop-reframe-mode" onchange="toggleReframeMode(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                                        <option value="manual_crop">Manual Crop (Cắt thủ công)</option>
+                                        <option value="blur_background">Blur Background (Viền mờ)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-col gap-2">
+                                <button onclick="resetCrop()" class="w-full bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-xs py-2 rounded-lg transition-all border border-white/5">Đặt Lại Vào Giữa</button>
+                                <button onclick="saveCrop()" class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-bold text-xs py-2.5 rounded-lg hover:opacity-90 transition-all shadow-md">Lưu Tọa Độ Crop</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Keys Configuration Modal -->
+            <div id="keys-modal" class="hidden fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div class="glass-card max-w-md w-full rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-slate-950 p-6 gap-4">
+                    <div class="flex items-center gap-3 text-purple-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m-2 4a2 2 0 012 2m-2-4h.01M17 16h.01M3 21h18M3 10h18M3 7h18M3 14h18"></path>
+                        </svg>
+                        <h3 class="font-outfit font-bold text-base text-white">Cấu Hình Gemini API Keys</h3>
+                    </div>
+                    
+                    <p class="text-xs text-slate-400 leading-relaxed">Nhập tối đa 10 API keys của Gemini. Hệ thống sẽ tự động xoay tua (rotate) lần lượt các key này để tránh giới hạn lượt gọi (Rate Limit).</p>
+                    
+                    <div class="flex flex-col gap-3.5 mt-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key chính (Bắt buộc) <span id="key-status-1" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-1" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 2 <span id="key-status-2" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-2" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 3 <span id="key-status-3" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-3" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 4 <span id="key-status-4" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-4" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 5 <span id="key-status-5" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-5" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 6 <span id="key-status-6" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-6" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 7 <span id="key-status-7" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-7" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 8 <span id="key-status-8" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-8" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 9 <span id="key-status-9" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-9" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 10 <span id="key-status-10" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-10" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end gap-2.5 mt-4">
+                        <button onclick="checkKeysStatus()" class="mr-auto px-3.5 py-2 bg-purple-600/20 hover:bg-purple-600/35 border border-purple-500/20 text-purple-300 rounded-xl text-xs font-semibold transition-all">🔄 Check Keys</button>
+                        <button onclick="closeKeysModal()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-white/5 rounded-xl text-xs font-semibold transition-all">Hủy</button>
+                        <button onclick="saveGeminiKeys()" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-rose-500 text-white rounded-xl text-xs font-semibold transition-all active:scale-[0.98]">Lưu Thay Đổi</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Logo Position Editor Modal -->
+            <div id="logo-position-modal" class="hidden fixed inset-0 z-[115] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+                <div class="glass-card max-w-4xl w-full rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-slate-950">
+                    <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                        <div>
+                            <h3 class="font-outfit font-bold text-base text-white">Căn Vị Trí Logo/Hình Ảnh</h3>
+                            <p class="text-[10px] text-slate-400 mt-0.5">Kéo thả khung logo màu vàng bên dưới đến vị trí mong muốn trên khung hình video.</p>
+                        </div>
+                        <button onclick="closeLogoPositionModal()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="p-6 flex flex-col lg:flex-row gap-6 items-center justify-center bg-black/40">
+                        <!-- Workspace -->
+                        <div id="logo-workspace-container" class="relative bg-slate-900 border border-white/5 rounded-xl overflow-hidden max-w-full flex justify-center items-center" style="width: 640px; height: 360px;">
+                            <video id="logo-position-video-player" class="absolute w-full h-full object-contain pointer-events-none" muted loop></video>
+                            
+                            <!-- Draggable Logo Overlay Box -->
+                            <div id="logo-draggable-box" class="absolute border-2 border-dashed border-amber-500 bg-amber-500/20 shadow-2xl cursor-move flex items-center justify-center group" style="width: 80px; height: 45px; left: 280px; top: 20px;">
+                                <span class="text-[9px] text-amber-200 font-bold uppercase pointer-events-none select-none">LOGO</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Controls -->
+                        <div class="w-full lg:w-60 flex flex-col gap-4 flex-shrink-0">
+                            <div class="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col gap-3">
+                                <h4 class="text-xs font-bold text-slate-300 uppercase">Thông tin tọa độ</h4>
+                                <div class="text-[11px] text-slate-400 flex flex-col gap-1">
+                                    <div>X: <span id="logo-pos-x-val" class="font-mono text-white">43.7%</span></div>
+                                    <div>Y: <span id="logo-pos-y-val" class="font-mono text-white">5.5%</span></div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-col gap-2">
+                                <button onclick="resetLogoPosition()" class="w-full bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-xs py-2 rounded-lg transition-all border border-white/5">Đặt Lại Trên Cùng - Giữa</button>
+                                <button onclick="saveLogoPosition()" class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-bold text-xs py-2.5 rounded-lg hover:opacity-90 transition-all shadow-md">Lưu Vị Trí Logo</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -14,7 +14,7 @@ import asyncio
 import threading
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Request, UploadFile, File
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -90,6 +90,7 @@ class JobCreateRequest(BaseModel):
     channel_folder: Optional[str] = None
     platform_folder: Optional[str] = None
     channel_id: Optional[str] = None
+    selected_outputs: Optional[List[str]] = None
     config_snapshot: Optional[Dict[str, Any]] = None
 
 class SegmentUpdateRequest(BaseModel):
@@ -121,6 +122,14 @@ class SubtitleLayoutRequest(BaseModel):
     subtitle_bg_opacity: float = 0.42
     background_opacity: Optional[float] = None
     preset: str = "custom"
+    asset: Optional[str] = None
+    asset_x_percent: Optional[float] = None
+    asset_y_percent: Optional[float] = None
+    asset_width_percent: Optional[float] = None
+    asset_height_percent: Optional[float] = None
+    asset_opacity: Optional[float] = 1.0
+    asset_color: Optional[str] = None
+    blur_masks: Optional[List[Dict[str, Any]]] = None
 
 def _normalize_subtitle_layout(req: SubtitleLayoutRequest) -> Dict[str, Any]:
     layout = {
@@ -145,6 +154,29 @@ def _save_subtitle_layout_snapshot(job: Job, req: SubtitleLayoutRequest) -> Dict
     snapshot["subtitle_bg_opacity"] = normalized["opacity"]
     snapshot["subtitle_preset"] = normalized["preset"]
     snapshot["subtitle_cover_mode"] = "text_box_only"
+    
+    if req.asset is not None:
+        snapshot["asset"] = req.asset
+    if req.asset_x_percent is not None and req.asset_y_percent is not None:
+        asset_type = "image"
+        if req.asset == "__color_mask__":
+            asset_type = "color"
+        elif req.asset == "__blur_mask__":
+            asset_type = "blur"
+            
+        snapshot["asset_layout"] = {
+            "type": asset_type,
+            "x_percent": req.asset_x_percent,
+            "y_percent": req.asset_y_percent,
+            "width_percent": req.asset_width_percent or 0.20,
+            "height_percent": req.asset_height_percent or 0.08,
+            "opacity": req.asset_opacity or 1.0,
+            "color": req.asset_color or "#000000"
+        }
+        
+    if req.blur_masks is not None:
+        snapshot["blur_masks"] = req.blur_masks
+
     job.config_snapshot = snapshot
     store.save_job(job)
     with open(store.get_job_dir(job.job_id) / "job_config.json", "w", encoding="utf-8") as f:
@@ -160,16 +192,119 @@ def job_output_dir(job: Job) -> Path:
 
 pipeline_lock = threading.Lock()
 
-def resolve_logo_path(logo: Optional[str]) -> Optional[Path]:
-    if not logo:
-        return None
-    overlay_path = PROJECT_ROOT / "examples" / "overlay" / logo
-    if overlay_path.exists() and overlay_path.is_file():
-        return overlay_path
-    logo_path = Path(logo)
-    if not logo_path.is_absolute():
-        logo_path = PROJECT_ROOT / logo_path
-    return logo_path
+def resolve_logo_path(logo: Optional[str], channel_id: Optional[str] = None) -> Optional[Path]:
+    if logo:
+        # 1. Global overlay
+        overlay_path = PROJECT_ROOT / "examples" / "overlay" / logo
+        if overlay_path.exists() and overlay_path.is_file():
+            return overlay_path
+            
+        # 2. Absolute path
+        logo_path = Path(logo)
+        if logo_path.is_absolute() and logo_path.exists():
+            return logo_path
+            
+        # 3. Relative to project root
+        proj_path = PROJECT_ROOT / logo
+        if proj_path.exists() and proj_path.is_file():
+            return proj_path
+            
+        # 4. Relative to channel folder if channel_id is provided
+        if channel_id:
+            try:
+                channels = load_channels_data()
+                chan = next((c for c in channels if c.get("id") == channel_id), None)
+                if chan:
+                    chan_dir = resolve_channel_path(chan.get("name"), chan.get("path"))
+                    chan_logo_path = chan_dir / logo
+                    if chan_logo_path.exists() and chan_logo_path.is_file():
+                        return chan_logo_path
+                        
+                    root_logo_path = chan_dir / Path(logo).name
+                    if root_logo_path.exists() and root_logo_path.is_file():
+                        return root_logo_path
+            except Exception as e:
+                logger.error(f"Failed resolving channel-specific logo: {e}")
+            
+    if channel_id:
+        try:
+            channels = load_channels_data()
+            chan = next((c for c in channels if c.get("id") == channel_id), None)
+            if chan:
+                name = chan.get("name")
+                # Also try looking inside the channel directory directly
+                chan_dir = resolve_channel_path(chan.get("name"), chan.get("path"))
+                for candidate in [f"logo_{channel_id}.png", f"logo_{channel_id}.jpg", f"{name}.png", f"{name}.jpg", "logo.png", "logo.jpg"]:
+                    p1 = chan_dir / candidate
+                    if p1.exists() and p1.is_file():
+                        return p1
+                    p2 = chan_dir / "assets" / candidate
+                    if p2.exists() and p2.is_file():
+                        return p2
+                    p3 = PROJECT_ROOT / "examples" / "overlay" / candidate
+                    if p3.exists() and p3.is_file():
+                        return p3
+        except Exception as e:
+            logger.error(f"Error checking channel logo: {e}")
+            
+    return None
+
+@app.get("/api/jobs/{job_id}/assets")
+def get_job_assets(job_id: str):
+    job = store.load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+        
+    assets = []
+    
+    # 1. Global assets
+    global_dir = PROJECT_ROOT / "examples" / "overlay"
+    if global_dir.exists():
+        for f in global_dir.iterdir():
+            if f.is_file() and f.suffix.lower() in {".png", ".jpg", ".jpeg"}:
+                assets.append(f.name)
+                
+    # 2. Channel specific assets (read from channel folder / and channel/assets/)
+    snapshot = job.config_snapshot or {}
+    channel_id = snapshot.get("channel_id") or job.channel_id
+    if channel_id:
+        try:
+            channels = load_channels_data()
+            chan = next((c for c in channels if c.get("id") == channel_id), None)
+            if chan:
+                chan_dir = resolve_channel_path(chan.get("name"), chan.get("path"))
+                if chan_dir.exists():
+                    for f in chan_dir.iterdir():
+                        if f.is_file() and f.suffix.lower() in {".png", ".jpg", ".jpeg"}:
+                            assets.append(f.name)
+                            
+                assets_sub = chan_dir / "assets"
+                if assets_sub.exists() and assets_sub.is_dir():
+                    for f in assets_sub.iterdir():
+                        if f.is_file() and f.suffix.lower() in {".png", ".jpg", ".jpeg"}:
+                            assets.append(f"assets/{f.name}")
+        except Exception as e:
+            logger.error(f"Error loading channel specific assets: {e}")
+            
+    return sorted(list(set(assets)))
+
+@app.get("/api/assets/file")
+def get_asset_file(name: str, job_id: Optional[str] = None):
+    channel_id = None
+    if job_id:
+        job = store.load_job(job_id)
+        if job:
+            snapshot = job.config_snapshot or {}
+            channel_id = snapshot.get("channel_id") or job.channel_id
+            
+    asset_path = resolve_logo_path(name, channel_id)
+    if not asset_path or not asset_path.exists():
+        raise HTTPException(status_code=404, detail="Asset file not found")
+        
+    media_type = "image/png"
+    if asset_path.suffix.lower() in {".jpg", ".jpeg"}:
+        media_type = "image/jpeg"
+    return FileResponse(asset_path, media_type=media_type)
 
 def pipeline_args_from_snapshot(job: Job) -> tuple:
     snapshot = job.config_snapshot or {}
@@ -180,7 +315,7 @@ def pipeline_args_from_snapshot(job: Job) -> tuple:
         snapshot.get("rate", settings.default_rate),
         snapshot.get("pitch", settings.default_pitch),
         snapshot.get("bgm") or None,
-        resolve_logo_path(snapshot.get("logo")),
+        resolve_logo_path(snapshot.get("logo"), snapshot.get("channel_id")),
         bool(snapshot.get("mask", True)),
         bool(snapshot.get("tts_enabled", True)),
         bool(snapshot.get("subtitles_enabled", True)),
@@ -327,6 +462,8 @@ async def create_job(req: JobCreateRequest):
         job = runner.create_job(str(input_path) if not is_url else input_video, job_id)
     
     config_snapshot = req.config_snapshot or req.model_dump(exclude={"config_snapshot"})
+    if req.selected_outputs:
+        config_snapshot["selected_outputs"] = req.selected_outputs
     job.status = "queued"
     job.current_step = "intake"
     job.channel_folder = req.channel_folder
@@ -344,7 +481,7 @@ async def create_job(req: JobCreateRequest):
     logger.info(f"Created job: {job_id}")
     logger.info(f"Work dir: {store.get_job_dir(job_id) / 'work'}")
     enqueue_pipeline_job(job, args=(
-        job_id, req.tone, req.voice, req.rate, req.pitch, req.bgm, resolve_logo_path(req.logo), req.mask,
+        job_id, req.tone, req.voice, req.rate, req.pitch, req.bgm, resolve_logo_path(req.logo, req.channel_id), req.mask,
         req.tts_enabled, req.subtitles_enabled,
         req.subtitle_cover_mode, req.subtitle_bg_opacity, req.subtitle_mask_padding_x,
         req.subtitle_mask_padding_y, req.ocr_sample_interval_sec, req.ocr_crop_bottom_ratio
@@ -373,6 +510,7 @@ async def save_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
 
     normalized = _save_subtitle_layout_snapshot(job, req)
     snapshot = dict(job.config_snapshot or {})
+    
     job.steps.setdefault("subtitle_layout", "pending")
     job.steps["subtitle_layout"] = "completed"
     job.steps["render"] = "pending"
@@ -382,13 +520,7 @@ async def save_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
     job.errors = []
     store.save_job(job)
 
-    logo_path = None
-    logo = snapshot.get("logo")
-    if logo:
-        overlay_path = PROJECT_ROOT / "examples" / "overlay" / logo
-        logo_path = overlay_path if overlay_path.exists() and overlay_path.is_file() else Path(logo)
-        if logo_path and not logo_path.is_absolute():
-            logo_path = PROJECT_ROOT / logo_path
+    logo_path = resolve_logo_path(snapshot.get("logo"), snapshot.get("channel_id"))
 
     enqueue_pipeline_job(job, args=(
         job_id,
@@ -415,12 +547,39 @@ def resume_job(job_id: str):
     job = store.load_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-    if job.status in {"completed", "failed", "cancelled", "waiting_for_subtitle_layout"}:
-        raise HTTPException(status_code=400, detail=f"Job status '{job.status}' cannot be resumed automatically")
     if job_id in running_jobs:
         return {"status": job.status, "message": "Job is already queued or running"}
+        
+    # Allow resuming from failed or cancelled status
+    if job.status not in {"failed", "cancelled", "processing", "created", "queued"}:
+        raise HTTPException(status_code=400, detail=f"Job status '{job.status}' cannot be resumed")
+        
+    pipeline_steps_order = ["intake", "analyze", "extract_audio", "transcribe", "translate", "tts", "mix_audio", "subtitle_layout", "render", "metadata"]
+    first_non_completed = None
+    
+    if not job.steps:
+        job.steps = {}
+        
+    for step in pipeline_steps_order:
+        status = job.steps.get(step, "pending")
+        if status in {"failed", "pending", "processing"}:
+            job.steps[step] = "pending"
+            if first_non_completed is None:
+                first_non_completed = step
+        elif status == "completed" and first_non_completed is not None:
+            job.steps[step] = "pending"
+
+    if first_non_completed is None:
+        first_non_completed = "intake"
+        job.steps["intake"] = "pending"
+
+    job.status = "queued"
+    job.current_step = first_non_completed
+    job.errors = []
+    store.save_job(job)
+    
     enqueue_pipeline_job(job)
-    return {"status": "queued", "message": f"Job {job_id} queued for processing"}
+    return {"status": "queued", "message": f"Job {job_id} resumed from step {first_non_completed}"}
 
 @app.post("/api/jobs/{job_id}/rerender-subtitle-layout")
 def rerender_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
@@ -470,13 +629,22 @@ def rerender_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
         elif not output_srt.exists():
             raise HTTPException(status_code=404, detail="Translated subtitle artifact not found")
 
-        logo_path = None
-        logo = snapshot.get("logo")
-        if logo:
-            overlay_path = PROJECT_ROOT / "examples" / "overlay" / logo
-            logo_path = overlay_path if overlay_path.exists() and overlay_path.is_file() else Path(logo)
-            if logo_path and not logo_path.is_absolute():
-                logo_path = PROJECT_ROOT / logo_path
+        logo_path = resolve_logo_path(snapshot.get("logo"), snapshot.get("channel_id"))
+        
+        asset_path = None
+        asset = snapshot.get("asset")
+        if asset:
+            asset_path = resolve_logo_path(asset, snapshot.get("channel_id"))
+
+        # Resolve format target specs
+        out_format = "fb_reels"
+        selected_outputs = snapshot.get("selected_outputs") or []
+        if selected_outputs:
+            out_format = selected_outputs[0]
+            
+        w_out, h_out = (1920, 1080) if out_format == "yt_video" else (1080, 1920)
+        reframe_mode = snapshot.get(f"{out_format}_reframe_mode", "keep_original")
+        crop_layout = snapshot.get(f"{out_format}_crop")
 
         job.status = "running"
         job.current_step = "render"
@@ -502,6 +670,15 @@ def rerender_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
             subtitle_layout=normalized["layout"],
             subtitle_cover_mode="text_box_only",
             subtitle_bg_opacity=normalized["opacity"],
+            w_out=w_out,
+            h_out=h_out,
+            reframe_mode=reframe_mode,
+            crop_layout=crop_layout,
+            logo_position=snapshot.get("logo_position", "top_center"),
+            logo_layout=snapshot.get("logo_layout"),
+            asset_path=asset_path,
+            asset_layout=snapshot.get("asset_layout"),
+            blur_masks=snapshot.get("blur_masks", [])
         )
         os.replace(temp_video, final_video)
 
@@ -602,12 +779,20 @@ async def update_transcript(job_id: str, req: SegmentUpdateRequest):
     return {"status": "saved", "message": "Transcript saved successfully"}
 
 @app.get("/api/jobs/{job_id}/video")
-def get_video(job_id: str):
+def get_video(job_id: str, output_type: Optional[str] = None):
     job = store.load_job(job_id)
-    if not job or not job.output_path:
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+        
+    if output_type and output_type in job.outputs:
+        file_path = job.outputs[output_type].get("file_path")
+    else:
+        file_path = job.output_path
+        
+    if not file_path:
         raise HTTPException(status_code=404, detail="Job output path not found")
         
-    video_path = Path(job.output_path)
+    video_path = Path(file_path)
     if not video_path.exists():
         raise HTTPException(status_code=404, detail=f"Video file not found at: {video_path}")
         
@@ -675,10 +860,24 @@ def open_outputs_folder(req: Optional[OpenExplorerRequest] = None):
 class ChannelCreate(BaseModel):
     name: str
     path: str
+    tone: Optional[str] = "review_phim"
+    voice: Optional[str] = None
+    rate: Optional[str] = None
+    pitch: Optional[str] = None
+    bgm: Optional[str] = None
+    logo: Optional[str] = None
+    mask: Optional[bool] = True
 
 class ChannelUpdate(BaseModel):
     name: str
     path: str
+    tone: Optional[str] = "review_phim"
+    voice: Optional[str] = None
+    rate: Optional[str] = None
+    pitch: Optional[str] = None
+    bgm: Optional[str] = None
+    logo: Optional[str] = None
+    mask: Optional[bool] = True
 
 class PublishRequest(BaseModel):
     channel_id: str
@@ -687,8 +886,30 @@ CHANNELS_JSON = PROJECTS_DIR / "channels.json"
 
 def load_channels_data() -> list:
     defaults = [
-        {"id": "chan_cat", "name": "Con mèo", "path": str((PROJECT_ROOT / "outputs" / "Con mèo").resolve())},
-        {"id": "chan_review", "name": "Review phim TikTok Trung Quốc", "path": str((PROJECT_ROOT / "outputs" / "Review phim TikTok Trung Quốc").resolve())}
+        {
+            "id": "chan_cat",
+            "name": "Con mèo",
+            "path": str((PROJECT_ROOT / "outputs" / "Con mèo").resolve()),
+            "tone": "review_phim",
+            "voice": settings.default_voice,
+            "rate": settings.default_rate,
+            "pitch": settings.default_pitch,
+            "bgm": "",
+            "logo": "",
+            "mask": True
+        },
+        {
+            "id": "chan_review",
+            "name": "Review phim TikTok Trung Quốc",
+            "path": str((PROJECT_ROOT / "outputs" / "Review phim TikTok Trung Quốc").resolve()),
+            "tone": "review_phim",
+            "voice": settings.default_voice,
+            "rate": settings.default_rate,
+            "pitch": settings.default_pitch,
+            "bgm": "",
+            "logo": "",
+            "mask": True
+        }
     ]
     if not CHANNELS_JSON.exists():
         PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -728,6 +949,7 @@ def get_channels():
         try:
             p = resolve_channel_path(chan.get("name", "UnknownChannel"), chan.get("path"))
             p.mkdir(parents=True, exist_ok=True)
+            (p / "assets").mkdir(parents=True, exist_ok=True)
         except Exception as e:
             logger.error(f"Failed to auto-create channel directory: {e}")
     return channels
@@ -741,13 +963,21 @@ def create_channel(req: ChannelCreate):
     p = resolve_channel_path(req.name, req.path)
     try:
         p.mkdir(parents=True, exist_ok=True)
+        (p / "assets").mkdir(parents=True, exist_ok=True)
     except Exception as e:
         logger.error(f"Failed to create directory: {e}")
 
     new_chan = {
         "id": new_id,
         "name": req.name,
-        "path": req.path.strip()
+        "path": req.path.strip(),
+        "tone": req.tone,
+        "voice": req.voice,
+        "rate": req.rate,
+        "pitch": req.pitch,
+        "bgm": req.bgm,
+        "logo": req.logo,
+        "mask": req.mask
     }
     channels.append(new_chan)
     save_channels_data(channels)
@@ -760,10 +990,18 @@ def update_channel(id: str, req: ChannelUpdate):
         if chan["id"] == id:
             chan["name"] = req.name
             chan["path"] = req.path.strip()
+            chan["tone"] = req.tone
+            chan["voice"] = req.voice
+            chan["rate"] = req.rate
+            chan["pitch"] = req.pitch
+            chan["bgm"] = req.bgm
+            chan["logo"] = req.logo
+            chan["mask"] = req.mask
             
             p = resolve_channel_path(req.name, req.path)
             try:
                 p.mkdir(parents=True, exist_ok=True)
+                (p / "assets").mkdir(parents=True, exist_ok=True)
             except Exception as e:
                 logger.error(f"Failed to create directory: {e}")
                 
@@ -1050,8 +1288,29 @@ def cancel_job(job_id: str):
         # Discard from running_jobs so UI knows it's stopped
         running_jobs.discard(job_id)
         return {"status": "cancelled", "message": f"Job {job_id} has been cancelled"}
+@app.post("/api/jobs/{job_id}/rerun")
+def rerun_job(job_id: str):
+    job = store.load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+        
+    if job_id in running_jobs:
+        raise HTTPException(status_code=400, detail="Job is currently running and cannot be restarted")
+        
+    # Reset job state to intake step
+    job.status = "queued"
+    job.current_step = "intake"
+    if job.steps:
+        for step in job.steps:
+            job.steps[step] = "pending"
     else:
-        return {"status": "ignored", "message": f"Job {job_id} is not currently running"}
+        job.steps = {"intake": "pending"}
+    job.errors = []
+    store.save_job(job)
+    
+    # Run the pipeline runner
+    enqueue_pipeline_job(job)
+    return {"status": "queued", "message": f"Job {job_id} has been restarted successfully"}
 
 
 @app.get("/api/jobs/{job_id}/logs")
@@ -1127,78 +1386,106 @@ class KeysSaveRequest(BaseModel):
     key: str
     key2: Optional[str] = ""
     key3: Optional[str] = ""
+    key4: Optional[str] = ""
+    key5: Optional[str] = ""
+    key6: Optional[str] = ""
+    key7: Optional[str] = ""
+    key8: Optional[str] = ""
+    key9: Optional[str] = ""
+    key10: Optional[str] = ""
 
 @app.get("/api/config/key-check")
 def check_api_key():
     is_set = bool(settings.gemini_api_key.strip() or os.environ.get("GEMINI_API_KEY", "").strip())
-    return {
+    res = {
         "configured": is_set,
         "gemini_api_key": settings.gemini_api_key,
-        "gemini_api_key_2": settings.gemini_api_key_2,
-        "gemini_api_key_3": settings.gemini_api_key_3
     }
+    for i in range(2, 11):
+        res[f"gemini_api_key_{i}"] = getattr(settings, f"gemini_api_key_{i}", "")
+    return res
+
+@app.get("/api/config/key-status")
+def check_keys_status():
+    results = {}
+    for i in range(1, 11):
+        key_name = "gemini_api_key" if i == 1 else f"gemini_api_key_{i}"
+        key_val = getattr(settings, key_name, "").strip()
+        if not key_val:
+            results[f"key_{i}"] = "chua_cau_hinh"
+            continue
+            
+        try:
+            from google import genai
+            client = genai.Client(api_key=key_val)
+            # Make a cheap API call to list models with page_size=1
+            client.models.list(config={"page_size": 1})
+            results[f"key_{i}"] = "hoat_dong"
+        except Exception as e:
+            err_msg = str(e).lower()
+            if "quota" in err_msg or "429" in err_msg or "exhausted" in err_msg:
+                results[f"key_{i}"] = "het_quota"
+            elif "invalid" in err_msg or "not authorized" in err_msg or "key not valid" in err_msg or "api_key_invalid" in err_msg:
+                results[f"key_{i}"] = "khong_hop_le"
+            else:
+                results[f"key_{i}"] = f"loi: {str(e)[:40]}"
+    return results
 
 @app.post("/api/config/save-key")
 def save_api_keys(req: KeysSaveRequest):
     key = req.key.strip()
-    key2 = (req.key2 or "").strip()
-    key3 = (req.key3 or "").strip()
+    keys_list = [key]
+    for i in range(2, 11):
+        keys_list.append((getattr(req, f"key{i}", "") or "").strip())
     
     if not key:
         raise HTTPException(status_code=400, detail="API Key chính không được để trống")
         
     env_path = PROJECT_ROOT / ".env"
     try:
-        if not env_path.exists():
+        def update_env_var(content_str, name, val):
+            if f"{name}=" in content_str:
+                lines = content_str.splitlines()
+                for i, line in enumerate(lines):
+                    if line.strip().startswith(f"{name}="):
+                        lines[i] = f"{name}={val}"
+                        break
+                return "\n".join(lines) + "\n"
+            else:
+                return content_str.rstrip() + f"\n{name}={val}\n"
+
+        content = ""
+        if env_path.exists():
+            with open(env_path, "r", encoding="utf-8") as f:
+                content = f.read()
+        else:
             example_path = PROJECT_ROOT / ".env.example"
             if example_path.exists():
                 import shutil
                 shutil.copy2(example_path, env_path)
-            else:
-                with open(env_path, "w", encoding="utf-8") as f:
-                    f.write(f"GEMINI_API_KEY={key}\nGEMINI_API_KEY_2={key2}\nGEMINI_API_KEY_3={key3}\n")
-                
-        if env_path.exists():
-            with open(env_path, "r", encoding="utf-8") as f:
-                content = f.read()
-                
-            def update_env_var(content_str, name, val):
-                if f"{name}=" in content_str:
-                    lines = content_str.splitlines()
-                    for i, line in enumerate(lines):
-                        if line.strip().startswith(f"{name}="):
-                            lines[i] = f"{name}={val}"
-                            break
-                    return "\n".join(lines) + "\n"
-                else:
-                    return content_str.rstrip() + f"\n{name}={val}\n"
-            
-            content = update_env_var(content, "GEMINI_API_KEY", key)
-            content = update_env_var(content, "GEMINI_API_KEY_2", key2)
-            content = update_env_var(content, "GEMINI_API_KEY_3", key3)
-            
-            with open(env_path, "w", encoding="utf-8") as f:
-                f.write(content)
+                with open(env_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+
+        content = update_env_var(content, "GEMINI_API_KEY", keys_list[0])
+        for i in range(2, 11):
+            content = update_env_var(content, f"GEMINI_API_KEY_{i}", keys_list[i-1])
+
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write(content)
         
         # Update settings in-memory
-        settings.gemini_api_key = key
-        settings.gemini_api_key_2 = key2
-        settings.gemini_api_key_3 = key3
-        os.environ["GEMINI_API_KEY"] = key
-        os.environ["GEMINI_API_KEY_2"] = key2
-        os.environ["GEMINI_API_KEY_3"] = key3
+        settings.gemini_api_key = keys_list[0]
+        os.environ["GEMINI_API_KEY"] = keys_list[0]
+        for i in range(2, 11):
+            setattr(settings, f"gemini_api_key_{i}", keys_list[i-1])
+            os.environ[f"GEMINI_API_KEY_{i}"] = keys_list[i-1]
         
         # Update PipelineRunner's translator keys in memory
         if hasattr(runner, "translator") and runner.translator:
-            runner.translator.api_keys = [key]
-            if key2:
-                runner.translator.api_keys.append(key2)
-            if key3:
-                runner.translator.api_keys.append(key3)
-            runner.translator.api_keys = [k.strip() for k in runner.translator.api_keys if k.strip()]
+            runner.translator.api_keys = [k for k in keys_list if k]
             from google import genai
             try:
-                runner.translator.client = genai.Client(api_key=key)
+                runner.translator.client = genai.Client(api_key=keys_list[0])
             except Exception as e:
                 logger.warning(f"Failed to update translator client: {e}")
                 
@@ -1751,6 +2038,117 @@ def read_index():
     if not index_path.exists():
         return HTMLResponse("<h1>Frontend Static SPA index.html is missing. Please create it.</h1>")
     return FileResponse(index_path)
+
+class CropConfigRequest(BaseModel):
+    output_type: str
+    reframe_mode: str
+    crop_x_percent: float
+    crop_y_percent: float
+    crop_width_percent: float
+    crop_height_percent: float
+
+@app.post("/api/jobs/{job_id}/crop")
+def update_job_crop_config(job_id: str, req: CropConfigRequest):
+    job = store.load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    snapshot = job.config_snapshot or {}
+    snapshot[f"{req.output_type}_reframe_mode"] = req.reframe_mode
+    snapshot[f"{req.output_type}_crop"] = {
+        "crop_x_percent": req.crop_x_percent,
+        "crop_y_percent": req.crop_y_percent,
+        "crop_width_percent": req.crop_width_percent,
+        "crop_height_percent": req.crop_height_percent
+    }
+    job.config_snapshot = snapshot
+    store.save_job(job)
+    
+    with open(store.get_job_dir(job_id) / "job_config.json", "w", encoding="utf-8") as f:
+        json.dump(snapshot, f, indent=2, ensure_ascii=False)
+        
+    return {"status": "success", "message": "Đã lưu toạ độ crop thành công!"}
+
+@app.post("/api/jobs/{job_id}/render-output")
+async def trigger_render_output(job_id: str, req: Dict[str, Any]):
+    output_type = req.get("output_type")
+    if not output_type:
+        raise HTTPException(status_code=400, detail="Missing output_type")
+        
+    job = store.load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+        
+    if job.job_id in running_jobs:
+        raise HTTPException(status_code=400, detail="Cannot render while job is running")
+        
+    snapshot = job.config_snapshot or {}
+    selected_outputs = snapshot.get("selected_outputs", [])
+    
+    if output_type == "all":
+        for out in selected_outputs:
+            if out in job.outputs:
+                job.outputs[out]["render_status"] = "pending"
+    else:
+        if output_type not in selected_outputs:
+            selected_outputs.append(output_type)
+            snapshot["selected_outputs"] = selected_outputs
+            job.config_snapshot = snapshot
+            
+        from datetime import datetime
+        if output_type in job.outputs:
+            job.outputs[output_type]["render_status"] = "pending"
+        else:
+            job.outputs[output_type] = {
+                "output_type": output_type,
+                "file_path": "",
+                "width": 1920 if output_type == "yt_video" else 1080,
+                "height": 1080 if output_type == "yt_video" else 1920,
+                "duration": job.outputs.get(selected_outputs[0], {}).get("duration", 0) if selected_outputs else 0,
+                "render_status": "pending",
+                "upload_status": "pending",
+                "created_at": datetime.utcnow().isoformat()
+            }
+            
+    job.steps["render"] = "pending"
+    job.status = "queued"
+    job.current_step = "render"
+    job.errors = []
+    store.save_job(job)
+    
+    logo_path = resolve_logo_path(snapshot.get("logo"), snapshot.get("channel_id"))
+    enqueue_pipeline_job(job, args=(
+        job_id, snapshot.get("tone", "review_phim"), snapshot.get("voice", settings.default_voice),
+        snapshot.get("rate", "+0%"), snapshot.get("pitch", "+0Hz"), snapshot.get("bgm"), logo_path,
+        snapshot.get("mask", True), snapshot.get("tts_enabled", True), snapshot.get("subtitles_enabled", True),
+        snapshot.get("subtitle_cover_mode", settings.subtitle_cover_mode),
+        snapshot.get("subtitle_bg_opacity", settings.subtitle_bg_opacity),
+        snapshot.get("subtitle_mask_padding_x", settings.subtitle_mask_padding_x),
+        snapshot.get("subtitle_mask_padding_y", settings.subtitle_mask_padding_y),
+        snapshot.get("ocr_sample_interval_sec", settings.ocr_sample_interval_sec),
+        snapshot.get("ocr_crop_bottom_ratio", settings.ocr_crop_bottom_ratio)
+    ))
+    
+    return {"status": "success", "message": f"Rendering for {output_type} triggered in background."}
+
+@app.post("/api/logo/upload")
+async def upload_logo_file(file: UploadFile = File(...)):
+    overlay_dir = PROJECT_ROOT / "examples" / "overlay"
+    overlay_dir.mkdir(parents=True, exist_ok=True)
+    
+    filename = os.path.basename(file.filename)
+    if not filename.lower().endswith((".png", ".jpg", ".jpeg")):
+        raise HTTPException(status_code=400, detail="Only PNG, JPG, or JPEG images are allowed.")
+        
+    dest_path = overlay_dir / filename
+    try:
+        with open(dest_path, "wb") as buffer:
+            import shutil
+            shutil.copyfileobj(file.file, buffer)
+        return {"status": "success", "message": f"Tải lên logo {filename} thành công!"}
+    except Exception as e:
+        logger.error(f"Failed to upload logo: {e}")
+        raise HTTPException(status_code=500, detail=f"Lỗi khi lưu logo: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

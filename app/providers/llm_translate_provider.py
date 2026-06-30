@@ -26,10 +26,10 @@ class LLMTranslateProvider(TranslateProvider):
         primary_key = api_key or settings.gemini_api_key
         if primary_key:
             self.api_keys.append(primary_key)
-        if settings.gemini_api_key_2:
-            self.api_keys.append(settings.gemini_api_key_2)
-        if settings.gemini_api_key_3:
-            self.api_keys.append(settings.gemini_api_key_3)
+        for i in range(2, 11):
+            key_val = getattr(settings, f"gemini_api_key_{i}", None)
+            if key_val:
+                self.api_keys.append(key_val)
             
         # Filter out empty or whitespace-only keys
         self.api_keys = [k.strip() for k in self.api_keys if k.strip()]
@@ -82,6 +82,26 @@ class LLMTranslateProvider(TranslateProvider):
                         break
                     except Exception as e:
                         logger.warning(f"Gemini API Key {idx + 1} attempt {attempt} failed: {e}")
+                        
+                        # Quota exhaustion model fallback
+                        err_str = str(e).lower()
+                        if "429" in err_str or "resource_exhausted" in err_str or "quota" in err_str:
+                            for fallback_model in ['gemini-2.0-flash', 'gemini-1.5-flash']:
+                                if fallback_model != model:
+                                    logger.info(f"Quota exhausted for {model}. Attempting fallback to model: {fallback_model}...")
+                                    try:
+                                        response = client.models.generate_content(
+                                            model=fallback_model,
+                                            contents=prompt,
+                                            config=config
+                                        )
+                                        logger.info(f"Fallback to {fallback_model} succeeded!")
+                                        break
+                                    except Exception as fallback_err:
+                                        logger.warning(f"Fallback to {fallback_model} failed: {fallback_err}")
+                            if response:
+                                break
+                                
                         if attempt == 2:
                             raise e
                         import time

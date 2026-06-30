@@ -42,7 +42,11 @@ class MediaAnalyzer:
                 "orientation": orientation,
                 "crop_mode": crop_mode,
                 "has_audio": audio_stream is not None,
-                "codec": video_stream.get("codec_name", "unknown")
+                "codec": video_stream.get("codec_name", "unknown"),
+                "input_width": width,
+                "input_height": height,
+                "input_aspect_ratio": round(width / height, 3) if height > 0 else 1.0,
+                "input_aspect_type": orientation
             }
             logger.info(f"Analysis complete: {metadata}")
             return metadata

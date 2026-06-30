@@ -8,6 +8,13 @@ class Settings(BaseSettings):
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     gemini_api_key_2: str = Field(default="", validation_alias="GEMINI_API_KEY_2")
     gemini_api_key_3: str = Field(default="", validation_alias="GEMINI_API_KEY_3")
+    gemini_api_key_4: str = Field(default="", validation_alias="GEMINI_API_KEY_4")
+    gemini_api_key_5: str = Field(default="", validation_alias="GEMINI_API_KEY_5")
+    gemini_api_key_6: str = Field(default="", validation_alias="GEMINI_API_KEY_6")
+    gemini_api_key_7: str = Field(default="", validation_alias="GEMINI_API_KEY_7")
+    gemini_api_key_8: str = Field(default="", validation_alias="GEMINI_API_KEY_8")
+    gemini_api_key_9: str = Field(default="", validation_alias="GEMINI_API_KEY_9")
+    gemini_api_key_10: str = Field(default="", validation_alias="GEMINI_API_KEY_10")
     
     # Path Configuration
     default_output_folder: str = "./examples/outputs"
@@ -29,7 +36,7 @@ class Settings(BaseSettings):
 
     # Subtitle cover / OCR detection defaults
     subtitle_cover_mode: str = "auto_detect_old_text"
-    subtitle_bg_opacity: float = 0.42
+    subtitle_bg_opacity: float = 0.20
     subtitle_mask_padding_x: int = 20
     subtitle_mask_padding_y: int = 12
     ocr_sample_interval_sec: float = 0.75

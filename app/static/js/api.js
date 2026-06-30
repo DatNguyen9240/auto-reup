@@ -12,7 +12,7 @@ function readSubtitleCoverConfig() {
 
     return {
         subtitle_cover_mode: valueOf('subtitle_cover_mode', 'text_box_only'),
-        subtitle_bg_opacity: numberOf('subtitle_bg_opacity', 0.42),
+        subtitle_bg_opacity: numberOf('subtitle_bg_opacity', 0.20),
         subtitle_mask_padding_x: numberOf('subtitle_mask_padding_x', 20),
         subtitle_mask_padding_y: numberOf('subtitle_mask_padding_y', 12),
         ocr_sample_interval_sec: numberOf('ocr_sample_interval_sec', 0.75),
@@ -596,6 +596,11 @@ async function submitJob(e) {
     videoQueue = pendingVideoItems;
     renderQueueList();
 
+    const selected_outputs = [];
+    if (document.getElementById('out-fb-reels')?.checked) selected_outputs.push('fb_reels');
+    if (document.getElementById('out-yt-shorts')?.checked) selected_outputs.push('yt_shorts');
+    if (document.getElementById('out-yt-video')?.checked) selected_outputs.push('yt_video');
+
     for (const item of queueToProcess) {
         const cfg = item.config;
         const payload = {
@@ -618,10 +623,14 @@ async function submitJob(e) {
             subtitle_mask_padding_y: cfg.subtitle_mask_padding_y,
             ocr_sample_interval_sec: cfg.ocr_sample_interval_sec,
             ocr_crop_bottom_ratio: cfg.ocr_crop_bottom_ratio,
+            selected_outputs: selected_outputs.length > 0 ? selected_outputs : null,
             config_snapshot: {
                 url: item.url,
                 normalized_url: item.normalized_url,
                 platform: item.platform,
+                selected_outputs: selected_outputs.length > 0 ? selected_outputs : null,
+                logo_position: document.getElementById('logo_position')?.value || 'top_center',
+                logo_layout: window.logoLayout || null,
                 ...cfg
             }
         };
@@ -645,4 +654,86 @@ async function submitJob(e) {
 
     await loadJobs();
     showToast(`Đã tạo ${queueToProcess.length} job riêng`, 'success');
+}
+
+async function saveCropConfig(jobId, outputType, reframeMode, cropX, cropY, cropW, cropH) {
+    try {
+        const res = await fetch(`/api/jobs/${jobId}/crop`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                output_type: outputType,
+                reframe_mode: reframeMode,
+                crop_x_percent: cropX,
+                crop_y_percent: cropY,
+                crop_width_percent: cropW,
+                crop_height_percent: cropH
+            })
+        });
+        if (res.ok) {
+            showToast("Lưu tọa độ crop thành công!", "success");
+            await loadJobs();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || "Không thể lưu tọa độ crop", "error");
+        }
+    } catch (e) {
+        showToast("Lỗi kết nối: " + e.message, "error");
+    }
+}
+
+async function renderSpecificOutput(jobId, outputType) {
+    try {
+        showToast(`Đang gửi yêu cầu render ${outputType}...`, "info");
+        const res = await fetch(`/api/jobs/${jobId}/render-output`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ output_type: outputType })
+        });
+        if (res.ok) {
+            showToast("Đã bắt đầu render ở tiến trình ngầm!", "success");
+            await loadJobs();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || "Không thể yêu cầu render", "error");
+        }
+    } catch (e) {
+        showToast("Lỗi kết nối: " + e.message, "error");
+    }
+}
+
+async function uploadLogo(input) {
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    showToast(`Đang tải lên logo ${file.name}...`, "info");
+    try {
+        const response = await fetch('/api/logo/upload', {
+            method: 'POST',
+            body: formData
+        });
+        if (response.ok) {
+            const res = await response.json();
+            showToast(res.message || "Tải lên logo thành công!", "success");
+            
+            // Reload config to update all logo dropdowns
+            await loadGlobalConfig();
+            
+            // Select the newly uploaded logo in the dropdown
+            const select = document.getElementById('logo');
+            if (select) {
+                select.value = file.name;
+            }
+        } else {
+            const err = await response.json();
+            showToast(err.detail || "Không thể tải lên logo", "error");
+        }
+    } catch (e) {
+        showToast("Lỗi kết nối: " + e.message, "error");
+    } finally {
+        input.value = ''; // Reset input
+    }
 }

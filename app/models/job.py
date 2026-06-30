@@ -26,4 +26,9 @@ class Job(BaseModel):
     channel_folder: Optional[str] = None
     platform_folder: Optional[str] = None
     channel_id: Optional[str] = None
+    input_width: int = 0
+    input_height: int = 0
+    input_aspect_ratio: float = 1.0
+    input_aspect_type: str = "vertical"
+    outputs: Dict[str, Any] = Field(default_factory=dict)
     config_snapshot: Dict[str, Any] = Field(default_factory=dict)

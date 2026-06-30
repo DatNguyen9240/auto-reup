@@ -45,6 +45,8 @@ class RenderService:
         subtitle_layout: dict,
         bg_opacity: float,
         stroke_size: int = 3,
+        play_w: int = 1080,
+        play_h: int = 1920,
     ):
         """Converts SRT to ASS using a user-selected normalized subtitle box."""
         subs = pysrt.open(str(srt_path), encoding="utf-8")
@@ -67,8 +69,6 @@ class RenderService:
         w_pct = max(0.10, min(1.0 - x_pct, w_pct))
         h_pct = max(0.04, min(1.0 - y_pct, h_pct))
 
-        play_w = 1080
-        play_h = 1920
         box_w = int(play_w * w_pct)
         box_h = int(play_h * h_pct)
         center_x = int(play_w * (x_pct + w_pct / 2))
@@ -119,36 +119,60 @@ class RenderService:
         ocr_sample_interval_sec: float = 0.75,
         ocr_crop_bottom_ratio: float = 0.45,
         debug_dir: Path = None,
+        w_out: int = 1080,
+        h_out: int = 1920,
+        reframe_mode: str = "keep_original",
+        crop_layout: dict = None,
+        logo_position: str = "top_center",
+        logo_layout: dict = None,
+        asset_path: Path = None,
+        asset_layout: dict = None,
+        blur_masks: list = None,
     ) -> Path:
-        """Renders the final 9:16 portrait video with mixed audio, masked subtitles, brand logo, and burned SRT."""
-        logger.info(f"Rendering final output video to {output_path}...")
+        """Renders the final output video with mixed audio, brand logo, and burned SRT."""
+        logger.info(f"Rendering final output video to {output_path} ({w_out}x{h_out}, mode={reframe_mode}, logo_pos={logo_position}, logo_layout={logo_layout}, asset_layout={asset_layout}, blur_masks={blur_masks})...")
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         w_in = metadata.get("width", 1920)
         h_in = metadata.get("height", 1080)
         
-        # Standard vertical video output canvas: 1080x1920
-        w_out = 1080
-        h_out = 1920
-        
         filters = []
         
-        # 1. Video aspect ratio conversion (Horizontal/Square -> 9:16 Blurred Background)
-        if w_in >= h_in:
-            # Input is horizontal or square: make blurred background + centered foreground
-            filters.append(
-                f"[0:v]scale={w_out}:{h_out}:force_original_aspect_ratio=increase,crop={w_out}:{h_out},boxblur=20:1[bg]"
-            )
-            filters.append(
-                f"[0:v]scale={w_out}:{h_out}:force_original_aspect_ratio=decrease[fg]"
-            )
-            filters.append(
-                f"[bg][fg]overlay=(W-w)/2:(H-h)/2[layout]"
-            )
+        # 1. Video aspect ratio reframing & padding filters
+        if reframe_mode == "blur_background":
+            if (w_in / h_in) > (w_out / h_out):
+                # Landscape source to vertical target
+                filters.extend([
+                    f"[0:v]scale={w_out}:-1[scaled_fg]",
+                    f"[0:v]scale=-1:{h_out},crop={w_out}:{h_out},boxblur=20:5[bg]",
+                    f"[bg][scaled_fg]overlay=x=0:y=(H-h)/2[layout]"
+                ])
+            else:
+                # Vertical source to landscape target
+                filters.extend([
+                    f"[0:v]scale=-1:{h_out}[scaled_fg]",
+                    f"[0:v]scale={w_out}:-1,crop={w_out}:{h_out},boxblur=20:5[bg]",
+                    f"[bg][scaled_fg]overlay=x=(W-w)/2:y=0[layout]"
+                ])
+        elif reframe_mode == "manual_crop" and crop_layout:
+            cx = float(crop_layout.get("crop_x_percent", 0.342))
+            cy = float(crop_layout.get("crop_y_percent", 0.0))
+            cw = float(crop_layout.get("crop_width_percent", 0.316))
+            ch = float(crop_layout.get("crop_height_percent", 1.0))
+            
+            x_px = int(cx * w_in)
+            y_px = int(cy * h_in)
+            w_px = int(cw * w_in)
+            h_px = int(ch * h_in)
+            
+            filters.extend([
+                f"[0:v]crop={w_px}:{h_px}:{x_px}:{y_px}[cropped]",
+                f"[cropped]scale={w_out}:{h_out}[layout]"
+            ])
         else:
-            # Input is already vertical: scale/pad to exactly fit 1080x1920
+            # Default scale and pad to keep aspect ratio
             filters.append(
-                f"[0:v]scale={w_out}:{h_out}:force_original_aspect_ratio=decrease,pad={w_out}:{h_out}:(ow-iw)/2:(oh-ih)/2[layout]"
+                f"[0:v]scale={w_out}:{h_out}:force_original_aspect_ratio=decrease,pad={w_out}:{h_out}:(ow-iw)/2:(oh-ih)/2:black[layout]"
             )
             
         current_grid = "[layout]"
@@ -160,7 +184,6 @@ class RenderService:
             mask_subtitle = False
             subtitle_cover_mode = "none"
 
-        cover_mode = subtitle_cover_mode or ("fixed_bottom_bar" if mask_subtitle else "none")
         opacity = max(0.0, min(1.0, float(subtitle_bg_opacity)))
 
         if render_subtitles:
@@ -171,24 +194,165 @@ class RenderService:
                 f"backplate_opacity={opacity:.2f}"
             )
             
-        # 3. Logo/Watermark overlay (centered slightly below the top of the frame)
+        # Determine overlay indexes
         has_logo = logo_path and os.path.exists(logo_path) and os.path.getsize(logo_path) > 0
+        
+        asset_type = asset_layout.get("type", "image") if asset_layout else None
+        has_asset = (asset_type == "image") and asset_path and os.path.exists(asset_path) and os.path.getsize(asset_path) > 0
+        has_color_mask = (asset_type == "color")
+        has_blur_mask = (asset_type == "blur")
+        
+        # Nếu logo mặc định trùng với vật thể đè (Asset) do người dùng tự kéo thả,
+        # ta ẩn logo mặc định đi để chỉ vẽ theo vị trí kéo thả tùy chỉnh.
+        if has_logo and has_asset:
+            try:
+                if Path(logo_path).resolve() == Path(asset_path).resolve():
+                    has_logo = False
+            except Exception:
+                pass
+        
+        logo_input_index = None
+        asset_input_index = None
+        current_input_index = 2
+        
         if has_logo:
-            # overlay logo at horizontal center, 120 pixels from top
+            logo_input_index = current_input_index
+            current_input_index += 1
+            
+        if has_asset:
+            asset_input_index = current_input_index
+            current_input_index += 1
+            
+        # 3. Logo/Watermark overlay (centered slightly below the top of the frame or preset coords)
+        if has_logo:
+            custom_x = logo_layout.get("x_percent") if logo_layout else None
+            custom_y = logo_layout.get("y_percent") if logo_layout else None
+            
+            if custom_x is not None and custom_y is not None:
+                expr = f"x=W*{custom_x}:y=H*{custom_y}"
+            else:
+                pos = logo_position or "top_center"
+                if pos == "top_left":
+                    expr = "x=W*0.05:y=H*0.05"
+                elif pos == "top_right":
+                    expr = "x=W-w-W*0.05:y=H*0.05"
+                elif pos == "bottom_left":
+                    expr = "x=W*0.05:y=H-h-H*0.05"
+                elif pos == "bottom_right":
+                    expr = "x=W-w-W*0.05:y=H-h-H*0.05"
+                else: # top_center
+                    expr = "x=(W-w)/2:y=120"
+                
+            # Scale logo to match the 12.5% width of the editor box relative to workspace
+            logo_w = int(w_out * 0.125)
             filters.append(
-                f"{current_grid}[2:v]overlay=x=(W-w)/2:y=120[logoed]"
+                f"[{logo_input_index}:v]scale={logo_w}:-1[scaled_logo]"
+            )
+            filters.append(
+                f"{current_grid}[scaled_logo]overlay={expr}[logoed]"
             )
             current_grid = "[logoed]"
             
-        # 4. Burn-in translation subtitles (Convert SRT to ASS for pixel-perfect alignment and scaling)
+        # 3.5 Customizable Asset overlay (resizable width/height & opacity)
+        if has_asset:
+            a_x = asset_layout.get("x_percent", 0.40) if asset_layout else 0.40
+            a_y = asset_layout.get("y_percent", 0.08) if asset_layout else 0.08
+            a_w = asset_layout.get("width_percent", 0.20) if asset_layout else 0.20
+            a_h = asset_layout.get("height_percent", 0.08) if asset_layout else 0.08
+            a_opacity = asset_layout.get("opacity", 1.0) if asset_layout else 1.0
+            
+            # Pre-calculate pixel dimensions to prevent FFmpeg coordinate scale errors
+            px_w = int(w_out * a_w)
+            px_h = int(h_out * a_h)
+            
+            filters.append(
+                f"[{asset_input_index}:v]scale={px_w}:{px_h},format=rgba,colorchannelmixer=aa={a_opacity}[filtered_asset]"
+            )
+            filters.append(
+                f"{current_grid}[filtered_asset]overlay=x=W*{a_x}:y=H*{a_y}[overlaid_asset]"
+            )
+            current_grid = "[overlaid_asset]"
+        elif has_color_mask:
+            a_x = asset_layout.get("x_percent", 0.40)
+            a_y = asset_layout.get("y_percent", 0.08)
+            a_w = asset_layout.get("width_percent", 0.20)
+            a_h = asset_layout.get("height_percent", 0.08)
+            a_opacity = asset_layout.get("opacity", 1.0)
+            a_color = asset_layout.get("color", "#000000")
+            
+            color_hex = a_color.replace("#", "")
+            
+            px_x = int(w_out * a_x)
+            px_y = int(h_out * a_y)
+            px_w = int(w_out * a_w)
+            px_h = int(h_out * a_h)
+            
+            filters.append(
+                f"{current_grid}drawbox=x={px_x}:y={px_y}:w={px_w}:h={px_h}:color=0x{color_hex}@{a_opacity}:t=fill[masked]"
+            )
+            current_grid = "[masked]"
+        elif has_blur_mask:
+            a_x = asset_layout.get("x_percent", 0.40)
+            a_y = asset_layout.get("y_percent", 0.08)
+            a_w = asset_layout.get("width_percent", 0.20)
+            a_h = asset_layout.get("height_percent", 0.08)
+            a_opacity = asset_layout.get("opacity", 1.0)
+            blur_radius = max(3, min(40, int(a_opacity * 30)))
+            
+            px_x = max(0, min(w_out - 10, int(w_out * a_x)))
+            px_y = max(0, min(h_out - 10, int(h_out * a_y)))
+            px_w = max(10, min(w_out - px_x, int(w_out * a_w)))
+            px_h = max(10, min(h_out - px_y, int(h_out * a_h)))
+            
+            filters.append(
+                f"{current_grid}split[orig_sp][for_blur]"
+            )
+            filters.append(
+                f"[for_blur]crop={px_w}:{px_h}:{px_x}:{px_y},boxblur={blur_radius}:5[blurred_crop]"
+            )
+            filters.append(
+                f"[orig_sp][blurred_crop]overlay=x={px_x}:y={px_y}[masked]"
+            )
+            current_grid = "[masked]"
+            
+        # 3.6 Multiple Sequential Blur Masks
+        if blur_masks:
+            for idx, mask in enumerate(blur_masks):
+                m_x = mask.get("x_percent", 0.40)
+                m_y = mask.get("y_percent", 0.08)
+                m_w = mask.get("width_percent", 0.20)
+                m_h = mask.get("height_percent", 0.08)
+                m_opacity = mask.get("opacity", 0.6)
+                blur_radius = max(3, min(40, int(m_opacity * 30)))
+                
+                px_x = max(0, min(w_out - 10, int(w_out * m_x)))
+                px_y = max(0, min(h_out - 10, int(h_out * m_y)))
+                px_w = max(10, min(w_out - px_x, int(w_out * m_w)))
+                px_h = max(10, min(h_out - px_y, int(h_out * m_h)))
+                
+                next_grid = f"[masked_seq_{idx}]"
+                filters.append(
+                    f"{current_grid}split[orig_seq_{idx}][for_blur_seq_{idx}]"
+                )
+                filters.append(
+                    f"[for_blur_seq_{idx}]crop={px_w}:{px_h}:{px_x}:{px_y},boxblur={blur_radius}:5[blurred_crop_seq_{idx}]"
+                )
+                filters.append(
+                    f"[orig_seq_{idx}][blurred_crop_seq_{idx}]overlay=x={px_x}:y={px_y}{next_grid}"
+                )
+                current_grid = next_grid
+            
+        # 4. Burn-in translation subtitles using native ASS backplate box (100x faster, zero-split, dynamic width)
         if render_subtitles:
             ass_path = srt_path.with_suffix(".ass")
             self._convert_srt_to_ass(
                 srt_path,
                 ass_path,
                 subtitle_layout=subtitle_layout,
-                bg_opacity=opacity,
+                bg_opacity=subtitle_bg_opacity,
                 stroke_size=3,
+                play_w=w_out,
+                play_h=h_out,
             )
             
             escaped_ass = self._escape_windows_path(ass_path)
@@ -210,6 +374,9 @@ class RenderService:
         
         if has_logo:
             cmd.extend(["-i", str(logo_path)])
+            
+        if has_asset:
+            cmd.extend(["-i", str(asset_path)])
             
         cmd.extend([
             "-filter_complex", filter_complex,

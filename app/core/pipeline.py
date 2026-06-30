@@ -24,6 +24,8 @@ from app.utils.file_utils import ensure_dir, write_json
 
 logger = get_logger("Pipeline")
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 import logging
 
 def _find_chrome_profile_for_email(email: str) -> Optional[str]:
@@ -72,6 +74,55 @@ class PipelineRunner:
         if not matches:
             raise AutoToolError(f"No input video file found in work directory: {work_dir}")
         return matches[0]
+
+    def _resolve_asset_path(self, logo: Optional[str], channel_id: Optional[str] = None) -> Optional[Path]:
+        if not logo:
+            return None
+            
+        # 1. Global overlay
+        overlay_path = PROJECT_ROOT / "examples" / "overlay" / logo
+        if overlay_path.exists() and overlay_path.is_file():
+            return overlay_path
+            
+        # 2. Absolute path
+        logo_path = Path(logo)
+        if logo_path.is_absolute() and logo_path.exists():
+            return logo_path
+            
+        # 3. Relative to project root
+        proj_path = PROJECT_ROOT / logo
+        if proj_path.exists() and proj_path.is_file():
+            return proj_path
+            
+        # 4. Relative to channel folder if channel_id is provided
+        if channel_id:
+            try:
+                channels_file = self.projects_dir / "channels.json"
+                if channels_file.exists():
+                    with open(channels_file, "r", encoding="utf-8") as f:
+                        channels = json.load(f)
+                    chan = next((c for c in channels if c.get("id") == channel_id), None)
+                    if chan:
+                        chan_name = chan.get("name")
+                        chan_path = chan.get("path")
+                        
+                        # Resolve channel path
+                        if not chan_path or not chan_path.strip():
+                            chan_dir = PROJECT_ROOT / "outputs" / chan_name
+                        else:
+                            p = Path(chan_path.strip())
+                            chan_dir = p if p.is_absolute() else PROJECT_ROOT / p
+                            
+                        chan_logo_path = chan_dir / logo
+                        if chan_logo_path.exists() and chan_logo_path.is_file():
+                            return chan_logo_path
+                            
+                        root_logo_path = chan_dir / Path(logo).name
+                        if root_logo_path.exists() and root_logo_path.is_file():
+                            return root_logo_path
+            except Exception as e:
+                logger.error(f"Failed resolving channel-specific logo in pipeline: {e}")
+        return None
 
     def create_job(self, input_path: str, job_id: str) -> Job:
         path_str = str(input_path)
@@ -168,73 +219,81 @@ class PipelineRunner:
                 if job.input_path.startswith("http://") or job.input_path.startswith("https://"):
                     logger.info(f"Input is a URL. Downloading automatically: {job.input_path}")
                     dest_video = work_dir / "input.mp4"
-                    
                     is_douyin = "douyin.com" in job.input_path or "v.douyin.com" in job.input_path
-                    if not is_douyin:
-                        logger.info("Using yt-dlp to download URL with console feedback...")
-                        is_bilibili = "bilibili.com" in job.input_path or "b23.tv" in job.input_path
-                        class YTDLPLogger:
-                            def debug(self, msg):
-                                if msg.startswith('[download]'):
-                                    logger.info(msg)
-                            def info(self, msg):
+                    
+                    class YTDLPLogger:
+                        def debug(self, msg):
+                            if msg.startswith('[download]'):
                                 logger.info(msg)
-                            def warning(self, msg):
-                                logger.warning(msg)
-                            def error(self, msg):
-                                logger.error(msg)
+                        def info(self, msg):
+                            logger.info(msg)
+                        def warning(self, msg):
+                            logger.warning(msg)
+                        def error(self, msg):
+                            logger.error(msg)
+                    
+                    import yt_dlp
+                    ydl_opts = {
+                        'outtmpl': str(dest_video),
+                        'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+                        'logger': YTDLPLogger(),
+                        'quiet': False
+                    }
+                    
+                    from app.services.downloader import normalize_douyin_url
+                    normalized_url = normalize_douyin_url(job.input_path) if is_douyin else job.input_path
+                    
+                    def run_ytdl():
+                        attempts = []
+                        project_root = Path(__file__).resolve().parents[2]
+                        cookie_file = project_root / "cookies.txt"
+                        if cookie_file.exists() and cookie_file.stat().st_size > 100:
+                            logger.info(f"Adding cookies.txt to yt-dlp: {cookie_file}")
+                            attempts.append(("cookies.txt", {'cookiefile': str(cookie_file)}))
                         
-                        import yt_dlp
-                        ydl_opts = {
-                            'outtmpl': str(dest_video),
-                            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-                            'logger': YTDLPLogger(),
-                            'quiet': False
-                        }
-                        if is_bilibili:
-                            logger.info("Bilibili URL detected. Trying yt-dlp with cookies from your logged-in Chrome profile.")
-                        def run_ytdl():
-                            attempts = []
-                            if is_bilibili:
-                                chrome_profile = _find_chrome_profile_for_email("tam.mapp04@gmail.com")
-                                if chrome_profile:
-                                    logger.info(f"Found Chrome profile for tam.mapp04@gmail.com: {chrome_profile}")
-                                    attempts.append((f"Chrome cookies ({chrome_profile})", {'cookiesfrombrowser': ('chrome', chrome_profile)}))
-                                attempts.extend([
-                                    ("Chrome cookies", {'cookiesfrombrowser': ('chrome',)}),
-                                    ("Edge cookies", {'cookiesfrombrowser': ('edge',)}),
-                                ])
-                            attempts.append(("no browser cookies", {}))
+                        attempts.extend([
+                            ("Chrome cookies", {'cookiesfrombrowser': ('chrome',)}),
+                            ("Edge cookies", {'cookiesfrombrowser': ('edge',)}),
+                            ("no cookies", {})
+                        ])
+                        
+                        last_error = None
+                        for label, extra_opts in attempts:
+                            try:
+                                logger.info(f"yt-dlp download attempt: {label}")
+                                opts = dict(ydl_opts)
+                                opts.update(extra_opts)
+                                with yt_dlp.YoutubeDL(opts) as ydl:
+                                    info_dict = ydl.extract_info(normalized_url, download=True)
+                                    return {
+                                        "title": info_dict.get("title") or job_id,
+                                        "duration": info_dict.get("duration") or 0,
+                                        "thumbnail": info_dict.get("thumbnail") or "",
+                                        "play_addr": info_dict.get("url") or "",
+                                        "uploader": info_dict.get("uploader") or "",
+                                    }
+                            except Exception as e:
+                                last_error = e
+                                logger.warning(f"yt-dlp download failed using {label}: {e}")
+                        raise last_error
 
-                            last_error = None
-                            for label, extra_opts in attempts:
-                                try:
-                                    logger.info(f"yt-dlp download attempt: {label}")
-                                    opts = dict(ydl_opts)
-                                    opts.update(extra_opts)
-                                    with yt_dlp.YoutubeDL(opts) as ydl:
-                                        ydl.download([job.input_path])
-                                    logger.info(f"yt-dlp download succeeded using {label}.")
-                                    return
-                                except Exception as e:
-                                    last_error = e
-                                    logger.warning(f"yt-dlp download failed using {label}: {e}")
-                            if is_bilibili:
-                                logger.info("All yt-dlp Bilibili attempts failed. Falling back to Chrome/Playwright downloader.")
-                                from app.services.downloader import download_bilibili_with_playwright
-                                return download_bilibili_with_playwright(job.input_path, dest_video)
-                            raise last_error
-                        browser_info = await asyncio.get_event_loop().run_in_executor(None, run_ytdl)
-                        info = browser_info or {"title": job_id, "duration": 0}
-                    else:
-                        from app.services.downloader import PlaywrightDownloaderService
-                        downloader = PlaywrightDownloaderService()
-                        try:
-                            # Download using Playwright Downloader
-                            info = await downloader.download_video_async(job.input_path, dest_video)
-                        except Exception as e:
-                            logger.error(f"Download failed: {e}")
-                            raise AutoToolError(f"Failed to download video from URL: {e}")
+                    try:
+                        logger.info("Attempting download using yt-dlp...")
+                        info = await asyncio.get_event_loop().run_in_executor(None, run_ytdl)
+                        logger.info("yt-dlp download completed successfully.")
+                    except Exception as ytdl_err:
+                        if is_douyin:
+                            logger.info("yt-dlp download failed. Falling back to generic Douyin Playwright downloader...")
+                            from app.services.downloader import PlaywrightDownloaderService
+                            downloader = PlaywrightDownloaderService()
+                            try:
+                                info = await downloader.download_video_async(job.input_path, dest_video)
+                                logger.info("Generic Douyin Playwright downloader succeeded.")
+                            except Exception as playwright_err:
+                                logger.error(f"Douyin Playwright downloader failed: {playwright_err}")
+                                raise AutoToolError(f"Failed to download video from URL: {playwright_err}")
+                        else:
+                            raise AutoToolError(f"Failed to download video from URL: {ytdl_err}")
                         
                     # Save the downloaded video metadata
                     metadata_path = work_dir / "origin_metadata.json"
@@ -268,6 +327,32 @@ class PipelineRunner:
                 dest_video = self._get_dest_video(work_dir)
                 metadata = self.analyzer.analyze(dest_video)
                 write_json(work_dir / "metadata.json", metadata)
+                
+                job.input_width = metadata.get("input_width", 0)
+                job.input_height = metadata.get("input_height", 0)
+                job.input_aspect_ratio = metadata.get("input_aspect_ratio", 1.0)
+                job.input_aspect_type = metadata.get("input_aspect_type", "vertical")
+                
+                # Initialize default selected outputs if not custom configured
+                snapshot = job.config_snapshot or {}
+                if "selected_outputs" not in snapshot or not snapshot["selected_outputs"]:
+                    snapshot["selected_outputs"] = ["fb_reels"]
+                    job.config_snapshot = snapshot
+                    
+                # Initialize outputs status structure
+                from datetime import datetime
+                for out in snapshot["selected_outputs"]:
+                    if out not in job.outputs:
+                        job.outputs[out] = {
+                            "output_type": out,
+                            "file_path": "",
+                            "width": 1920 if out == "yt_video" else 1080,
+                            "height": 1080 if out == "yt_video" else 1920,
+                            "duration": metadata.get("duration", 0),
+                            "render_status": "pending",
+                            "upload_status": "pending",
+                            "created_at": datetime.utcnow().isoformat()
+                        }
                 
                 job.steps["analyze"] = "completed"
                 self.store.save_job(job)
@@ -483,7 +568,7 @@ class PipelineRunner:
                 job.steps["subtitle_layout"] = "completed"
                 job.status = "rendering"
                 self.store.save_job(job)
-                logger.info("--- Step 9: Render ---")
+                logger.info("--- Step 9: Render (Multi-Format Loop) ---")
                 
                 segments = self.store.load_translated(job_id)
                 
@@ -505,27 +590,102 @@ class PipelineRunner:
                     metadata = json.load(f)
                     
                 dest_video = self._get_dest_video(work_dir)
-                final_video = output_dir / "final.mp4"
+                snapshot = job.config_snapshot or {}
+                selected_outputs = snapshot.get("selected_outputs") or []
+                if not selected_outputs:
+                    # Fallback to standard vertical render
+                    selected_outputs = ["fb_reels"]
                 
-                self.render_service.render(
-                    video_path=dest_video,
-                    audio_path=work_dir / "mixed_audio.wav",
-                    srt_path=output_srt,
-                    output_path=final_video,
-                    metadata=metadata,
-                    logo_path=logo_path,
-                    mask_subtitle=mask_subtitle,
-                    render_subtitles=subtitles_enabled,
-                    subtitle_layout=job.config_snapshot.get("subtitle_layout") if job.config_snapshot else None,
-                    subtitle_cover_mode=subtitle_cover_mode,
-                    subtitle_bg_opacity=subtitle_bg_opacity,
-                    subtitle_mask_padding_x=subtitle_mask_padding_x,
-                    subtitle_mask_padding_y=subtitle_mask_padding_y,
-                    ocr_sample_interval_sec=ocr_sample_interval_sec,
-                    ocr_crop_bottom_ratio=ocr_crop_bottom_ratio,
-                    debug_dir=job_dir / "debug" / "subtitle_detection",
-                )
+                logger.info(f"Selected outputs to render: {selected_outputs}")
                 
+                for out in selected_outputs:
+                    logger.info(f"Starting render for format: {out}")
+                    if out not in job.outputs:
+                        from datetime import datetime
+                        job.outputs[out] = {
+                            "output_type": out,
+                            "file_path": "",
+                            "width": 1920 if out == "yt_video" else 1080,
+                            "height": 1080 if out == "yt_video" else 1920,
+                            "duration": metadata.get("duration", 0),
+                            "render_status": "pending",
+                            "upload_status": "pending",
+                            "created_at": datetime.utcnow().isoformat()
+                        }
+                    
+                    job.outputs[out]["render_status"] = "rendering"
+                    self.store.save_job(job)
+                    
+                    # Define format target specs
+                    if out == "yt_video":
+                        w_out, h_out = 1920, 1080
+                        filename = "yt_video_16x9.mp4"
+                    elif out == "yt_shorts":
+                        w_out, h_out = 1080, 1920
+                        filename = "yt_shorts_9x16.mp4"
+                    else:
+                        w_out, h_out = 1080, 1920
+                        filename = "fb_reels_9x16.mp4"
+                        
+                    reframe_mode = snapshot.get(f"{out}_reframe_mode", "keep_original")
+                    crop_layout = snapshot.get(f"{out}_crop")
+                    
+                    asset_path = None
+                    asset = snapshot.get("asset")
+                    if asset:
+                        asset_path = self._resolve_asset_path(asset, snapshot.get("channel_id"))
+                            
+                    final_video = output_dir / filename
+                    
+                    try:
+                        self.render_service.render(
+                            video_path=dest_video,
+                            audio_path=work_dir / "mixed_audio.wav",
+                            srt_path=output_srt,
+                            output_path=final_video,
+                            metadata=metadata,
+                            logo_path=logo_path,
+                            mask_subtitle=mask_subtitle,
+                            render_subtitles=subtitles_enabled,
+                            subtitle_layout=snapshot.get("subtitle_layout"),
+                            subtitle_cover_mode=subtitle_cover_mode,
+                            subtitle_bg_opacity=subtitle_bg_opacity,
+                            subtitle_mask_padding_x=subtitle_mask_padding_x,
+                            subtitle_mask_padding_y=subtitle_mask_padding_y,
+                            ocr_sample_interval_sec=ocr_sample_interval_sec,
+                            ocr_crop_bottom_ratio=ocr_crop_bottom_ratio,
+                            debug_dir=job_dir / "debug" / "subtitle_detection",
+                            w_out=w_out,
+                            h_out=h_out,
+                            reframe_mode=reframe_mode,
+                            crop_layout=crop_layout,
+                            logo_position=snapshot.get("logo_position", "top_center"),
+                            logo_layout=snapshot.get("logo_layout"),
+                            asset_path=asset_path,
+                            asset_layout=snapshot.get("asset_layout"),
+                            blur_masks=snapshot.get("blur_masks", [])
+                        )
+                        
+                        # Copy completed render to the centralized Completed directory
+                        completed_dir = PROJECT_ROOT / "outputs" / "Completed"
+                        completed_dir.mkdir(parents=True, exist_ok=True)
+                        dest_completed = completed_dir / f"{job_id}_{filename}"
+                        shutil.copy2(final_video, dest_completed)
+                        
+                        job.outputs[out]["file_path"] = str(final_video)
+                        job.outputs[out]["render_status"] = "completed"
+                        
+                        # Set default job.output_path to the first rendered output for safety
+                        if not job.output_path:
+                            job.output_path = str(final_video)
+                            
+                        logger.info(f"Successfully rendered and centralized format: {out}")
+                        
+                    except Exception as render_err:
+                        logger.error(f"Render failed for format {out}: {render_err}")
+                        job.outputs[out]["render_status"] = "failed"
+                        raise render_err
+                        
                 job.steps["render"] = "completed"
                 self.store.save_job(job)
                 
@@ -539,38 +699,75 @@ class PipelineRunner:
                 segments = self.store.load_translated(job_id)
                 
                 # Default fallback values
-                title = "Video dịch & lồng tiếng bởi AutoTool"
-                hashtags = "#autotool #dichphim #reviewphim"
+                facebook_caption = "Video Việt hóa & lồng tiếng tự động bởi AutoTool"
+                facebook_hashtags = "#autotool #dichphim #reviewphim"
+                youtube_shorts_title = "Video dịch tự động #shorts"
+                youtube_shorts_description = "Video dịch & lồng tiếng bởi AutoTool Studio #shorts"
+                youtube_shorts_tags = "autotool, dịch phim, review phim"
+                youtube_video_title = "Video dịch & lồng tiếng tự động bởi AutoTool Studio"
+                youtube_video_description = "Video dịch & lồng tiếng tự động từ tiếng Trung sang tiếng Việt bằng AutoTool."
+                youtube_video_tags = "autotool, dịch phim, review phim"
                 
                 # Try calling Gemini to generate highly catchy titles and hashtags contextually
                 if self.translator.client is not None:
                     try:
+                        from pydantic import BaseModel
+                        class AIProgressMetadata(BaseModel):
+                            facebook_caption: str
+                            facebook_hashtags: str
+                            youtube_shorts_title: str
+                            youtube_shorts_description: str
+                            youtube_shorts_tags: str
+                            youtube_video_title: str
+                            youtube_video_description: str
+                            youtube_video_tags: str
+
                         summary_prompt = (
-                            "Bạn là chuyên gia sáng tạo nội dung mạng xã hội. Hãy viết 1 tiêu đề ngắn cực kỳ giật gân, "
-                            "kịch tính, kích thích người xem click (phong cách video ngắn) cho nội dung đối thoại bên dưới "
-                            "và đề xuất 3-5 hashtag liên quan bằng tiếng Việt. Trả về đúng định dạng:\n"
-                            "Tiêu đề\n"
-                            "#hashtag1 #hashtag2...\n\n"
+                            "Bạn là chuyên gia sáng tạo nội dung mạng xã hội đa kênh. Hãy dựa vào nội dung đối thoại bên dưới "
+                            "để viết các captions, tiêu đề giật gân chuẩn SEO và các hashtags phù hợp cho từng nền tảng: "
+                            "Facebook Reels, YouTube Shorts, và YouTube Video thường. Trả về định dạng JSON đúng schema được cung cấp.\n\n"
                             "Nội dung thoại:\n"
                         )
-                        summary_prompt += "\n".join([s.translated_text for s in segments[:12]])
+                        summary_prompt += "\n".join([s.translated_text for s in segments[:15]])
                         
-                        response = self.translator.client.models.generate_content(
+                        response = self.translator.generate_content(
+                            prompt=summary_prompt,
                             model='gemini-2.5-flash',
-                            contents=summary_prompt
+                            mime_type='application/json',
+                            schema=AIProgressMetadata
                         )
-                        lines = [line.strip() for line in response.text.strip().split("\n") if line.strip()]
-                        if lines:
-                            title = lines[0]
-                        if len(lines) > 1:
-                            hashtags = " ".join(lines[1:])
+                        
+                        ai_data = json.loads(response.text)
+                        facebook_caption = ai_data.get("facebook_caption", facebook_caption)
+                        facebook_hashtags = ai_data.get("facebook_hashtags", facebook_hashtags)
+                        youtube_shorts_title = ai_data.get("youtube_shorts_title", youtube_shorts_title)
+                        youtube_shorts_description = ai_data.get("youtube_shorts_description", youtube_shorts_description)
+                        youtube_shorts_tags = ai_data.get("youtube_shorts_tags", youtube_shorts_tags)
+                        youtube_video_title = ai_data.get("youtube_video_title", youtube_video_title)
+                        youtube_video_description = ai_data.get("youtube_video_description", youtube_video_description)
+                        youtube_video_tags = ai_data.get("youtube_video_tags", youtube_video_tags)
+                        
+                        # Save to job config snapshot so client can display it
+                        snapshot = job.config_snapshot or {}
+                        snapshot["facebook_caption"] = facebook_caption
+                        snapshot["facebook_hashtags"] = facebook_hashtags
+                        snapshot["youtube_shorts_title"] = youtube_shorts_title
+                        snapshot["youtube_shorts_description"] = youtube_shorts_description
+                        snapshot["youtube_shorts_tags"] = youtube_shorts_tags
+                        snapshot["youtube_video_title"] = youtube_video_title
+                        snapshot["youtube_video_description"] = youtube_video_description
+                        snapshot["youtube_video_tags"] = youtube_video_tags
+                        job.config_snapshot = snapshot
+                        
                     except Exception as e:
                         logger.warning(f"Failed to generate custom AI captions: {e}")
                         
-                # Save to caption.txt
+                # Save to caption.txt (Keep legacy caption format for compatibility)
                 caption_file = output_dir / "caption.txt"
                 with open(caption_file, "w", encoding="utf-8") as f:
-                    f.write(f"{title}\n\n{hashtags}\n")
+                    f.write(f"Facebook Reels Caption:\n{facebook_caption} {facebook_hashtags}\n\n")
+                    f.write(f"YouTube Shorts Title:\n{youtube_shorts_title}\n\n")
+                    f.write(f"YouTube Video Title:\n{youtube_video_title}\n")
                     
                 job.steps["metadata"] = "completed"
                 job.status = "completed"
