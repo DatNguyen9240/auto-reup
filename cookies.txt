@@ -1,8 +1,20 @@
 # Netscape HTTP Cookie File
-.www.douyin.com	TRUE	/	FALSE	1782644707	__ac_nonce	06a40f8df0049dd601393
-.www.douyin.com	TRUE	/	TRUE	1814178909	__ac_signature	_02B4Z6wo00f01zEO95gAAIDCQ90IUGhDxwsxLtMAAKYN0f
-.douyin.com	TRUE	/	TRUE	1813746908	ttwid	1%7CYrA7KLybtxO2QkrgHcr9BiBaW_6GSPHaF-4vuq9eqBA%7C1782642913%7Cd20de1f8fda8955ba49e557bc5d52ba4e037e88e871108d3e70054983fdf209d
-.douyin.com	TRUE	/	TRUE	1817202909	enter_pc_once	1
-.douyin.com	TRUE	/	TRUE	1817202909	UIFID_TEMP	29d6bea3e5a6c157a08a212e1912b5e8a78666ece26be56100fa19e58a63a45b77cffcd918e8b644ea5b738e2b7be30b04544587d57bb0e35924fb3ae0e29be015609dc1c4fce6eb3f965349a3a82f9f
-.www.douyin.com	TRUE	/	FALSE	0	x-web-secsdk-uid	ea0d3f99-2856-438e-8185-2554e5e1a673
-.www.douyin.com	TRUE	/	FALSE	1787826919	s_v_web_id	verify_mqxnkg66_2m89bl5y_fZ6R_4tUg_8UOh_GrWoK4tAwHoe
+.www.douyin.com	TRUE	/	FALSE	1782761643	__ac_nonce	06a42c1a30047e6e63385
+.www.douyin.com	TRUE	/	TRUE	1814295843	__ac_signature	_02B4Z6wo00f01-421-wAAIDCICZB.ptcRGfuFvNAAJHY4c
+.douyin.com	TRUE	/	TRUE	1813863844	ttwid	1%7C6TJyXHvgUKfNvtxeqBEi8W1NsDWMEMW5MV7DgdDRK88%7C1782759844%7Cd4f6ce8d571f05cd51004473bb9e96b4701da7e425ebe36d34c408447c007dfd
+.douyin.com	TRUE	/	TRUE	1817319844	enter_pc_once	1
+.douyin.com	TRUE	/	TRUE	1817319844	UIFID_TEMP	29d6bea3e5a6c157a08a212e1912b5e8a78666ece26be56100fa19e58a63a45beb1910496c171f315942ba6558deeed8e891765fb5ce6b22f4d15377f5c2f79078653f77867d50495482e29195fc23ea
+.www.douyin.com	TRUE	/	FALSE	0	x-web-secsdk-uid	157ad6f4-d48b-4f93-8f39-ad369e5355f2
+.www.douyin.com	TRUE	/	FALSE	1787943845	s_v_web_id	verify_mqzl6kqs_tVk12ja3_dpVk_4lpE_9MGH_DmnNZu2MoRmD
+.www.douyin.com	TRUE	/	FALSE	0		douyin.com
+.www.douyin.com	TRUE	/	FALSE	0	device_web_cpu_core	28
+.www.douyin.com	TRUE	/	FALSE	0	device_web_memory_size	16
+.www.douyin.com	TRUE	/	FALSE	0	architecture	amd64
+.douyin.com	TRUE	/	FALSE	0	is_support_rtm_web_ts	1
+.douyin.com	TRUE	/	FALSE	1817319847	hevc_supported	true
+.douyin.com	TRUE	/	FALSE	1783364647	IsDouyinActive	true
+.douyin.com	TRUE	/	FALSE	1783364647	home_can_add_dy_2_desktop	%220%22
+.www.douyin.com	TRUE	/	FALSE	1783364647	dy_swidth	1280
+.www.douyin.com	TRUE	/	FALSE	1783364647	dy_sheight	720
+.douyin.com	TRUE	/	FALSE	1783364647	stream_recommend_feed_params	%22%7B%5C%22cookie_enabled%5C%22%3Atrue%2C%5C%22screen_width%5C%22%3A1280%2C%5C%22screen_height%5C%22%3A720%2C%5C%22browser_online%5C%22%3Atrue%2C%5C%22cpu_core_num%5C%22%3A28%2C%5C%22device_memory%5C%22%3A16%2C%5C%22downlink%5C%22%3A10%2C%5C%22effective_type%5C%22%3A%5C%224g%5C%22%2C%5C%22round_trip_time%5C%22%3A50%7D%22
+.douyin.com	TRUE	/	FALSE	1814295847	odin_tt	ad0b18940439b45000c90a701ad061f0a386d8e3b3dfe0b3d8ad28ac2b982bf14934671f1f17ff7b59291e30286e9ffdc5502497aebf8f440f5bceacce26350dc9161d18d938a09c9bda95f81b7f5750
