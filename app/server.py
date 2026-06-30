@@ -1123,6 +1123,90 @@ def get_global_config():
         "logos": list_logos()
     }
 
+class KeysSaveRequest(BaseModel):
+    key: str
+    key2: Optional[str] = ""
+    key3: Optional[str] = ""
+
+@app.get("/api/config/key-check")
+def check_api_key():
+    is_set = bool(settings.gemini_api_key.strip() or os.environ.get("GEMINI_API_KEY", "").strip())
+    return {
+        "configured": is_set,
+        "gemini_api_key": settings.gemini_api_key,
+        "gemini_api_key_2": settings.gemini_api_key_2,
+        "gemini_api_key_3": settings.gemini_api_key_3
+    }
+
+@app.post("/api/config/save-key")
+def save_api_keys(req: KeysSaveRequest):
+    key = req.key.strip()
+    key2 = (req.key2 or "").strip()
+    key3 = (req.key3 or "").strip()
+    
+    if not key:
+        raise HTTPException(status_code=400, detail="API Key chính không được để trống")
+        
+    env_path = PROJECT_ROOT / ".env"
+    try:
+        if not env_path.exists():
+            example_path = PROJECT_ROOT / ".env.example"
+            if example_path.exists():
+                import shutil
+                shutil.copy2(example_path, env_path)
+            else:
+                with open(env_path, "w", encoding="utf-8") as f:
+                    f.write(f"GEMINI_API_KEY={key}\nGEMINI_API_KEY_2={key2}\nGEMINI_API_KEY_3={key3}\n")
+                
+        if env_path.exists():
+            with open(env_path, "r", encoding="utf-8") as f:
+                content = f.read()
+                
+            def update_env_var(content_str, name, val):
+                if f"{name}=" in content_str:
+                    lines = content_str.splitlines()
+                    for i, line in enumerate(lines):
+                        if line.strip().startswith(f"{name}="):
+                            lines[i] = f"{name}={val}"
+                            break
+                    return "\n".join(lines) + "\n"
+                else:
+                    return content_str.rstrip() + f"\n{name}={val}\n"
+            
+            content = update_env_var(content, "GEMINI_API_KEY", key)
+            content = update_env_var(content, "GEMINI_API_KEY_2", key2)
+            content = update_env_var(content, "GEMINI_API_KEY_3", key3)
+            
+            with open(env_path, "w", encoding="utf-8") as f:
+                f.write(content)
+        
+        # Update settings in-memory
+        settings.gemini_api_key = key
+        settings.gemini_api_key_2 = key2
+        settings.gemini_api_key_3 = key3
+        os.environ["GEMINI_API_KEY"] = key
+        os.environ["GEMINI_API_KEY_2"] = key2
+        os.environ["GEMINI_API_KEY_3"] = key3
+        
+        # Update PipelineRunner's translator keys in memory
+        if hasattr(runner, "translator") and runner.translator:
+            runner.translator.api_keys = [key]
+            if key2:
+                runner.translator.api_keys.append(key2)
+            if key3:
+                runner.translator.api_keys.append(key3)
+            runner.translator.api_keys = [k.strip() for k in runner.translator.api_keys if k.strip()]
+            from google import genai
+            try:
+                runner.translator.client = genai.Client(api_key=key)
+            except Exception as e:
+                logger.warning(f"Failed to update translator client: {e}")
+                
+        return {"status": "success", "message": "Đã lưu cấu hình API Key thành công!"}
+    except Exception as e:
+        logger.error(f"Failed to save API keys to .env: {e}")
+        raise HTTPException(status_code=500, detail=f"Không thể ghi key vào file .env: {str(e)}")
+
 class BgmDownloadRequest(BaseModel):
     url: str
     filename: str

@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadGlobalConfig();
     await loadBgmList();
     await loadChannels();
+    await checkApiKeyStatus();
 
     // Read initial tab from URL hash (defaults to dashboard)
     const initialTab = window.location.hash.replace('#', '') || 'dashboard';

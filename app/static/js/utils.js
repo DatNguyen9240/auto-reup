@@ -31,6 +31,50 @@
         </div>
     `;
     document.body.appendChild(modal);
+
+    // Inject API key modal
+    const keyModal = document.createElement('div');
+    keyModal.id = 'api-key-modal';
+    keyModal.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm hidden transition-all duration-300 opacity-0';
+    keyModal.innerHTML = `
+        <div class="glass-card max-w-md w-full mx-4 rounded-2xl border border-white/10 p-6 flex flex-col gap-4 shadow-2xl transform scale-95 transition-transform duration-300 bg-slate-950/95">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m-2-2a2 2 0 00-2 2m2-2V5a2 2 0 10-4 0v2m4 0h3.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V14a2 2 0 01-2 2H8a2 2 0 01-2-2V9a2 2 0 012-2h1m10 8a3 3 0 01-3 3H7a3 3 0 01-3-3V7a3 3 0 013-3h3"></path></svg>
+                </div>
+                <h3 class="font-outfit font-bold text-sm text-slate-100">Cấu hình Gemini API Key</h3>
+            </div>
+            <p class="text-xs text-slate-300 font-sans leading-relaxed">
+                Hệ thống hỗ trợ cấu hình xoay tua tối đa <strong>3 API Key</strong> để hạn chế việc cạn kiệt băng thông khi dịch phụ đề.
+            </p>
+            <div class="flex flex-col gap-3">
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Gemini API Key 1 (Chính)</label>
+                    <input id="api-key-input-1" type="password" placeholder="AIzaSy... (Bắt buộc)" 
+                           class="w-full bg-slate-900/60 border border-white/10 hover:border-white/20 focus:border-purple-500/50 rounded-xl px-4 py-2.5 text-xs text-slate-100 outline-none transition-all placeholder:text-slate-600 font-mono">
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Gemini API Key 2 (Dự phòng)</label>
+                    <input id="api-key-input-2" type="password" placeholder="Không bắt buộc" 
+                           class="w-full bg-slate-900/60 border border-white/10 hover:border-white/20 focus:border-purple-500/50 rounded-xl px-4 py-2.5 text-xs text-slate-100 outline-none transition-all placeholder:text-slate-600 font-mono">
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Gemini API Key 3 (Dự phòng)</label>
+                    <input id="api-key-input-3" type="password" placeholder="Không bắt buộc" 
+                           class="w-full bg-slate-900/60 border border-white/10 hover:border-white/20 focus:border-purple-500/50 rounded-xl px-4 py-2.5 text-xs text-slate-100 outline-none transition-all placeholder:text-slate-600 font-mono">
+                </div>
+            </div>
+            <div class="flex gap-2.5 justify-end mt-2">
+                <button id="api-key-btn-close" class="bg-white/5 hover:bg-white/10 text-slate-300 px-4 py-2 rounded-xl text-xs font-semibold transition-colors">
+                    Đóng
+                </button>
+                <button id="api-key-btn-save" class="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors shadow-lg shadow-purple-500/10">
+                    Lưu cấu hình
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(keyModal);
 })();
 
 function showToast(message, type = 'info') {
@@ -145,4 +189,110 @@ function populateSelect(selectId, items, defaultValue) {
         }
         select.add(opt);
     });
+}
+
+async function showApiKeyModal() {
+    const modal = document.getElementById('api-key-modal');
+    const input1 = document.getElementById('api-key-input-1');
+    const input2 = document.getElementById('api-key-input-2');
+    const input3 = document.getElementById('api-key-input-3');
+    const btnSave = document.getElementById('api-key-btn-save');
+    const btnClose = document.getElementById('api-key-btn-close');
+    
+    if (!modal || !input1 || !input2 || !input3 || !btnSave || !btnClose) return;
+    
+    // Fetch and pre-fill existing API keys
+    try {
+        const res = await fetch('/api/config/key-check');
+        if (res.ok) {
+            const data = await res.json();
+            input1.value = data.gemini_api_key || '';
+            input2.value = data.gemini_api_key_2 || '';
+            input3.value = data.gemini_api_key_3 || '';
+        }
+    } catch (e) {
+        console.error("Failed to load existing API keys:", e);
+    }
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modal.querySelector('.glass-card').classList.remove('scale-95');
+        modal.querySelector('.glass-card').classList.add('scale-100');
+    }, 10);
+    
+    const hide = () => {
+        modal.classList.add('opacity-0');
+        modal.querySelector('.glass-card').classList.remove('scale-100');
+        modal.querySelector('.glass-card').classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    };
+    
+    btnClose.onclick = hide;
+    
+    btnSave.onclick = async () => {
+        const key = input1.value.trim();
+        const key2 = input2.value.trim();
+        const key3 = input3.value.trim();
+        
+        if (!key) {
+            showToast("Vui lòng nhập API Key chính (Key 1)!", "error");
+            return;
+        }
+        btnSave.disabled = true;
+        btnSave.innerText = "Đang lưu...";
+        try {
+            const response = await fetch('/api/config/save-key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key, key2, key3 })
+            });
+            if (response.ok) {
+                const res = await response.json();
+                showToast(res.message || "Lưu API Key thành công!", "success");
+                hide();
+                // Update key configure button class and text
+                const keyBtn = document.getElementById('btn-api-key');
+                if (keyBtn) {
+                    keyBtn.className = "px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 transition-all flex items-center gap-1.5 ml-2";
+                    keyBtn.innerHTML = "🔑 Key Đã Cấu Hình";
+                    keyBtn.classList.remove('animate-pulse');
+                }
+            } else {
+                const err = await response.json();
+                showToast(err.detail || "Không thể lưu API Key", "error");
+            }
+        } catch (err) {
+            showToast("Lỗi kết nối máy chủ: " + err.message, "error");
+        } finally {
+            btnSave.disabled = false;
+            btnSave.innerText = "Lưu cấu hình";
+        }
+    };
+}
+
+async function checkApiKeyStatus() {
+    try {
+        const response = await fetch('/api/config/key-check');
+        if (response.ok) {
+            const data = await response.json();
+            const keyBtn = document.getElementById('btn-api-key');
+            if (data.configured) {
+                if (keyBtn) {
+                    keyBtn.className = "px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20 transition-all flex items-center gap-1.5 ml-2";
+                    keyBtn.innerHTML = "🔑 Key Đã Cấu Hình";
+                }
+            } else {
+                if (keyBtn) {
+                    keyBtn.className = "px-3 py-2 text-xs font-semibold rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 hover:bg-yellow-500/20 transition-all flex items-center gap-1.5 ml-2 animate-pulse";
+                    keyBtn.innerHTML = "🔑 Chưa Có Key";
+                }
+                showApiKeyModal();
+            }
+        }
+    } catch (err) {
+        console.error("Failed to check API key status:", err);
+    }
 }

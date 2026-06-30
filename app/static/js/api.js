@@ -1,5 +1,25 @@
 // API Client operations for AutoTool Studio
 
+function readSubtitleCoverConfig() {
+    const valueOf = (id, fallback) => {
+        const el = document.getElementById(id);
+        return el ? el.value : fallback;
+    };
+    const numberOf = (id, fallback) => {
+        const val = parseFloat(valueOf(id, fallback));
+        return Number.isFinite(val) ? val : fallback;
+    };
+
+    return {
+        subtitle_cover_mode: valueOf('subtitle_cover_mode', 'text_box_only'),
+        subtitle_bg_opacity: numberOf('subtitle_bg_opacity', 0.42),
+        subtitle_mask_padding_x: numberOf('subtitle_mask_padding_x', 20),
+        subtitle_mask_padding_y: numberOf('subtitle_mask_padding_y', 12),
+        ocr_sample_interval_sec: numberOf('ocr_sample_interval_sec', 0.75),
+        ocr_crop_bottom_ratio: numberOf('ocr_crop_bottom_ratio', 0.45)
+    };
+}
+
 // Fetch and load jobs list
 async function loadJobs() {
     try {
@@ -9,7 +29,7 @@ async function loadJobs() {
         renderJobsList();
         
         // If details modal is active, refresh the steps status
-        if (selectedJobId) {
+        if (selectedJobId && !(typeof isEditingSubtitleLayout !== 'undefined' && isEditingSubtitleLayout)) {
             const currentJob = jobsData.find(j => j.job_id === selectedJobId);
             if (currentJob) {
                 updatePipelineSteps(currentJob);
@@ -70,7 +90,9 @@ async function submitJob(e) {
     const pitch = document.getElementById('pitch').value;
     const bgm = document.getElementById('bgm').value.trim() || null;
     const logo = document.getElementById('logo').value.trim() || null;
-    const mask = true;
+    const maskInput = document.getElementById('mask');
+    const mask = maskInput ? maskInput.checked : true;
+    const subtitleCoverConfig = readSubtitleCoverConfig();
 
     const channel_folder = null;
     const platform_folder = document.getElementById('dest_platform').value;
@@ -91,7 +113,7 @@ async function submitJob(e) {
             const response = await fetch('/api/jobs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ input_video, tone, voice, rate, pitch, bgm, logo, mask, channel_folder, platform_folder })
+                body: JSON.stringify({ input_video, tone, voice, rate, pitch, bgm, logo, mask, channel_folder, platform_folder, ...subtitleCoverConfig })
             });
             
             if (!response.ok) {
@@ -116,7 +138,7 @@ async function deleteJob(jobId) {
         alert("Không thể xóa job đang chạy!");
         return;
     }
-    const confirmed = await showConfirm(`Bạn có chắc chắn muốn xóa vĩnh viễn Job ${jobId} và toàn bộ file video liên quan để giải phóng bộ nhớ không?`);
+    const confirmed = await showConfirm(`Bạn có chắc chắn muốn xóa vĩnh viễn công việc ${jobId} và toàn bộ file video liên quan để giải phóng bộ nhớ không?`);
     if (!confirmed) return;
     
     try {
@@ -140,7 +162,7 @@ async function deleteJob(jobId) {
 
 // Cancel a running job
 async function cancelJob(jobId) {
-    const confirmed = await showConfirm("Bạn có chắc chắn muốn ngắt tiến trình và XÓA Job này không?");
+    const confirmed = await showConfirm("Bạn có chắc chắn muốn ngắt tiến trình và xóa công việc này không?");
     if (!confirmed) return;
     try {
         // 1. Send cancel request to halt processing
@@ -178,6 +200,7 @@ async function saveAndReRun() {
     const logoInput = document.getElementById('logo');
     const logo = logoInput ? (logoInput.value.trim() || null) : null;
     const mask = true;
+    const subtitleCoverConfig = readSubtitleCoverConfig();
 
     try {
         const response = await fetch(`/api/jobs/${selectedJobId}/transcript`, {
@@ -186,7 +209,8 @@ async function saveAndReRun() {
             body: JSON.stringify({
                 segments: selectedSegments,
                 reset_from_tts: true,
-                tone, voice, rate, pitch, bgm, logo, mask
+                tone, voice, rate, pitch, bgm, logo, mask,
+                ...subtitleCoverConfig
             })
         });
 
@@ -553,4 +577,72 @@ async function openLibraryFolder() {
     } catch (err) {
         showToast("Lỗi kết nối: " + err.message, "error");
     }
+}
+
+// Unified per-video submit flow. Overrides the older global-config submitJob.
+async function submitJob(e) {
+    if (e) e.preventDefault();
+
+    if (!Array.isArray(pendingVideoItems) || pendingVideoItems.length === 0) {
+        showToast('Vui lòng thêm ít nhất một video vào hàng chờ', 'error');
+        return;
+    }
+
+    const queueToProcess = pendingVideoItems.map(item => ({
+        ...item,
+        config: { ...item.config }
+    }));
+    pendingVideoItems = [];
+    videoQueue = pendingVideoItems;
+    renderQueueList();
+
+    for (const item of queueToProcess) {
+        const cfg = item.config;
+        const payload = {
+            input_video: item.normalized_url || item.url,
+            tone: cfg.tone,
+            voice: cfg.voice,
+            rate: cfg.rate,
+            pitch: cfg.pitch,
+            bgm: cfg.bgm || null,
+            logo: cfg.logo || null,
+            mask: cfg.mask && cfg.subtitles_enabled,
+            tts_enabled: cfg.tts_enabled,
+            subtitles_enabled: cfg.subtitles_enabled,
+            channel_folder: null,
+            platform_folder: cfg.platform_folder || '',
+            channel_id: cfg.channel_id || null,
+            subtitle_cover_mode: cfg.subtitles_enabled ? cfg.subtitle_cover_mode : 'none',
+            subtitle_bg_opacity: cfg.subtitle_bg_opacity,
+            subtitle_mask_padding_x: cfg.subtitle_mask_padding_x,
+            subtitle_mask_padding_y: cfg.subtitle_mask_padding_y,
+            ocr_sample_interval_sec: cfg.ocr_sample_interval_sec,
+            ocr_crop_bottom_ratio: cfg.ocr_crop_bottom_ratio,
+            config_snapshot: {
+                url: item.url,
+                normalized_url: item.normalized_url,
+                platform: item.platform,
+                ...cfg
+            }
+        };
+
+        try {
+            const response = await fetch('/api/jobs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                const err = await response.json();
+                console.error(`Failed to start job for ${item.url}:`, err.detail);
+                showToast(err.detail || `Không tạo được job: ${item.url}`, 'error');
+            }
+        } catch (err) {
+            console.error(`Network error for ${item.url}:`, err.message);
+            showToast(`Lỗi kết nối khi tạo job: ${item.url}`, 'error');
+        }
+    }
+
+    await loadJobs();
+    showToast(`Đã tạo ${queueToProcess.length} job riêng`, 'success');
 }
