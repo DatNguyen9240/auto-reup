@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Tool Reup Video Douyin - Biến video Douyin thành video tiếng Việt chỉ trong 1 phút. Tự động dịch, lồng tiếng, tạo Vietsub.">
+    <title>Reup Video Douyin - Việt hóa Video Tự Động</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css?v=15">
+</head>
+
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="bg-orb bg-orb-1"></div>
+        <div class="bg-orb bg-orb-2"></div>
+        <div class="bg-orb bg-orb-3"></div>
+        <div class="bg-grid"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="header" id="header">
+        <div class="container header-inner">
+            <a href="#" class="logo" id="logo">
+                <div class="logo-icon">
+                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                        <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" stroke="url(#logoGrad)" stroke-width="2"
+                            fill="none" />
+                        <path d="M10 12L13 15L18 10" stroke="url(#logoGrad)" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                        <defs>
+                            <linearGradient id="logoGrad" x1="2" y1="2" x2="26" y2="26">
+                                <stop stop-color="#6366f1" />
+                                <stop offset="1" stop-color="#ec4899" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <span class="logo-text">ReupVN</span>
+            </a>
+            <nav class="nav">
+                <a href="#" class="nav-link active" id="nav-home">Trang chủ</a>
+                <a href="#" class="nav-link" id="nav-history">Lịch sử</a>
+                <a href="#" class="nav-link" id="nav-guide">Hướng dẫn</a>
+            </nav>
+            <div class="header-actions">
+                <div class="status-badge" id="status-badge">
+                    <span class="status-dot"></span>
+                    <span>Sẵn sàng</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- STEP 1: Hero / URL Input -->
+        <section class="step step-active" id="step-hero">
+            <div class="container">
+                <div class="hero">
+                    <div class="hero-badge">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M8 1L10 5.5L15 6L11.5 9.5L12.5 14.5L8 12L3.5 14.5L4.5 9.5L1 6L6 5.5L8 1Z"
+                                fill="currentColor" />
+                        </svg>
+                        Tool Reup Video #1 Việt Nam
+                    </div>
+                    <h1 class="hero-title">
+                        Biến video <span class="gradient-text">Douyin</span> thành<br>
+                        video tiếng Việt <span class="gradient-text-2">chỉ 1 phút</span>
+                    </h1>
+                    <p class="hero-desc">
+                        Tự động tải video, dịch nội dung, lồng tiếng AI và tạo phụ đề Việt.
+                        Chỉ cần dán link — mọi thứ còn lại để chúng tôi lo.
+                    </p>
+
+                    <div class="url-input-wrapper" id="url-input-wrapper">
+                        <div class="url-inputs-container" id="url-inputs-container" style="display: flex; flex-direction: column; gap: 10px;">
+                            <!-- Input 1 -->
+                            <div class="url-input-box" style="padding: 2px;">
+                                <div class="url-input-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                    </svg>
+                                </div>
+                                <input type="text" class="url-input multi-url-input" id="url-input-1" placeholder="Link video 1 (VD: https://v.douyin.com/xxxxxx/)" autocomplete="off" spellcheck="false" style="padding: 14px 16px 14px 44px; font-size: 1rem;">
+                                <button class="btn-paste single-paste-btn" data-target="url-input-1" title="Dán">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <!-- Input 2 -->
+                            <div class="url-input-box" style="padding: 2px;">
+                                <div class="url-input-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                    </svg>
+                                </div>
+                                <input type="text" class="url-input multi-url-input" id="url-input-2" placeholder="Link video 2 (Không bắt buộc)" autocomplete="off" spellcheck="false" style="padding: 14px 16px 14px 44px; font-size: 1rem;">
+                                <button class="btn-paste single-paste-btn" data-target="url-input-2" title="Dán">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <!-- Input 3 -->
+                            <div class="url-input-box" style="padding: 2px;">
+                                <div class="url-input-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                    </svg>
+                                </div>
+                                <input type="text" class="url-input multi-url-input" id="url-input-3" placeholder="Link video 3 (Không bắt buộc)" autocomplete="off" spellcheck="false" style="padding: 14px 16px 14px 44px; font-size: 1rem;">
+                                <button class="btn-paste single-paste-btn" data-target="url-input-3" title="Dán">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <!-- Input 4 -->
+                            <div class="url-input-box" style="padding: 2px;">
+                                <div class="url-input-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                    </svg>
+                                </div>
+                                <input type="text" class="url-input multi-url-input" id="url-input-4" placeholder="Link video 4 (Không bắt buộc)" autocomplete="off" spellcheck="false" style="padding: 14px 16px 14px 44px; font-size: 1rem;">
+                                <button class="btn-paste single-paste-btn" data-target="url-input-4" title="Dán">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <!-- Input 5 -->
+                            <div class="url-input-box" style="padding: 2px;">
+                                <div class="url-input-icon">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                                    </svg>
+                                </div>
+                                <input type="text" class="url-input multi-url-input" id="url-input-5" placeholder="Link video 5 (Không bắt buộc)" autocomplete="off" spellcheck="false" style="padding: 14px 16px 14px 44px; font-size: 1rem;">
+                                <button class="btn-paste single-paste-btn" data-target="url-input-5" title="Dán">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="link-counter" style="text-align: right; font-size: 0.85rem; color: #94a3b8; margin-top: 10px; margin-right: 12px;">Đã nhập 0/5 link</div>
+                        <div class="url-error" id="url-error"></div>
+                        <button class="btn-primary btn-process" id="btn-check-url">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="11" cy="11" r="8" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                            <span>Kiểm tra & Tải thông tin</span>
+                            <div class="btn-shimmer"></div>
+                        </button>
+                    </div>
+
+                    <div class="hero-examples">
+                        <span class="example-label">Ví dụ:</span>
+                        <button class="example-link" data-url="https://www.douyin.com/video/7523456789012345678">
+                            douyin.com/video/7523...
+                        </button>
+                        <button class="example-link" data-url="https://v.douyin.com/iRNBhV5Q/">
+                            v.douyin.com/iRNBhV5Q/
+                        </button>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="hero-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">12,847</div>
+                            <div class="stat-label">Video đã xử lý</div>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="stat-item">
+                            <div class="stat-value">98.5%</div>
+                            <div class="stat-label">Tỷ lệ thành công</div>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="stat-item">
+                            <div class="stat-value">~45s</div>
+                            <div class="stat-label">Thời gian trung bình</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 2: Video Info + Options -->
+        <section class="step" id="step-info">
+            <div class="container">
+                <div class="step-back">
+                    <button class="btn-back" id="btn-back-to-hero">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                        Quay lại
+                    </button>
+                </div>
+
+                <div class="info-layout">
+                    <!-- Video Preview Card -->
+                    <!-- Video Preview Card (Batch Mode) -->
+                    <div class="video-card" id="video-card">
+                        <div class="video-meta" style="padding-left: 0;">
+                            <h3 class="video-title" id="video-title" style="font-size: 1.25rem; margin-bottom: 12px;">Đang tải thông tin video...</h3>
+                            <div class="video-details" id="video-details-container">
+                                <!-- List of videos will be injected here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Processing Options -->
+                    <div class="options-panel">
+                        <h2 class="options-title">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="3" />
+                                <path
+                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                            </svg>
+                            Tùy chọn xử lý
+                        </h2>
+
+                        <div class="option-group">
+                            <label class="option-check" id="opt-translate">
+                                <input type="checkbox" checked>
+                                <span class="check-box">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="3">
+                                        <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                </span>
+                                <div class="option-info">
+                                    <span class="option-name">Dịch sang tiếng Việt</span>
+                                    <span class="option-desc">AI dịch nội dung audio sang tiếng Việt</span>
+                                </div>
+                                <span class="option-tag tag-ai">AI</span>
+                            </label>
+
+                            <label class="option-check" id="opt-subtitle">
+                                <input type="checkbox" checked>
+                                <span class="check-box">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="3">
+                                        <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                </span>
+                                <div class="option-info">
+                                    <span class="option-name">Tạo Vietsub</span>
+                                    <span class="option-desc">Phụ đề tiếng Việt tự động đồng bộ</span>
+                                </div>
+                                <span class="option-tag tag-sub">SUB</span>
+                            </label>
+
+                            <label class="option-check" id="opt-voiceover">
+                                <input type="checkbox" checked>
+                                <span class="check-box">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="3">
+                                        <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                </span>
+                                <div class="option-info">
+                                    <span class="option-name">Lồng tiếng Việt</span>
+                                    <span class="option-desc">Giọng đọc AI tự nhiên, truyền cảm</span>
+                                </div>
+                                <span class="option-tag tag-voice">VOICE</span>
+                            </label>
+
+                            <label class="option-check" id="opt-watermark">
+                                <input type="checkbox" checked>
+                                <span class="check-box">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="3">
+                                        <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                </span>
+                                <div class="option-info">
+                                    <span class="option-name">Xóa watermark</span>
+                                    <span class="option-desc">Loại bỏ logo Douyin / TikTok</span>
+                                </div>
+                                <span class="option-tag tag-clean">CLEAN</span>
+                            </label>
+
+
+
+                            <label class="option-check" id="opt-keep-audio">
+                                <input type="checkbox">
+                                <span class="check-box">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="3">
+                                        <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                </span>
+                                <div class="option-info">
+                                    <span class="option-name">Giữ nguyên âm thanh gốc</span>
+                                    <span class="option-desc">Không lồng tiếng, giữ audio tiếng Trung</span>
+                                </div>
+                                <span class="option-tag tag-audio">AUDIO</span>
+                            </label>
+
+                            <label class="option-check" id="opt-keep-bgm">
+                                <input type="checkbox" checked>
+                                <span class="check-box">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="3">
+                                        <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                </span>
+                                <div class="option-info">
+                                    <span class="option-name">Giữ lại nhạc nền (Xoá giọng gốc)</span>
+                                    <span class="option-desc">Tách nhạc nền ghép với giọng lồng tiếng</span>
+                                </div>
+                                <span class="option-tag tag-audio" style="background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3);">BGM</span>
+                            </label>
+                        </div>
+
+                        <!-- TTS Engine Selection -->
+                        <div class="voice-section" id="voice-section">
+                            <h3 class="voice-title">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                    <line x1="12" y1="19" x2="12" y2="23" />
+                                    <line x1="8" y1="23" x2="16" y2="23" />
+                                </svg>
+                                Chọn giọng lồng tiếng
+                                <span class="voice-count-badge" id="voice-count-badge">17 giọng</span>
+                            </h3>
+
+                            <div class="tts-engine-grid" id="tts-engine-grid">
+                                <!-- Engine cards will be rendered by JavaScript -->
+                                <div class="tts-loading">
+                                    <div class="spinner-small"></div>
+                                    <span>Đang tải danh sách giọng nói...</span>
+                                </div>
+                            </div>
+
+                            <!-- Hidden input to store selected voice key -->
+                            <input type="hidden" id="selected-voice-key" value="edge_female">
+                        </div>
+
+
+                        <div class="settings-group">
+                            <div class="settings-header">
+                                <h3 class="settings-title">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path
+                                            d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4">
+                                        </path>
+                                    </svg>
+                                    Nâng cấp Dịch thuật (Tuỳ chọn)
+                                </h3>
+                            </div>
+                            <div class="api-key-container">
+                                <label for="gemini-api-key" class="api-key-label">Gemini API Key (Dịch ngữ cảnh thông
+                                    minh)</label>
+                                <div id="gemini-api-keys-container"
+                                    style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 5px;">
+                                    <input type="password" class="url-input gemini-key-input"
+                                        placeholder="API Key 1 (Ưu tiên dùng trước)">
+                                    <input type="password" class="url-input gemini-key-input"
+                                        placeholder="API Key 2 (Dự phòng 1)">
+                                    <input type="password" class="url-input gemini-key-input"
+                                        placeholder="API Key 3 (Dự phòng 2)">
+                                    <input type="password" class="url-input gemini-key-input"
+                                        placeholder="API Key 4 (Dự phòng 3)">
+                                    <input type="password" class="url-input gemini-key-input"
+                                        placeholder="API Key 5 (Dự phòng 4)">
+                                </div>
+                                <div class="option-desc" style="font-size: 0.85rem; margin-top: 4px;">
+                                    Lấy API Key miễn phí tại <a href="https://aistudio.google.com/app/apikey"
+                                        target="_blank" style="color: var(--primary);">Google AI Studio</a>. Nếu để
+                                    trống sẽ dùng Google Translate thường.
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="btn-primary btn-start-process" id="btn-start-process">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3" />
+                            </svg>
+                            <span>Bắt đầu xử lý</span>
+                            <div class="btn-shimmer"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 3: Processing -->
+        <section class="step" id="step-processing">
+            <div class="container">
+                <div class="processing-wrapper">
+                    <div class="processing-header">
+                        <div class="processing-icon">
+                            <div class="spinner-ring"></div>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="3" />
+                                <path
+                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9" />
+                            </svg>
+                        </div>
+                        <h2 class="processing-title">Đang xử lý video</h2>
+                        <p class="processing-subtitle" id="processing-status">Đang tải video gốc...</p>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="progress-wrapper">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                            <div class="progress-glow" id="progress-glow"></div>
+                        </div>
+                        <div class="progress-info">
+                            <span class="progress-percent" id="progress-percent">0%</span>
+                            <span class="progress-eta" id="progress-eta">~45 giây còn lại</span>
+                        </div>
+                    </div>
+
+                    <!-- Processing Steps -->
+                    <div class="process-steps">
+                        <div class="process-step active" id="ps-download">
+                            <div class="ps-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
+                            </div>
+                            <div class="ps-info">
+                                <span class="ps-name">Tải video gốc</span>
+                                <span class="ps-status">Đang thực hiện...</span>
+                            </div>
+                            <div class="ps-check">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="process-step" id="ps-watermark">
+                            <div class="ps-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                    <line x1="9" y1="9" x2="15" y2="15" />
+                                    <line x1="15" y1="9" x2="9" y2="15" />
+                                </svg>
+                            </div>
+                            <div class="ps-info">
+                                <span class="ps-name">Xóa watermark</span>
+                                <span class="ps-status">Chờ xử lý</span>
+                            </div>
+                            <div class="ps-check">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="process-step" id="ps-translate">
+                            <div class="ps-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M5 8l6 6" />
+                                    <path d="M4 14l6-6 2-3" />
+                                    <path d="M2 5h12" />
+                                    <path d="M7 2h1" />
+                                    <path d="M22 22l-5-10-5 10" />
+                                    <path d="M14 18h6" />
+                                </svg>
+                            </div>
+                            <div class="ps-info">
+                                <span class="ps-name">Dịch nội dung</span>
+                                <span class="ps-status">Chờ xử lý</span>
+                            </div>
+                            <div class="ps-check">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="process-step" id="ps-voiceover">
+                            <div class="ps-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                    <line x1="12" y1="19" x2="12" y2="23" />
+                                    <line x1="8" y1="23" x2="16" y2="23" />
+                                </svg>
+                            </div>
+                            <div class="ps-info">
+                                <span class="ps-name">Lồng tiếng AI</span>
+                                <span class="ps-status">Chờ xử lý</span>
+                            </div>
+                            <div class="ps-check">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="process-step" id="ps-subtitle">
+                            <div class="ps-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                                    <line x1="8" y1="21" x2="16" y2="21" />
+                                    <line x1="12" y1="17" x2="12" y2="21" />
+                                </svg>
+                            </div>
+                            <div class="ps-info">
+                                <span class="ps-name">Tạo phụ đề</span>
+                                <span class="ps-status">Chờ xử lý</span>
+                            </div>
+                            <div class="ps-check">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="process-step" id="ps-render">
+                            <div class="ps-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
+                                    <line x1="7" y1="2" x2="7" y2="22" />
+                                    <line x1="17" y1="2" x2="17" y2="22" />
+                                    <line x1="2" y1="12" x2="22" y2="12" />
+                                    <line x1="2" y1="7" x2="7" y2="7" />
+                                    <line x1="2" y1="17" x2="7" y2="17" />
+                                    <line x1="17" y1="7" x2="22" y2="7" />
+                                    <line x1="17" y1="17" x2="22" y2="17" />
+                                </svg>
+                            </div>
+                            <div class="ps-info">
+                                <span class="ps-name">Render video</span>
+                                <span class="ps-status">Chờ xử lý</span>
+                            </div>
+                            <div class="ps-check">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 4: Queue Review (Batch Processing) -->
+        <section class="step" id="step-queue">
+            <div class="container">
+                <div class="hero" style="padding-top: 2rem; padding-bottom: 2rem;">
+                    <h2 class="processing-title">Danh sách Video chờ duyệt</h2>
+                    <p class="processing-subtitle" style="color: #94a3b8;">Hệ thống đã xử lý thô xong. Vui lòng bấm duyệt từng video để chỉnh sửa phụ đề và xuất file cuối cùng.</p>
+                </div>
+                <div class="video-list-queue" id="video-list-queue" style="display: flex; flex-direction: column; gap: 15px; margin-top: 10px; max-width: 800px; margin-left: auto; margin-right: auto;">
+                    <!-- Queue items injected here -->
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn-outline" id="btn-new-batch" style="padding: 12px 24px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        <span>Tạo danh sách mới</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 5: Subtitle Editor -->
+        <section class="step" id="step-editor">
+            <div class="container">
+                <div class="editor-wrapper">
+                    <!-- Editor Header -->
+                    <div class="editor-header">
+                        <div class="editor-title-area">
+                            <button class="btn-icon" id="btn-back-to-queue" title="Quay lại danh sách">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                                    <polyline points="12 19 5 12 12 5"></polyline>
+                                </svg>
+                            </button>
+                            <h2 class="editor-title">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                </svg>
+                                Chỉnh sửa phụ đề
+                            </h2>
+                            <h2 class="editor-title" id="editor-filename">video.mp4</h2>
+                            <span class="editor-badge" id="editor-seg-count">0 segments</span>
+                        </div>
+                        <div class="editor-actions">
+                            <button class="btn-editor" id="btn-find-replace">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                </svg>
+                                Find & Replace
+                            </button>
+                            <button class="btn-editor" id="btn-export-srt">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                                    <path d="M7 7h10M7 12h10M7 17h6" />
+                                </svg>
+                                SRT
+                            </button>
+                            <button class="btn-editor" id="btn-export-lines">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <line x1="17" y1="10" x2="3" y2="10" />
+                                    <line x1="21" y1="6" x2="3" y2="6" />
+                                    <line x1="21" y1="14" x2="3" y2="14" />
+                                    <line x1="17" y1="18" x2="3" y2="18" />
+                                </svg>
+                                Lines
+                            </button>
+                            <button class="btn-editor" id="btn-export-txt">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                    <polyline points="14 2 14 8 20 8" />
+                                </svg>
+                                Text
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Editor Body -->
+                    <div class="editor-body">
+                        <!-- Left: Video + Original Transcript -->
+                        <div class="editor-left">
+                            <div class="editor-video-wrap" id="editor-video-wrap" style="position: relative;">
+                                <video class="editor-video" id="editor-video" controls>
+                                    <source id="editor-video-src" src="" type="video/mp4">
+                                </video>
+                                <!-- Draggable Subtitle Placeholder -->
+                                <div id="draggable-sub" class="draggable-sub" style="display: none;">
+                                    [Kéo thả để chỉnh vị trí phụ đề]
+                                </div>
+                            </div>
+
+                            <!-- Subtitle Settings -->
+                            <div class="editor-settings"
+                                style="margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; text-align: center;">
+                                <div style="font-size: 0.95rem; color: #e2e8f0; font-weight: 500;">
+                                    🖱️ Kéo & thả dòng chữ phụ đề trên video để chọn vị trí hiển thị!
+                                </div>
+                                <div style="font-size: 0.85rem; color: #94a3b8; margin-top: 8px;">
+                                    Tool sẽ tự động lưu lại tọa độ chính xác của bạn. Thay đổi áp dụng sau khi bấm Lưu &
+                                    Render.
+                                </div>
+                            </div>
+
+                            <div class="editor-translation-info" id="editor-translation-info"
+                                style="display: none; margin-top: 15px;">
+                                <div class="translation-info-content">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                    </svg>
+                                    <div class="translation-info-text">
+                                        <div class="ti-title">Trạng thái dịch thuật</div>
+                                        <div class="ti-desc" id="translation-engine-desc">...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Subtitle Editor Cards -->
+                        <div class="editor-right">
+                            <div class="editor-right-header">
+                                <h3 class="subtitle-editor-title">Subtitle Editor</h3>
+                                <span class="subtitle-editor-hint">Edit timestamps & text</span>
+                            </div>
+                            <div class="editor-segments" id="editor-segments">
+                                <!-- Segments will be rendered by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Editor Footer -->
+                    <div class="editor-footer">
+                        <button class="btn-secondary" id="btn-skip-editor">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="13 17 18 12 13 7" />
+                                <polyline points="6 17 11 12 6 7" />
+                            </svg>
+                            <span>Hoàn thành / Về danh sách</span>
+                        </button>
+                        <button class="btn-primary" id="btn-save-render">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                                <polyline points="17 21 17 13 7 13 7 21" />
+                                <polyline points="7 3 7 8 15 8" />
+                            </svg>
+                            <span>Lưu & Render lại video</span>
+                            <div class="btn-shimmer"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Find & Replace Modal -->
+                <div class="modal-overlay" id="find-replace-modal" style="display:none;">
+                    <div class="modal-box">
+                        <div class="modal-header">
+                            <h3>Find & Replace</h3>
+                            <button class="modal-close" id="btn-close-modal">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="modal-field">
+                                <label>Tìm từ/cụm từ</label>
+                                <input type="text" id="find-input" placeholder="Nhập từ cần tìm..." autocomplete="off">
+                            </div>
+                            <div class="modal-field">
+                                <label>Thay thế bằng</label>
+                                <input type="text" id="replace-input" placeholder="Nhập từ thay thế..."
+                                    autocomplete="off">
+                            </div>
+                            <label class="modal-check">
+                                <input type="checkbox" id="case-sensitive">
+                                <span>Phân biệt chữ hoa/thường</span>
+                            </label>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn-secondary" id="btn-cancel-fr">Hủy</button>
+                            <button class="btn-primary" id="btn-do-replace">
+                                <span>Thay thế tất cả</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 5: Complete / Preview -->
+        <section class="step" id="step-complete">
+            <div class="container">
+                <div class="complete-wrapper">
+                    <div class="complete-header">
+                        <div class="success-icon">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                <polyline points="22 4 12 14.01 9 11.01" />
+                        <h2 class="complete-title">Xử lý hoàn tất!</h2>
+                        <p class="complete-subtitle">Video đã được Việt hóa thành công</p>
+                    </div>
+
+                    <div class="result-actions" style="margin-top: 2rem; display: flex; justify-content: center; gap: 15px; margin-bottom: 2rem;">
+                        <button class="btn-outline" id="btn-complete-back-queue">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
+                            </svg>
+                            Quay lại danh sách
+                        </button>
+                    </div>
+
+                    <!-- Video Comparison -->
+                    <div class="video-comparison">
+                        <div class="compare-card">
+                            <div class="compare-label">
+                                <span class="compare-dot compare-dot-original"></span>
+                                Video gốc (Tiếng Trung)
+                            </div>
+                            <div class="compare-video" id="original-video">
+                                <div class="compare-placeholder">
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="1">
+                                        <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
+                                        <polygon points="10 8 16 12 10 16 10 8" />
+                                    </svg>
+                                    <span>Video gốc</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="compare-arrow">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                                <polyline points="12 5 19 12 12 19" />
+                            </svg>
+                        </div>
+
+                        <div class="compare-card compare-card-result">
+                            <div class="compare-label">
+                                <span class="compare-dot compare-dot-result"></span>
+                                Video Việt hóa
+                            </div>
+                            <div class="compare-video" id="result-video">
+                                <div class="compare-placeholder result-placeholder">
+                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="1">
+                                        <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" />
+                                        <polygon points="10 8 16 12 10 16 10 8" />
+                                    </svg>
+                                    <span>Video đã Việt hóa</span>
+                                    <div class="result-badges">
+                                        <span class="result-badge">🇻🇳 Tiếng Việt</span>
+                                        <span class="result-badge">📝 Vietsub</span>
+                                        <span class="result-badge">🎙️ Lồng tiếng</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="complete-actions">
+                        <button class="btn-secondary btn-preview" id="btn-preview">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3" />
+                            </svg>
+                            <span>Xem trước</span>
+                        </button>
+                        <button class="btn-primary btn-download" id="btn-download">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            <span>Tải xuống MP4</span>
+                            <div class="btn-shimmer"></div>
+                        </button>
+                        <button class="btn-outline btn-new" id="btn-new-video">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                            <span>Video mới</span>
+                        </button>
+                    </div>
+
+                    <!-- Video Details Summary -->
+                    <div class="result-summary">
+                        <div class="summary-item">
+                            <span class="summary-label">Định dạng</span>
+                            <span class="summary-value">MP4 (H.264)</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Chất lượng</span>
+                            <span class="summary-value">1080p HD</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Kích thước</span>
+                            <span class="summary-value" id="file-size">~24.5 MB</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Thời gian xử lý</span>
+                            <span class="summary-value" id="process-time">42 giây</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Toast Notification -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/static/js/script.js?v=23"></script>
+</body>
+
+</html>

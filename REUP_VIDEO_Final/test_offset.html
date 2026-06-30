@@ -1,0 +1,14 @@
+
+<html>
+<head><style>
+#parent { position: relative; height: 1000px; }
+#child { position: absolute; top: 500px; height: 100px; transform: translate(-50%, -50%); }
+</style></head>
+<body>
+<div id=parent><div id=child></div></div>
+<script>
+var child = document.getElementById('child');
+console.log('offsetTop:', child.offsetTop);
+</script>
+</body>
+</html>
