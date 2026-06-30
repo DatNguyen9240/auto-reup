@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List, Optional
 import pysrt
 
-from app.config import settings
+from app.config import settings, EMOTION_PRESETS
 
 from app.models.job import Job
 from app.models.segment import Segment
@@ -19,10 +19,24 @@ from app.services.tts_service import TTSService
 from app.services.audio_mixer import AudioMixer
 from app.services.render_service import RenderService
 from app.core.errors import AutoToolError
-from app.utils.logger import get_logger
+from app.utils.logger import get_logger, JobLogFilter
 from app.utils.file_utils import ensure_dir, write_json
 
 logger = get_logger("Pipeline")
+
+import threading
+_whisper_model = None
+_whisper_model_lock = threading.Lock()
+_whisper_transcribe_lock = threading.Lock()
+
+def _get_whisper_model():
+    global _whisper_model
+    with _whisper_model_lock:
+        if _whisper_model is None:
+            from faster_whisper import WhisperModel
+            logger.info("Initializing shared WhisperModel ('base') on CPU...")
+            _whisper_model = WhisperModel("base", device="cpu", compute_type="float32")
+        return _whisper_model
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -74,6 +88,154 @@ class PipelineRunner:
         if not matches:
             raise AutoToolError(f"No input video file found in work directory: {work_dir}")
         return matches[0]
+
+    def _extract_text_segments_via_ocr(self, video_path: Path, work_dir: Path, duration: float) -> List[Segment]:
+        """Chụp khung hình mỗi 1 giây, chạy OCR để lấy text và gộp các khung hình trùng chữ thành Segment."""
+        logger.info("Bắt đầu trích xuất phụ đề bằng OCR từ video (chế độ không lời/dùng chữ)...")
+        
+        # 1. Tạo thư mục tạm để lưu frames
+        ocr_frames_dir = work_dir / "ocr_frames"
+        ocr_frames_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 2. Dùng ffmpeg xuất khung hình mỗi 1 giây
+        pattern = ocr_frames_dir / "frame_%03d.jpg"
+        cmd = [
+            "ffmpeg", "-y", "-nostdin",
+            "-i", str(video_path),
+            "-vf", "fps=1",
+            "-q:v", "3",
+            str(pattern)
+        ]
+        try:
+            import subprocess
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
+        except Exception as e:
+            logger.warning(f"Thất bại khi xuất khung hình cho OCR: {e}")
+            return []
+            
+        frame_files = sorted(ocr_frames_dir.glob("frame_*.jpg"))
+        if not frame_files:
+            logger.warning("Không trích xuất được khung hình nào.")
+            return []
+            
+        # 3. Khởi tạo OCR engine
+        reader = None
+        try:
+            import easyocr
+            reader = easyocr.Reader(["ch_sim", "en"], gpu=False, verbose=False)
+            logger.info("Đã khởi tạo EasyOCR để nhận diện chữ trên màn hình.")
+        except Exception as e:
+            logger.warning(f"Không thể khởi tạo EasyOCR: {e}. Thử dùng PaddleOCR...")
+            try:
+                from paddleocr import PaddleOCR
+                reader = PaddleOCR(use_angle_cls=False, lang="ch", show_log=False)
+                logger.info("Đã khởi tạo PaddleOCR để nhận diện chữ trên màn hình.")
+            except Exception as e2:
+                logger.warning(f"Không tìm thấy thư viện OCR (EasyOCR/PaddleOCR): {e2}.")
+                
+        # 4. Duyệt qua từng khung hình và chạy OCR
+        raw_detections = []
+        
+        for idx, frame_path in enumerate(frame_files, start=1):
+            time_sec = float(idx - 1)
+            text = ""
+            
+            if reader is not None:
+                try:
+                    if hasattr(reader, "readtext"):
+                        import cv2
+                        img = cv2.imread(str(frame_path))
+                        h, w = img.shape[:2]
+                        crop = img[int(h*0.55):, :]
+                        results = reader.readtext(crop)
+                        texts = [r[1].strip() for r in results if r[2] > 0.35]
+                        text = " ".join(texts).strip()
+                    else:
+                        import cv2
+                        img = cv2.imread(str(frame_path))
+                        h, w = img.shape[:2]
+                        crop = img[int(h*0.55):, :]
+                        result = reader.ocr(crop, cls=False)
+                        texts = []
+                        for line in result or []:
+                            for item in line or []:
+                                txt = item[1][0].strip()
+                                score = float(item[1][1])
+                                if score > 0.35:
+                                    texts.append(txt)
+                        text = " ".join(texts).strip()
+                except Exception as ocr_err:
+                    logger.debug(f"Lỗi OCR tại khung hình {frame_path.name}: {ocr_err}")
+                    
+            if text:
+                raw_detections.append((time_sec, text))
+                
+        # Dọn dẹp
+        import shutil
+        try:
+            shutil.rmtree(ocr_frames_dir)
+        except Exception:
+            pass
+            
+        if not raw_detections:
+            logger.info("OCR không tìm thấy chữ nào trên màn hình.")
+            return []
+            
+        # 5. Gom các khung hình có chữ giống nhau liên tiếp thành Segment
+        def is_similar(t1: str, t2: str) -> bool:
+            w1 = set(t1.lower().split())
+            w2 = set(t2.lower().split())
+            if not w1 or not w2:
+                return False
+            intersection = w1.intersection(w2)
+            return (len(intersection) / min(len(w1), len(w2))) >= 0.5
+            
+        segments = []
+        current_segment = None
+        seg_id = 1
+        
+        for time_sec, text in raw_detections:
+            time_ms = int(time_sec * 1000)
+            
+            if current_segment is None:
+                current_segment = {
+                    "id": seg_id,
+                    "start_ms": time_ms,
+                    "end_ms": time_ms + 1000,
+                    "text": text
+                }
+            else:
+                if is_similar(current_segment["text"], text) and (time_ms - current_segment["end_ms"] <= 2000):
+                    current_segment["end_ms"] = time_ms + 1000
+                    if len(text) > len(current_segment["text"]):
+                        current_segment["text"] = text
+                else:
+                    segments.append(Segment(
+                        id=current_segment["id"],
+                        start_ms=current_segment["start_ms"],
+                        end_ms=current_segment["end_ms"],
+                        source_text=current_segment["text"],
+                        status="pending"
+                    ))
+                    seg_id += 1
+                    current_segment = {
+                        "id": seg_id,
+                        "start_ms": time_ms,
+                        "end_ms": time_ms + 1000,
+                        "text": text
+                    }
+                    
+        if current_segment is not None:
+            segments.append(Segment(
+                id=current_segment["id"],
+                start_ms=current_segment["start_ms"],
+                end_ms=current_segment["end_ms"],
+                source_text=current_segment["text"],
+                status="pending"
+            ))
+            
+        logger.info(f"Hoàn thành trích xuất OCR. Đã tạo được {len(segments)} phân đoạn chữ dịch.")
+        return segments
 
     def _resolve_asset_path(self, logo: Optional[str], channel_id: Optional[str] = None) -> Optional[Path]:
         if not logo:
@@ -156,6 +318,8 @@ class PipelineRunner:
         ocr_sample_interval_sec: float = 0.75,
         ocr_crop_bottom_ratio: float = 0.45,
     ):
+        from app.utils.logger import set_current_job_id
+        set_current_job_id(job_id)
         job = self.store.load_job(job_id)
         if not job:
             raise AutoToolError(f"Job {job_id} not found.")
@@ -166,13 +330,6 @@ class PipelineRunner:
                 raise AutoToolError("Job bị ngắt bởi người dùng.")
 
         # Apply Emotion Preset mapping if defaults are used and tone has a preset
-        EMOTION_PRESETS = {
-            "funny": {"rate": "+8%", "pitch": "+4Hz", "bgm": "funny_loop"},
-            "sad": {"rate": "-10%", "pitch": "-5Hz", "bgm": "sad_loop"},
-            "drama": {"rate": "-4%", "pitch": "-3Hz", "bgm": "dramatic_loop"},
-            "serious": {"rate": "-5%", "pitch": "-2Hz", "bgm": None},
-            "energetic": {"rate": "+10%", "pitch": "+3Hz", "bgm": None}
-        }
         
         if tone in EMOTION_PRESETS:
             preset = EMOTION_PRESETS[tone]
@@ -202,10 +359,13 @@ class PipelineRunner:
             log_file = job_dir / "run.log"
             file_handler = FlushingFileHandler(str(log_file), mode="w", encoding="utf-8")
             file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+            file_handler.setLevel(logging.INFO)
+            # Add JobLogFilter to prevent logs from other concurrently running jobs from interleaving
+            file_handler.addFilter(JobLogFilter(job_id))
+            
             root_logger = logging.getLogger()
             root_logger.setLevel(logging.INFO)
             logger.setLevel(logging.INFO)
-            file_handler.setLevel(logging.INFO)
             root_logger.addHandler(file_handler)
             logger.info(f"=== Starting job {job_id} ===")
             
@@ -220,6 +380,7 @@ class PipelineRunner:
                     logger.info(f"Input is a URL. Downloading automatically: {job.input_path}")
                     dest_video = work_dir / "input.mp4"
                     is_douyin = "douyin.com" in job.input_path or "v.douyin.com" in job.input_path
+                    is_bilibili = "bilibili.com" in job.input_path or "b23.tv" in job.input_path
                     
                     class YTDLPLogger:
                         def debug(self, msg):
@@ -279,7 +440,8 @@ class PipelineRunner:
 
                     try:
                         logger.info("Attempting download using yt-dlp...")
-                        info = await asyncio.get_event_loop().run_in_executor(None, run_ytdl)
+                        from app.utils.logger import wrap_with_job_context
+                        info = await asyncio.get_event_loop().run_in_executor(None, wrap_with_job_context(job_id, run_ytdl))
                         logger.info("yt-dlp download completed successfully.")
                     except Exception as ytdl_err:
                         if is_douyin:
@@ -287,10 +449,22 @@ class PipelineRunner:
                             from app.services.downloader import PlaywrightDownloaderService
                             downloader = PlaywrightDownloaderService()
                             try:
-                                info = await downloader.download_video_async(job.input_path, dest_video)
+                                info = await downloader.download_video_async(job.input_path, dest_video, job_id)
                                 logger.info("Generic Douyin Playwright downloader succeeded.")
                             except Exception as playwright_err:
                                 logger.error(f"Douyin Playwright downloader failed: {playwright_err}")
+                                raise AutoToolError(f"Failed to download video from URL: {playwright_err}")
+                        elif is_bilibili:
+                            logger.info("yt-dlp download failed. Falling back to Bilibili Playwright downloader...")
+                            from app.services.downloader import download_bilibili_with_playwright
+                            try:
+                                from app.utils.logger import wrap_with_job_context
+                                info = await asyncio.get_event_loop().run_in_executor(
+                                    None, wrap_with_job_context(job_id, download_bilibili_with_playwright), job.input_path, dest_video
+                                )
+                                logger.info("Bilibili Playwright downloader succeeded.")
+                            except Exception as playwright_err:
+                                logger.error(f"Bilibili Playwright downloader failed: {playwright_err}")
                                 raise AutoToolError(f"Failed to download video from URL: {playwright_err}")
                         else:
                             raise AutoToolError(f"Failed to download video from URL: {ytdl_err}")
@@ -397,22 +571,57 @@ class PipelineRunner:
                     logger.info(f"Step 4 completed: recognized/imported {len(segments)} dialogue lines.")
                     job.steps["transcribe"] = "completed"
                     self.store.save_job(job)
+                elif getattr(job, "ocr_only_mode", False):
+                    # Run OCR-only transcription for silent/text-based videos
+                    try:
+                        logger.info("ocr_only_mode is enabled. Running OCR video text extraction...")
+                        metadata_path = work_dir / "metadata.json"
+                        duration = 30.0
+                        if metadata_path.exists():
+                            try:
+                                with open(metadata_path, "r", encoding="utf-8") as f:
+                                    meta = json.load(f)
+                                    duration = float(meta.get("duration", 30.0))
+                            except Exception:
+                                pass
+                        dest_video = self._get_dest_video(work_dir)
+                        segments = self._extract_text_segments_via_ocr(dest_video, work_dir, duration)
+                        self.store.save_transcript(job_id, segments)
+                        
+                        # Generate sidecar input.srt in work dir
+                        subs = pysrt.SubRipFile()
+                        for s in segments:
+                            sub = pysrt.SubRipItem(
+                                index=s.id,
+                                start=pysrt.SubRipTime(milliseconds=s.start_ms),
+                                end=pysrt.SubRipTime(milliseconds=s.end_ms),
+                                text=s.source_text
+                            )
+                            subs.append(sub)
+                        subs.save(str(input_srt), encoding="utf-8")
+                        
+                        job.steps["transcribe"] = "completed"
+                        self.store.save_job(job)
+                    except Exception as ocr_err:
+                        raise AutoToolError(f"OCR transcription failed: {ocr_err}")
                 else:
                     # No sidecar SRT, try auto-transcription with faster-whisper if installed
                     try:
-                        from faster_whisper import WhisperModel
                         logger.info("No sidecar SRT found. Initiating Whisper auto-transcription...")
                         audio_path = work_dir / "audio.wav"
-                        # base model is fast and works reasonably on CPU
-                        model = WhisperModel("base", device="cpu", compute_type="float32")
-                        segments_iter, info = model.transcribe(
-                            str(audio_path),
-                            beam_size=5,
-                            vad_filter=True,
-                            condition_on_previous_text=False
-                        )
+                        # Use cached Whisper model and synchronize transcribe execution
+                        model = _get_whisper_model()
+                        with _whisper_transcribe_lock:
+                            segments_iter, info = model.transcribe(
+                                str(audio_path),
+                                beam_size=5,
+                                vad_filter=True,
+                                condition_on_previous_text=False
+                            )
+                            # Materialize generator to list under lock to ensure execution is safe
+                            segments_list = list(segments_iter)
                         segments = []
-                        for idx, s in enumerate(segments_iter):
+                        for idx, s in enumerate(segments_list):
                             segment = Segment(
                                 id=idx + 1,
                                 start_ms=int(s.start * 1000),
@@ -667,7 +876,10 @@ class PipelineRunner:
                         )
                         
                         # Copy completed render to the centralized Completed directory
-                        completed_dir = PROJECT_ROOT / "outputs" / "Completed"
+                        if settings.default_export_path:
+                            completed_dir = Path(settings.default_export_path)
+                        else:
+                            completed_dir = PROJECT_ROOT / "outputs" / "Completed"
                         completed_dir.mkdir(parents=True, exist_ok=True)
                         dest_completed = completed_dir / f"{job_id}_{filename}"
                         shutil.copy2(final_video, dest_completed)
@@ -781,6 +993,11 @@ class PipelineRunner:
             self.store.save_job(job)
             raise e
         finally:
+            from app.utils.logger import set_current_job_id
+            set_current_job_id(None)
             if 'file_handler' in locals():
-                logging.getLogger().removeHandler(file_handler)
-                file_handler.close()
+                try:
+                    logging.getLogger().removeHandler(file_handler)
+                    file_handler.close()
+                except Exception:
+                    pass

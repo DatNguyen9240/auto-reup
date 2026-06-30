@@ -19,6 +19,8 @@ ENV/
 
 # Project temporary runs and output renders
 projects/
+outputs/
+downloads/
 *.log
 *.tmp
 *.mp3
@@ -39,7 +41,7 @@ seg_*_test.wav
 *.swp
 
 # Sensitive & Diagnostic Files
-cookies.txt
+*cookie*.txt
 playwright_screenshot.png
 *.png
 

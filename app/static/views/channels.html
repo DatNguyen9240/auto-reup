@@ -1,18 +1,18 @@
 <div id="view-channels" class="flex-1 flex flex-col lg:flex-row overflow-hidden w-full p-6 gap-6">
     
-    <!-- Left Side: Add/Edit Channel Form -->
+    <!-- Left Side: Add/Edit Page Form -->
     <div class="w-full lg:w-[380px] glass-card rounded-2xl p-6 flex flex-col gap-5 flex-shrink-0 overflow-y-auto">
         <div class="flex flex-col border-b border-white/5 pb-4">
-            <h2 class="font-outfit font-bold text-lg text-white" id="chan-modal-title">Cấu Hình Kênh Mới</h2>
-            <p class="text-[10px] text-slate-400">Thiết lập thư mục lưu trữ video và assets cho kênh</p>
+            <h2 class="font-outfit font-bold text-lg text-white" id="chan-modal-title">Cấu Hình Page Mới</h2>
+            <p class="text-[10px] text-slate-400">Thiết lập thư mục lưu trữ video và logo cho Page</p>
         </div>
 
         <form id="channel-form" onsubmit="saveChannel(event)" class="flex flex-col gap-4">
             <input type="hidden" id="edit-channel-id" value="">
             
             <div>
-                <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Tên Kênh</label>
-                <input type="text" id="chan-name" required placeholder="Ví dụ: Kênh Phim Con Mèo"
+                <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Tên Page</label>
+                <input type="text" id="chan-name" required placeholder="Ví dụ: Page Phim Con Mèo"
                        class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
             </div>
 
@@ -20,7 +20,14 @@
                 <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Đường Dẫn Thư Mục</label>
                 <input type="text" id="chan-path" required placeholder="Ví dụ: outputs/Con mèo"
                        class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                <p class="text-[9px] text-slate-500 mt-1">Đường dẫn tương đối (ví dụ: outputs/TenKenh) hoặc tuyệt đối (ví dụ: D:/channels/TenKenh).</p>
+                <p class="text-[9px] text-slate-500 mt-1">Đường dẫn tương đối (ví dụ: outputs/TenPage) hoặc tuyệt đối (ví dụ: D:/channels/TenPage).</p>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1.5">Watermark Logo mặc định</label>
+                <select id="chan-logo" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-xs focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                    <option value="">Không sử dụng</option>
+                </select>
             </div>
 
             <div class="flex gap-2 justify-end mt-2">
@@ -28,17 +35,17 @@
                     Hủy
                 </button>
                 <button type="submit" class="bg-gradient-to-r from-purple-600 to-rose-500 text-white px-4 py-2 rounded-lg text-xs font-semibold hover:opacity-90 active:scale-[0.98] transition-all">
-                    Lưu Kênh
+                    Lưu Page
                 </button>
             </div>
         </form>
     </div>
 
-    <!-- Right Side: Existing Channels List -->
+    <!-- Right Side: Existing Pages List -->
     <div class="flex-1 flex flex-col gap-5 overflow-y-auto">
         <div class="flex flex-col border-b border-white/5 pb-4">
-            <h2 class="font-outfit font-bold text-lg text-white">Danh Sách Kênh Đã Lưu</h2>
-            <p class="text-[10px] text-slate-400">Danh sách thư mục lưu trữ video thành phẩm và chứa hình ảnh chèn (Assets)</p>
+            <h2 class="font-outfit font-bold text-lg text-white">Danh Sách Page Đã Lưu</h2>
+            <p class="text-[10px] text-slate-400">Danh sách thư mục lưu trữ video thành phẩm và Logo tương ứng của Page</p>
         </div>
 
         <div id="modal-channel-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">

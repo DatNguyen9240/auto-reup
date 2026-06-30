@@ -26,6 +26,8 @@ class Job(BaseModel):
     channel_folder: Optional[str] = None
     platform_folder: Optional[str] = None
     channel_id: Optional[str] = None
+    is_published: bool = False
+    ocr_only_mode: bool = False
     input_width: int = 0
     input_height: int = 0
     input_aspect_ratio: float = 1.0

@@ -181,14 +181,17 @@ class PlaywrightDownloaderService:
         else:
             self.cookie_file_path = Path(cookie_file_path)
 
-    async def download_video_async(self, url: str, dest_path: Path) -> dict:
+    async def download_video_async(self, url: str, dest_path: Path, job_id: Optional[str] = None) -> dict:
         """Download video asynchronously by running requests download in executor."""
         url = normalize_douyin_url(url)
         loop = asyncio.get_event_loop()
         
         logger.info("Resolving video metadata and play URL...")
+        from app.utils.logger import wrap_with_job_context
+        
+        wrapped_metadata = wrap_with_job_context(job_id, get_douyin_metadata_playwright)
         info = await loop.run_in_executor(
-            None, get_douyin_metadata_playwright, url, self.cookie_file_path
+            None, wrapped_metadata, url, self.cookie_file_path
         )
         
         logger.info("Downloading MP4 video file...")
@@ -204,7 +207,8 @@ class PlaywrightDownloaderService:
                     for chunk in r.iter_content(chunk_size=8192): 
                         f.write(chunk)
                         
-        await loop.run_in_executor(None, do_download)
+        wrapped_download = wrap_with_job_context(job_id, do_download)
+        await loop.run_in_executor(None, wrapped_download)
         logger.info(f"Video downloaded successfully to: {dest_path}")
         return info
 

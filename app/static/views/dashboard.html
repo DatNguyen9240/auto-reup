@@ -39,12 +39,11 @@
                         </select>
                         <select id="dashboard-status-filter" onchange="updateDashboardFilters()"
                             class="bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-xs text-slate-100 focus:outline-none focus:border-purple-500">
-                            <option value="">Tất cả trạng thái</option>
-                            <option value="running">Đang xử lý</option>
-                            <option value="completed">Hoàn thành</option>
+                            <option value="">Tất cả</option>
+                            <option value="unpublished">Chờ đăng (Chưa đăng)</option>
+                            <option value="published">Đã đăng</option>
                             <option value="failed">Lỗi</option>
-                            <option value="cancelled">Đã hủy</option>
-                            <option value="queued">Đang chờ / đã tạo</option>
+                            <option value="running">Đang xử lý</option>
                         </select>
                         <select id="dashboard-source-filter" onchange="updateDashboardFilters()"
                             class="bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-xs text-slate-100 focus:outline-none focus:border-purple-500">

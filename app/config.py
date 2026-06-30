@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     default_output_folder: str = "./examples/outputs"
     default_music_folder: str = "./examples/music"
     default_source_folder: str = ""
+    default_export_path: str = Field(default="", validation_alias="DEFAULT_EXPORT_PATH")
     
     # Render & Pipeline Configuration
     default_voice: str = "vi-VN-HoaiMyNeural" # edge-tts voice ID
@@ -41,6 +42,7 @@ class Settings(BaseSettings):
     subtitle_mask_padding_y: int = 12
     ocr_sample_interval_sec: float = 0.75
     ocr_crop_bottom_ratio: float = 0.45
+    max_concurrent_jobs: int = Field(default=3, validation_alias="MAX_CONCURRENT_JOBS")
     
     # App root folder
     auto_tool_root: Path = Path(__file__).resolve().parent.parent
@@ -90,6 +92,15 @@ AVAILABLE_PITCHES = [
     {"id": "+2Hz", "name": "Thanh hơn (+2Hz)"},
     {"id": "+5Hz", "name": "Cao (+5Hz)"},
 ]
+
+# Emotion Preset settings for voice rate, pitch, and BGM mappings
+EMOTION_PRESETS = {
+    "funny": {"rate": "+8%", "pitch": "+4Hz", "bgm": "funny_loop"},
+    "sad": {"rate": "-10%", "pitch": "-5Hz", "bgm": "sad_loop"},
+    "drama": {"rate": "-4%", "pitch": "-3Hz", "bgm": "dramatic_loop"},
+    "serious": {"rate": "-5%", "pitch": "-2Hz", "bgm": None},
+    "energetic": {"rate": "+10%", "pitch": "+3Hz", "bgm": None}
+}
 
 
 

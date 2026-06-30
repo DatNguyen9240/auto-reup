@@ -20,6 +20,20 @@ const VIEWS = {
     channels: 'views/channels.html'
 };
 
+let pollingTimeout = null;
+async function runSmartPolling() {
+    if (pollingTimeout) clearTimeout(pollingTimeout);
+    if (typeof loadJobs === 'function' && currentTab === 'dashboard') {
+        await loadJobs();
+    }
+    const activeStatuses = new Set(['created', 'queued', 'processing', 'rendering', 'running']);
+    const hasActiveJobs = (jobsData || []).some(j => activeStatuses.has(j.status));
+    const nextDelay = hasActiveJobs ? 5000 : 30000; // 5s when active, 30s when idle
+    if (currentTab === 'dashboard') {
+        pollingTimeout = setTimeout(runSmartPolling, nextDelay);
+    }
+}
+
 // Initialize application on DOM ready
 document.addEventListener('DOMContentLoaded', async () => {
     // Read initial tab from URL hash (defaults to dashboard)
@@ -39,12 +53,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupSidebarTabDragNDrop();
     setupHeaderTabDragNDrop();
     
-    // Poll jobs status every 4 seconds in background
-    setInterval(async () => {
-        if (typeof loadJobs === 'function' && currentTab === 'dashboard') {
-            await loadJobs();
-        }
-    }, 4000);
+    // Run smart polling
+    runSmartPolling();
+    
+    // Refresh on focus
+    window.addEventListener('focus', () => {
+        if (currentTab === 'dashboard') runSmartPolling();
+    });
 });
 
 // Tab Routing Switches (Loads views dynamically)
@@ -107,7 +122,7 @@ async function switchTab(tab) {
             
             // Trigger tab initializers
             if (tab === 'dashboard') {
-                await loadJobs();
+                runSmartPolling();
                 if (typeof populateDashboardFilterChannel === 'function') {
                     populateDashboardFilterChannel();
                 }
@@ -610,7 +625,7 @@ function populateDestChannelSelects() {
         });
     }
     
-    const newOpt = new Option('[ + Tạo Kênh Mới ]', '__new__');
+    const newOpt = new Option('[ + Tạo Page Mới ]', '__new__');
     select.add(newOpt);
     
     if (curVal) select.value = curVal;
@@ -809,7 +824,7 @@ let globalChannels = [];
 // Fetch output channels from backend store
 async function loadChannels() {
     try {
-        const response = await fetch('/api/channels');
+        const response = await fetch('/api/pages');
         if (response.ok) {
             globalChannels = await response.json();
             if (typeof populateDashboardFilterChannel === 'function') {
@@ -952,6 +967,9 @@ function detectPlatform(url) {
 }
 
 function defaultPendingConfig() {
+    if (window.globalConfig && window.globalConfig.defaults) {
+        return JSON.parse(JSON.stringify(window.globalConfig.defaults));
+    }
     const getVal = (id, fallback) => {
         const el = document.getElementById(id);
         return el ? el.value : fallback;
@@ -978,7 +996,8 @@ function defaultPendingConfig() {
         ocr_crop_bottom_ratio: parseFloat(getVal('ocr_crop_bottom_ratio', '0.45')),
         tts_enabled: getChecked('tts_enabled', true),
         subtitles_enabled: getChecked('subtitles_enabled', true),
-        mask: getChecked('mask', true)
+        mask: getChecked('mask', true),
+        ocr_only_mode: false
     };
 }
 
@@ -1028,7 +1047,7 @@ function updatePendingConfig(id, key, value) {
     if (['subtitle_bg_opacity', 'subtitle_mask_padding_x', 'subtitle_mask_padding_y', 'ocr_sample_interval_sec', 'ocr_crop_bottom_ratio'].includes(key)) {
         const parsed = parseFloat(value);
         item.config[key] = Number.isFinite(parsed) ? parsed : item.config[key];
-    } else if (['tts_enabled', 'subtitles_enabled', 'mask'].includes(key)) {
+    } else if (['tts_enabled', 'subtitles_enabled', 'mask', 'ocr_only_mode'].includes(key)) {
         item.config[key] = Boolean(value);
     } else {
         item.config[key] = value;
@@ -1099,8 +1118,9 @@ function renderQueueList() {
             </div>
 
             <div class="flex items-center justify-between gap-2 text-[10px] text-slate-400">
-                <label><input type="checkbox" ${cfg.tts_enabled ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','tts_enabled',this.checked)"> TTS</label>
-                <label><input type="checkbox" ${cfg.subtitles_enabled ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','subtitles_enabled',this.checked)"> Phụ đề</label>
+                <label class="flex items-center gap-1"><input type="checkbox" ${cfg.ocr_only_mode ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','ocr_only_mode',this.checked)"> Không lời (OCR)</label>
+                <label class="flex items-center gap-1"><input type="checkbox" ${cfg.tts_enabled ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','tts_enabled',this.checked)"> TTS</label>
+                <label class="flex items-center gap-1"><input type="checkbox" ${cfg.subtitles_enabled ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','subtitles_enabled',this.checked)"> Phụ đề</label>
                 <button type="button" onclick="applyPendingConfigToAll('${entry.id}')" class="text-purple-300 hover:text-white font-semibold">Áp dụng cho tất cả</button>
             </div>
         `;
@@ -1229,7 +1249,8 @@ function previewSubtitleBackplateOpacity(value) {
             plate.style.webkitBackdropFilter = `blur(10px)`;
         }
     }
-    subtitleLayoutState.background_opacity = parseFloat(value) || subtitleLayoutState.background_opacity;
+    const opacity = parseFloat(value);
+    subtitleLayoutState.background_opacity = Number.isFinite(opacity) ? opacity : subtitleLayoutState.background_opacity;
 }
 
 function setSubtitleEditorSubmitMode(mode) {
@@ -1556,6 +1577,11 @@ async function continueRenderWithSubtitleLayout() {
             throw new Error(err.detail || 'Khong the tiep tuc render');
         }
         document.getElementById('subtitle-layout-section')?.classList.add('hidden');
+        const panel = document.getElementById('detail-panel');
+        if (panel) {
+            panel.classList.remove('lg:w-[850px]');
+            panel.classList.add('lg:w-[650px]');
+        }
         subtitleLayoutEditorJobId = null;
         subtitleLayoutEditorReady = false;
         isEditingSubtitleLayout = false;
@@ -1588,6 +1614,11 @@ async function openCompletedSubtitleLayoutEditor() {
     setSubtitleEditorSubmitMode('rerender');
     subtitleLayoutEditorJobId = null;
     setupSubtitleLayoutEditor(job);
+    const panel = document.getElementById('detail-panel');
+    if (panel) {
+        panel.classList.remove('lg:w-[650px]');
+        panel.classList.add('lg:w-[850px]');
+    }
     const section = document.getElementById('subtitle-layout-section');
     if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -1667,12 +1698,19 @@ async function openDetailPanel(jobId) {
         }
 
         if (isWaitingForSubtitleLayout(freshJob)) {
+            panel.classList.remove('lg:w-[650px]');
+            panel.classList.add('lg:w-[850px]');
             document.getElementById('subtitle-layout-section')?.classList.remove('hidden');
             setSubtitleEditorSubmitMode('initial');
             if (!isEditingSubtitleLayout) {
                 setupSubtitleLayoutEditor(freshJob);
             }
+        } else if (document.getElementById('subtitle-layout-section') && !document.getElementById('subtitle-layout-section').classList.contains('hidden')) {
+            panel.classList.remove('lg:w-[650px]');
+            panel.classList.add('lg:w-[850px]');
         } else {
+            panel.classList.remove('lg:w-[850px]');
+            panel.classList.add('lg:w-[650px]');
             document.getElementById('subtitle-layout-section')?.classList.add('hidden');
         }
 
@@ -1705,10 +1743,40 @@ async function openDetailPanel(jobId) {
     refreshInterval = setInterval(refreshDetailStatus, 3500);
 }
 
+async function toggleJobPublishedStatus(jobId) {
+    try {
+        const resp = await fetch(`/api/jobs/${jobId}/toggle-published`, { method: 'POST' });
+        if (resp.ok) {
+            const data = await resp.json();
+            const job = jobsData.find(j => j.job_id === jobId);
+            if (job) {
+                job.is_published = data.is_published;
+            }
+            renderJobsList();
+            showToast(data.is_published ? "Đã đánh dấu Đã đăng!" : "Đã chuyển về trạng thái Chờ đăng", "success");
+        } else {
+            showToast("Không thể thay đổi trạng thái đăng video", "error");
+        }
+    } catch (e) {
+        showToast("Lỗi kết nối: " + e.message, "error");
+    }
+}
+
+function addQuickLinkToQueue() {
+    const input = document.getElementById('quick-youtube-url');
+    if (!input) return;
+    const url = input.value.trim();
+    if (!url) {
+        showToast('Vui lòng dán link video', 'error');
+        return;
+    }
+    importSearchedVideo(url);
+    input.value = '';
+}
+
 function renderJobsList() {
     const container = document.getElementById('jobs-container');
     if (!container) return;
-    container.innerHTML = '';
 
     let filteredJobs = [...jobsData];
     if (currentFilterChannelId === 'default') {
@@ -1752,7 +1820,11 @@ function renderJobsList() {
 
         if (statusFilter) {
             const normalized = normalizeDashboardStatus(job.status);
-            if (statusFilter === 'queued') {
+            if (statusFilter === 'published') {
+                if (job.status !== 'completed' || !job.is_published) return false;
+            } else if (statusFilter === 'unpublished') {
+                if (job.status !== 'completed' || job.is_published) return false;
+            } else if (statusFilter === 'queued') {
                 if (!['created', 'queued'].includes(normalized)) return false;
             } else if (statusFilter === 'running') {
                 if (!['running', 'processing', 'rendering'].includes(normalized)) return false;
@@ -1775,6 +1847,85 @@ function renderJobsList() {
         container.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500 border border-dashed border-white/5 rounded-2xl">Không tìm thấy công việc nào phù hợp với bộ lọc.</div>';
         return;
     }
+
+    // In-place updates when structure matches
+    const currentDomIds = Array.from(container.children).map(c => c.getAttribute('data-job-id')).filter(Boolean);
+    const newJobIds = filteredJobs.map(j => j.job_id);
+    const isSameStructure = currentDomIds.length === newJobIds.length && currentDomIds.every((id, idx) => id === newJobIds[idx]);
+
+    if (isSameStructure) {
+        filteredJobs.forEach(job => {
+            const card = container.querySelector(`[data-job-id="${job.job_id}"]`);
+            if (!card) return;
+
+            const totalSteps = Object.keys(job.steps || {}).length || 1;
+            const completedSteps = Object.values(job.steps || {}).filter(s => s === 'completed').length;
+            const pct = Number.isFinite(job.progress) ? job.progress : Math.round((completedSteps / totalSteps) * 100);
+
+            const pctText = card.querySelector('.progress-pct');
+            if (pctText) pctText.textContent = `${pct}% (${completedSteps}/${totalSteps})`;
+            const pctBar = card.querySelector('.progress-bar');
+            if (pctBar) pctBar.style.width = `${pct}%`;
+
+            const badgeContainer = card.querySelector('.status-badge-container');
+            if (badgeContainer) {
+                const newBadgeHtml = statusBadgeHtml(job);
+                if (badgeContainer.innerHTML !== newBadgeHtml) {
+                    badgeContainer.innerHTML = newBadgeHtml;
+                }
+            }
+
+            const thumbContainer = card.querySelector('.thumb-container');
+            if (thumbContainer) {
+                const activeStatuses = new Set(['queued', 'processing', 'rendering', 'running']);
+                const newThumbHtml = job.status === 'completed'
+                    ? `<video src="/api/jobs/${job.job_id}/video" class="w-full h-full object-cover" preload="metadata" muted playsinline></video>`
+                    : activeStatuses.has(job.status)
+                        ? '<div class="absolute inset-0 flex items-center justify-center bg-purple-500/10 text-purple-400"><svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H16M4 8h5.183M12 4v4m0 0H8"></path></svg></div>'
+                        : '<div class="absolute inset-0 flex items-center justify-center bg-slate-950 text-slate-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></div>';
+                if (thumbContainer.innerHTML !== newThumbHtml) {
+                    thumbContainer.innerHTML = newThumbHtml;
+                }
+            }
+
+            const actionsContainer = card.querySelector('.actions-container');
+            if (actionsContainer) {
+                const activeStatuses = new Set(['queued', 'processing', 'rendering', 'running']);
+                const actionButton = job.status === 'created'
+                    ? `<button onclick="resumeJob('${job.job_id}')" class="hover:bg-emerald-500/10 text-emerald-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 transition-all">Bắt đầu xử lý</button>`
+                    : activeStatuses.has(job.status)
+                        ? `<button onclick="cancelJob('${job.job_id}')" class="hover:bg-amber-500/10 text-amber-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-500/20 hover:border-amber-500/40 transition-all">Ngắt</button>`
+                        : `<button onclick="rerunJob('${job.job_id}')" class="hover:bg-purple-500/10 text-purple-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all">Chạy lại</button>
+                           <button onclick="deleteJob('${job.job_id}')" class="hover:bg-rose-500/10 text-rose-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-500/20 hover:border-rose-500/40 transition-all">Xóa</button>`;
+                
+                const channelLabel = job.channel_name || (globalChannels.find(c => c.id === job.channel_id) || {}).name || '';
+                const channelDropdown = job.status === 'completed'
+                    ? `<select onchange="publishJob('${job.job_id}', this.value); this.selectedIndex = 0;" class="appearance-none bg-slate-900 hover:bg-slate-800 text-slate-200 text-[10px] font-semibold py-1.5 pl-3 pr-8 rounded-lg cursor-pointer transition-all focus:outline-none border border-slate-700/60 hover:border-purple-500/50">
+                            <option value="" disabled selected>${channelLabel ? 'Page: ' + channelLabel : 'Chuyển vào Page'}</option>
+                            ${globalChannels.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+                            ${job.channel_id ? '<option value="default">Đầu ra mặc định</option>' : ''}
+                        </select>`
+                    : '';
+                const publishToggleBtn = job.status === 'completed'
+                    ? `<button onclick="toggleJobPublishedStatus('${job.job_id}')" class="text-[10px] font-bold px-2 py-1.5 rounded-lg border transition-all ${job.is_published ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-slate-900 text-slate-400 hover:text-slate-200 border-slate-700/60'}" title="Đánh dấu đã đăng lên Page">
+                        ${job.is_published ? '✓ Đã đăng' : 'Chờ đăng'}
+                       </button>`
+                    : '';
+                
+                const newActionsHtml = `${publishToggleBtn}${channelDropdown}${actionButton}<button onclick="openDetailPanel('${job.job_id}')" class="bg-white/5 hover:bg-white/10 hover:text-white text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/5 transition-all">Chi tiết</button>`;
+                
+                const activeEl = document.activeElement;
+                const isUserInteractingWithThisCard = activeEl && card.contains(activeEl) && activeEl.tagName === 'SELECT';
+                
+                if (actionsContainer.innerHTML !== newActionsHtml && !isUserInteractingWithThisCard) {
+                    actionsContainer.innerHTML = newActionsHtml;
+                }
+            }
+        });
+        return;
+    }
+
+    container.innerHTML = '';
 
     filteredJobs.forEach(job => {
         const totalSteps = Object.keys(job.steps || {}).length || 1;
@@ -1800,34 +1951,40 @@ function renderJobsList() {
                    <button onclick="deleteJob('${job.job_id}')" class="hover:bg-rose-500/10 text-rose-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-500/20 hover:border-rose-500/40 transition-all">Xóa</button>`;
         const channelDropdown = job.status === 'completed'
             ? `<select onchange="publishJob('${job.job_id}', this.value); this.selectedIndex = 0;" class="appearance-none bg-slate-900 hover:bg-slate-800 text-slate-200 text-[10px] font-semibold py-1.5 pl-3 pr-8 rounded-lg cursor-pointer transition-all focus:outline-none border border-slate-700/60 hover:border-purple-500/50">
-                    <option value="" disabled selected>${channelLabel ? 'Kênh: ' + channelLabel : 'Chuyển vào kênh'}</option>
+                    <option value="" disabled selected>${channelLabel ? 'Page: ' + channelLabel : 'Chuyển vào Page'}</option>
                     ${globalChannels.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
                     ${job.channel_id ? '<option value="default">Đầu ra mặc định</option>' : ''}
                 </select>`
             : '';
+        const publishToggleBtn = job.status === 'completed'
+            ? `<button onclick="toggleJobPublishedStatus('${job.job_id}')" class="text-[10px] font-bold px-2 py-1.5 rounded-lg border transition-all ${job.is_published ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-slate-900 text-slate-400 hover:text-slate-200 border-slate-700/60'}" title="Đánh dấu đã đăng lên Page">
+                ${job.is_published ? '✓ Đã đăng' : 'Chờ đăng'}
+               </button>`
+            : '';
         const card = document.createElement('div');
+        card.setAttribute('data-job-id', job.job_id);
         card.className = 'glass-card rounded-xl p-4 hover:border-white/15 transition-all flex flex-col gap-3.5 relative group';
         card.innerHTML = `
             <div class="flex gap-3 items-start min-w-0">
-                <div class="w-12 h-12 rounded-lg bg-slate-900 border border-white/5 flex-shrink-0 overflow-hidden flex items-center justify-center relative">${thumb}</div>
+                <div class="thumb-container w-12 h-12 rounded-lg bg-slate-900 border border-white/5 flex-shrink-0 overflow-hidden flex items-center justify-center relative">${thumb}</div>
                 <div class="flex-1 min-w-0 flex flex-col justify-between h-12">
                     <div class="flex justify-between items-start gap-2">
                         <div class="flex flex-col min-w-0">
                             <span class="text-[9px] font-mono text-purple-400 font-bold leading-none">${job.job_id}</span>
                             <h3 class="font-semibold text-white mt-1 text-xs truncate leading-tight" title="${escapeHtml(job.input_path || job.job_id)}">${escapeHtml(title)}</h3>
                         </div>
-                        ${statusHtml}
+                        <div class="status-badge-container">${statusHtml}</div>
                     </div>
                 </div>
             </div>
             <div class="flex flex-col gap-1">
                 <div class="flex flex-wrap gap-1 text-[9px] text-slate-400"><span>${escapeHtml(platformLabel)}</span>${channelLabel ? `<span>- ${escapeHtml(channelLabel)}</span>` : ''}</div>
-                <div class="flex justify-between text-[10px] text-slate-400"><span>Tiến độ</span><span>${pct}% (${completedSteps}/${totalSteps})</span></div>
-                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden"><div class="bg-gradient-to-r from-purple-500 to-rose-500 h-full transition-all duration-500" style="width: ${pct}%"></div></div>
+                <div class="flex justify-between text-[10px] text-slate-400"><span>Tiến độ</span><span class="progress-pct">${pct}% (${completedSteps}/${totalSteps})</span></div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden"><div class="progress-bar bg-gradient-to-r from-purple-500 to-rose-500 h-full transition-all duration-500" style="width: ${pct}%"></div></div>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-2 mt-1 pt-3 border-t border-white/5">
                 <span class="text-[10px] text-slate-400 font-medium">${createdTime}</span>
-                <div class="flex flex-wrap items-center gap-2">${channelDropdown}${actionButton}<button onclick="openDetailPanel('${job.job_id}')" class="bg-white/5 hover:bg-white/10 hover:text-white text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/5 transition-all">Chi tiết</button></div>
+                <div class="actions-container flex flex-wrap items-center gap-2">${publishToggleBtn}${channelDropdown}${actionButton}<button onclick="openDetailPanel('${job.job_id}')" class="bg-white/5 hover:bg-white/10 hover:text-white text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/5 transition-all">Chi tiết</button></div>
             </div>`;
         container.appendChild(card);
     });
@@ -1931,6 +2088,8 @@ function sortDashboardJobs(a, b, mode) {
 
 function closeDetailPanel() {
     const panel = document.getElementById('detail-panel');
+    panel.classList.remove('lg:w-[850px]');
+    panel.classList.add('lg:w-[650px]');
     panel.classList.add('translate-x-full');
     setTimeout(() => {
         panel.classList.add('hidden');
@@ -2259,6 +2418,8 @@ async function checkApiKeysOnStartup() {
                 const el = document.getElementById(`gemini-key-${i}`);
                 if (el) el.value = data[`gemini_api_key_${i}`] || '';
             }
+            const exportPathEl = document.getElementById('system-export-path');
+            if (exportPathEl) exportPathEl.value = data.default_export_path || '';
         }
     } catch (e) {
         console.error("Failed to check keys:", e);
@@ -2338,8 +2499,16 @@ async function saveGeminiKeys() {
         return;
     }
     
-    showToast("Đang lưu API keys...", "info");
+    const exportPathVal = document.getElementById('system-export-path')?.value.trim() || '';
+    
+    showToast("Đang lưu cấu hình...", "info");
     try {
+        // Save export path
+        await fetch('/api/config/save-export-path', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ default_export_path: exportPathVal })
+        });
         const res = await fetch('/api/config/save-key', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2808,8 +2977,27 @@ async function rerunDetailJob() {
     }
 }
 
-// Channels management CRUD page helpers
+// Pages management CRUD page helpers
 async function initChannelsView() {
+    // Populate the Logo dropdown
+    const select = document.getElementById('chan-logo');
+    if (select) {
+        select.innerHTML = '<option value="">Không sử dụng</option>';
+        try {
+            const resp = await fetch('/api/assets/list');
+            if (resp.ok) {
+                const logos = await resp.json();
+                logos.forEach(logo => {
+                    const opt = document.createElement('option');
+                    opt.value = logo;
+                    opt.textContent = logo;
+                    select.appendChild(opt);
+                });
+            }
+        } catch (e) {
+            console.error("Failed to load global assets list for Page logo:", e);
+        }
+    }
     // Render list cards
     renderChannelsListView();
 }
@@ -2821,7 +3009,7 @@ function renderChannelsListView() {
     listContainer.innerHTML = '';
     
     if (globalChannels.length === 0) {
-        listContainer.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500 border border-dashed border-white/5 rounded-2xl">Chưa có cấu hình kênh nào. Nhập thông tin bên trái để tạo mới!</div>';
+        listContainer.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500 border border-dashed border-white/5 rounded-2xl">Chưa có cấu hình Page nào. Nhập thông tin bên trái để tạo mới!</div>';
         return;
     }
     
@@ -2839,10 +3027,11 @@ function renderChannelsListView() {
                 </div>
                 <div class="flex flex-col gap-1 text-[10px] text-slate-400 font-mono">
                     <div class="truncate">📁 Thư mục: ${escapeHtml(c.path)}</div>
+                    ${c.logo ? `<div class="truncate text-purple-400">🖼️ Logo: ${escapeHtml(c.logo)}</div>` : ''}
                 </div>
             </div>
             <button onclick="openChannelLocalFolder('${c.id}')" class="w-full py-1.5 bg-white/5 hover:bg-purple-600/30 rounded-lg text-[10px] font-semibold text-slate-300 border border-white/5 transition-all flex items-center justify-center gap-1.5">
-                📁 Mở thư mục kênh
+                📁 Mở thư mục Page
             </button>
         `;
         listContainer.appendChild(card);
@@ -2853,14 +3042,19 @@ function editChannel(id) {
     const chan = globalChannels.find(c => c.id === id);
     if (!chan) return;
     
-    document.getElementById('chan-modal-title').innerText = "Chỉnh Sửa Kênh";
+    document.getElementById('chan-modal-title').innerText = "Chỉnh Sửa Page";
     document.getElementById('edit-channel-id').value = chan.id;
     document.getElementById('chan-name').value = chan.name;
     document.getElementById('chan-path').value = chan.path;
+    
+    const logoSelect = document.getElementById('chan-logo');
+    if (logoSelect) {
+        logoSelect.value = chan.logo || '';
+    }
 }
 
 function cancelChannelEdit() {
-    document.getElementById('chan-modal-title').innerText = "Cấu Hình Kênh Mới";
+    document.getElementById('chan-modal-title').innerText = "Cấu Hình Page Mới";
     document.getElementById('edit-channel-id').value = "";
     document.getElementById('channel-form').reset();
 }
@@ -2871,21 +3065,23 @@ async function saveChannel(event) {
     const id = document.getElementById('edit-channel-id').value;
     const name = document.getElementById('chan-name').value.trim();
     const path = document.getElementById('chan-path').value.trim();
+    const logoSelect = document.getElementById('chan-logo');
+    const logo = logoSelect ? logoSelect.value : '';
     
     const payload = {
-        name, path
+        name, path, logo
     };
     
     try {
         let resp;
         if (id) {
-            resp = await fetch(`/api/channels/${id}`, {
+            resp = await fetch(`/api/pages/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
         } else {
-            resp = await fetch('/api/channels', {
+            resp = await fetch('/api/pages', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -2893,13 +3089,13 @@ async function saveChannel(event) {
         }
         
         if (resp.ok) {
-            showToast("Lưu cấu hình kênh thành công!", "success");
+            showToast("Lưu cấu hình Page thành công!", "success");
             cancelChannelEdit();
             await loadChannels();
             renderChannelsListView();
         } else {
             const err = await resp.json();
-            showToast(err.detail || "Không thể lưu kênh", "error");
+            showToast(err.detail || "Không thể lưu Page", "error");
         }
     } catch (e) {
         showToast("Lỗi kết nối máy chủ: " + e.message, "error");
@@ -2907,18 +3103,18 @@ async function saveChannel(event) {
 }
 
 async function deleteChannelData(id) {
-    const confirmed = confirm("Bạn có chắc chắn muốn xóa kênh này? Cấu hình mặc định của kênh sẽ bị loại bỏ.");
+    const confirmed = confirm("Bạn có chắc chắn muốn xóa Page này? Cấu hình mặc định của Page sẽ bị loại bỏ.");
     if (!confirmed) return;
     
     try {
-        const resp = await fetch(`/api/channels/${id}`, { method: 'DELETE' });
+        const resp = await fetch(`/api/pages/${id}`, { method: 'DELETE' });
         if (resp.ok) {
-            showToast("Đã xóa kênh thành công!", "success");
+            showToast("Đã xóa Page thành công!", "success");
             await loadChannels();
             renderChannelsListView();
         } else {
             const err = await resp.json();
-            showToast(err.detail || "Không thể xóa kênh", "error");
+            showToast(err.detail || "Không thể xóa Page", "error");
         }
     } catch (e) {
         showToast("Lỗi kết nối: " + e.message, "error");
@@ -2927,9 +3123,9 @@ async function deleteChannelData(id) {
 
 async function openChannelLocalFolder(id) {
     try {
-        const resp = await fetch(`/api/channels/${id}/open`, { method: 'POST' });
+        const resp = await fetch(`/api/pages/${id}/open`, { method: 'POST' });
         if (resp.ok) {
-            showToast("Đang mở thư mục kênh...", "success");
+            showToast("Đang mở thư mục Page...", "success");
         } else {
             const err = await resp.json();
             showToast(err.detail || "Không thể mở thư mục", "error");

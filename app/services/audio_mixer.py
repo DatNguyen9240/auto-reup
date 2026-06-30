@@ -122,38 +122,49 @@ class AudioMixer:
                 # Create a ducked copy of the background track
                 ducked_bg_track = bg_track + ducking_attenuation_db
                 
-                # Consolidate overlapping speech intervals
+                # Consolidate overlapping or closely spaced speech intervals (merge gaps under 2.5 seconds)
                 speech_intervals.sort()
                 merged_intervals = []
+                merge_threshold_ms = 2500  # 2.5 seconds threshold to prevent rapid BGM ducking fluctuations
                 for start, end in speech_intervals:
                     if not merged_intervals:
                         merged_intervals.append([start, end])
                     else:
                         prev_start, prev_end = merged_intervals[-1]
-                        if start <= prev_end:
+                        if start <= prev_end + merge_threshold_ms:
                             merged_intervals[-1][1] = max(prev_end, end)
                         else:
                             merged_intervals.append([start, end])
                 
-                # Stitch ducked and unducked audio chunks together
-                final_bg = AudioSegment.silent(duration=0)
-                last_idx = 0
+                # Stitch ducked and unducked audio chunks together with smooth crossfades
+                # Initial segment (before first speech)
+                first_start = merged_intervals[0][0]
+                final_bg = bg_track[0:first_start] if first_start > 0 else AudioSegment.silent(duration=0)
                 
-                for start, end in merged_intervals:
+                for idx, (start, end) in enumerate(merged_intervals):
                     start = max(0, min(start, duration_ms))
                     end = max(0, min(end, duration_ms))
                     
-                    # Stitch unducked background segment
-                    if start > last_idx:
-                        final_bg += bg_track[last_idx:start]
+                    # Ducked background segment
+                    ducked_chunk = ducked_bg_track[start:end]
                     
-                    # Stitch ducked background segment
-                    final_bg += ducked_bg_track[start:end]
-                    last_idx = end
-                
-                # Stitch remaining unducked background segment
-                if last_idx < duration_ms:
-                    final_bg += bg_track[last_idx:]
+                    # Crossfade into ducked segment (300ms transition)
+                    if len(final_bg) > 0 and len(ducked_chunk) > 300:
+                        final_bg = final_bg.append(ducked_chunk, crossfade=300)
+                    else:
+                        final_bg += ducked_chunk
+                        
+                    # Find start of next speech segment or end of video
+                    next_start = merged_intervals[idx+1][0] if idx < len(merged_intervals) - 1 else duration_ms
+                    next_start = max(0, min(next_start, duration_ms))
+                    
+                    if next_start > end:
+                        unducked_chunk = bg_track[end:next_start]
+                        # Crossfade back to normal volume (500ms transition)
+                        if len(final_bg) > 0 and len(unducked_chunk) > 500:
+                            final_bg = final_bg.append(unducked_chunk, crossfade=500)
+                        else:
+                            final_bg += unducked_chunk
                 
                 # Overlay voiceover track
                 final_audio = final_bg.overlay(tts_track)

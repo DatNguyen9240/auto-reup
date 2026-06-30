@@ -18,12 +18,12 @@ from fastapi import FastAPI, BackgroundTasks, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
-from app.config import settings, AVAILABLE_VOICES, AVAILABLE_TONES, AVAILABLE_RATES, AVAILABLE_PITCHES
+from app.config import settings, AVAILABLE_VOICES, AVAILABLE_TONES, AVAILABLE_RATES, AVAILABLE_PITCHES, EMOTION_PRESETS
 from app.core.pipeline import PipelineRunner
 from app.storage.json_store import JsonStore
 from app.models.job import Job
 from app.models.segment import Segment
-from app.utils.logger import get_logger
+from app.utils.logger import get_logger, set_current_job_id
 
 logger = get_logger("Server")
 
@@ -67,6 +67,7 @@ def enrich_job_data(data: Dict[str, Any]) -> Dict[str, Any]:
     data.update({
         "progress": job_progress(job),
         "thumbnail_url": f"/api/jobs/{job.job_id}/video" if job.status == "completed" and job.output_path else None,
+        "is_published": getattr(job, "is_published", False),
     })
     return data
 
@@ -92,6 +93,7 @@ class JobCreateRequest(BaseModel):
     channel_id: Optional[str] = None
     selected_outputs: Optional[List[str]] = None
     config_snapshot: Optional[Dict[str, Any]] = None
+    ocr_only_mode: bool = False
 
 class SegmentUpdateRequest(BaseModel):
     segments: List[Segment]
@@ -113,6 +115,7 @@ class SegmentUpdateRequest(BaseModel):
     ocr_crop_bottom_ratio: float = settings.ocr_crop_bottom_ratio
     channel_folder: Optional[str] = None
     platform_folder: Optional[str] = None
+    ocr_only_mode: bool = False
 
 class SubtitleLayoutRequest(BaseModel):
     subtitle_x_percent: float = 0.08
@@ -190,7 +193,7 @@ def job_output_dir(job: Job) -> Path:
     return store.get_job_dir(job.job_id) / "output"
     
 
-pipeline_lock = threading.Lock()
+pipeline_semaphore = threading.Semaphore(settings.max_concurrent_jobs)
 
 def resolve_logo_path(logo: Optional[str], channel_id: Optional[str] = None) -> Optional[Path]:
     if logo:
@@ -231,6 +234,14 @@ def resolve_logo_path(logo: Optional[str], channel_id: Optional[str] = None) -> 
             channels = load_channels_data()
             chan = next((c for c in channels if c.get("id") == channel_id), None)
             if chan:
+                if chan.get("logo"):
+                    p_logo = chan.get("logo")
+                    p_logo_path = PROJECT_ROOT / "examples" / "overlay" / p_logo
+                    if p_logo_path.exists() and p_logo_path.is_file():
+                        return p_logo_path
+                    p_logo_abs = Path(p_logo)
+                    if p_logo_abs.is_absolute() and p_logo_abs.exists():
+                        return p_logo_abs
                 name = chan.get("name")
                 # Also try looking inside the channel directory directly
                 chan_dir = resolve_channel_path(chan.get("name"), chan.get("path"))
@@ -380,7 +391,8 @@ def run_pipeline_in_thread(
     ocr_crop_bottom_ratio: float = settings.ocr_crop_bottom_ratio,
 ):
     try:
-        with pipeline_lock:
+        set_current_job_id(job_id)
+        with pipeline_semaphore:
             job = store.load_job(job_id)
             if job:
                 job.status = "processing"
@@ -414,7 +426,10 @@ def run_pipeline_in_thread(
                 job = store.load_job(job_id)
                 if job and job.status == "completed" and job.output_path:
                     import shutil
-                    output_dir = PROJECT_ROOT / "outputs" / "Completed"
+                    if settings.default_export_path:
+                        output_dir = Path(settings.default_export_path)
+                    else:
+                        output_dir = PROJECT_ROOT / "outputs" / "Completed"
                     output_dir.mkdir(parents=True, exist_ok=True)
                     
                     src_video = Path(job.output_path)
@@ -435,6 +450,7 @@ def run_pipeline_in_thread(
     except Exception as e:
         logger.error(f"Error running pipeline in thread for {job_id}: {e}")
     finally:
+        set_current_job_id(None)
         running_jobs.discard(job_id)
 
 @app.post("/api/jobs")
@@ -469,6 +485,7 @@ async def create_job(req: JobCreateRequest):
     job.channel_folder = req.channel_folder
     job.platform_folder = req.platform_folder
     job.channel_id = req.channel_id
+    job.ocr_only_mode = req.ocr_only_mode
     job.config_snapshot = config_snapshot
     job.steps.setdefault("subtitle_layout", "pending")
     for step in job.steps:
@@ -1379,7 +1396,26 @@ def get_global_config():
         "tones": AVAILABLE_TONES,
         "rates": AVAILABLE_RATES,
         "pitches": AVAILABLE_PITCHES,
-        "logos": list_logos()
+        "logos": list_logos(),
+        "presets": EMOTION_PRESETS,
+        "defaults": {
+            "tone": "review_phim",
+            "voice": settings.default_voice or "vi-VN-HoaiMyNeural",
+            "rate": settings.default_rate or "+0%",
+            "pitch": settings.default_pitch or "+0Hz",
+            "bgm": "",
+            "logo": "",
+            "subtitle_cover_mode": settings.subtitle_cover_mode or "text_box_only",
+            "subtitle_bg_opacity": settings.subtitle_bg_opacity or 0.20,
+            "subtitle_mask_padding_x": settings.subtitle_mask_padding_x or 20,
+            "subtitle_mask_padding_y": settings.subtitle_mask_padding_y or 12,
+            "ocr_sample_interval_sec": settings.ocr_sample_interval_sec or 0.75,
+            "ocr_crop_bottom_ratio": settings.ocr_crop_bottom_ratio or 0.45,
+            "tts_enabled": True,
+            "subtitles_enabled": True,
+            "mask": True,
+            "ocr_only_mode": False
+        }
     }
 
 class KeysSaveRequest(BaseModel):
@@ -1400,6 +1436,7 @@ def check_api_key():
     res = {
         "configured": is_set,
         "gemini_api_key": settings.gemini_api_key,
+        "default_export_path": settings.default_export_path,
     }
     for i in range(2, 11):
         res[f"gemini_api_key_{i}"] = getattr(settings, f"gemini_api_key_{i}", "")
@@ -1493,6 +1530,94 @@ def save_api_keys(req: KeysSaveRequest):
     except Exception as e:
         logger.error(f"Failed to save API keys to .env: {e}")
         raise HTTPException(status_code=500, detail=f"Không thể ghi key vào file .env: {str(e)}")
+
+class ExportPathSaveRequest(BaseModel):
+    default_export_path: str
+
+@app.post("/api/config/save-export-path")
+def save_export_path(req: ExportPathSaveRequest):
+    export_path = req.default_export_path.strip()
+    env_path = PROJECT_ROOT / ".env"
+    try:
+        def update_env_var(content_str, name, val):
+            if f"{name}=" in content_str:
+                lines = content_str.splitlines()
+                for i, line in enumerate(lines):
+                    if line.strip().startswith(f"{name}="):
+                        lines[i] = f"{name}={val}"
+                        break
+                return "\n".join(lines) + "\n"
+            else:
+                return content_str.rstrip() + f"\n{name}={val}\n"
+
+        content = ""
+        if env_path.exists():
+            with open(env_path, "r", encoding="utf-8") as f:
+                content = f.read()
+        else:
+            example_path = PROJECT_ROOT / ".env.example"
+            if example_path.exists():
+                import shutil
+                shutil.copy2(example_path, env_path)
+                with open(env_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+
+        content = update_env_var(content, "DEFAULT_EXPORT_PATH", export_path)
+
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        
+        # Update settings in-memory
+        settings.default_export_path = export_path
+        os.environ["DEFAULT_EXPORT_PATH"] = export_path
+        
+        return {"status": "success", "message": "Đã lưu đường dẫn Export thành công!"}
+    except Exception as e:
+        logger.error(f"Failed to save default export path: {e}")
+        raise HTTPException(status_code=500, detail=f"Không thể lưu đường dẫn: {str(e)}")
+
+@app.get("/api/assets/list")
+def list_global_assets():
+    assets = []
+    global_dir = PROJECT_ROOT / "examples" / "overlay"
+    if global_dir.exists():
+        for f in global_dir.iterdir():
+            if f.is_file() and f.suffix.lower() in {".png", ".jpg", ".jpeg"}:
+                assets.append(f.name)
+    return sorted(list(set(assets)))
+
+@app.post("/api/jobs/{job_id}/toggle-published")
+def toggle_job_published(job_id: str):
+    job = store.load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    job.is_published = not job.is_published
+    store.save_job(job)
+    return {"status": "success", "is_published": job.is_published}
+
+# Pages API (Page CRUD Aliases)
+PageCreate = ChannelCreate
+PageUpdate = ChannelUpdate
+
+@app.get("/api/pages")
+def get_pages():
+    return get_channels()
+
+@app.post("/api/pages")
+def create_page(req: PageCreate):
+    return create_channel(req)
+
+@app.put("/api/pages/{id}")
+def update_page(id: str, req: PageUpdate):
+    return update_channel(id, req)
+
+@app.delete("/api/pages/{id}")
+def delete_page(id: str):
+    return delete_channel(id)
+
+@app.post("/api/pages/{id}/open")
+def open_page_folder_alias(id: str):
+    return open_channel_folder(id)
 
 class BgmDownloadRequest(BaseModel):
     url: str

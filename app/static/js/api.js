@@ -614,6 +614,7 @@ async function submitJob(e) {
             mask: cfg.mask && cfg.subtitles_enabled,
             tts_enabled: cfg.tts_enabled,
             subtitles_enabled: cfg.subtitles_enabled,
+            ocr_only_mode: cfg.ocr_only_mode ?? false,
             channel_folder: null,
             platform_folder: cfg.platform_folder || '',
             channel_id: cfg.channel_id || null,
