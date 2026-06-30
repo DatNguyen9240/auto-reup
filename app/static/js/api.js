@@ -597,9 +597,12 @@ async function submitJob(e) {
     renderQueueList();
 
     const selected_outputs = [];
-    if (document.getElementById('out-fb-reels')?.checked) selected_outputs.push('fb_reels');
-    if (document.getElementById('out-yt-shorts')?.checked) selected_outputs.push('yt_shorts');
-    if (document.getElementById('out-yt-video')?.checked) selected_outputs.push('yt_video');
+    const chkFb = document.getElementById('queue-out-fb-reels') || document.getElementById('out-fb-reels');
+    const chkShorts = document.getElementById('queue-out-yt-shorts') || document.getElementById('out-yt-shorts');
+    const chkVideo = document.getElementById('queue-out-yt-video') || document.getElementById('out-yt-video');
+    if (chkFb?.checked) selected_outputs.push('fb_reels');
+    if (chkShorts?.checked) selected_outputs.push('yt_shorts');
+    if (chkVideo?.checked) selected_outputs.push('yt_video');
 
     for (const item of queueToProcess) {
         const cfg = item.config;
@@ -618,6 +621,9 @@ async function submitJob(e) {
             channel_folder: null,
             platform_folder: cfg.platform_folder || '',
             channel_id: cfg.channel_id || null,
+            target_language: cfg.target_language || 'vi-VN',
+            target_locale: cfg.target_locale || null,
+            translation_mode: cfg.translation_mode || 'natural',
             subtitle_cover_mode: cfg.subtitles_enabled ? cfg.subtitle_cover_mode : 'none',
             subtitle_bg_opacity: cfg.subtitle_bg_opacity,
             subtitle_mask_padding_x: cfg.subtitle_mask_padding_x,

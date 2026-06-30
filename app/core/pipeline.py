@@ -234,8 +234,40 @@ class PipelineRunner:
                 status="pending"
             ))
             
-        logger.info(f"Hoàn thành trích xuất OCR. Đã tạo được {len(segments)} phân đoạn chữ dịch.")
-        return segments
+    def _resolve_tts_voice(self, target_language: str, target_locale: Optional[str], current_voice: Optional[str]) -> str:
+        """Đảm bảo giọng đọc (Voice TTS) phù hợp với ngôn ngữ đích dịch thuật."""
+        lang_prefix = target_language.split("-")[0].lower()
+        if current_voice and current_voice.lower().startswith(lang_prefix):
+            return current_voice
+            
+        mappings = {
+            "vi": "vi-VN-HoaiMyNeural",
+            "en": "en-US-EmmaNeural",
+            "es": {
+                "es-MX": "es-MX-DaliaNeural",
+                "es-ES": "es-ES-ElviraNeural",
+                "default": "es-MX-DaliaNeural"
+            },
+            "pt": {
+                "pt-BR": "pt-BR-FranciscaNeural",
+                "pt-PT": "pt-PT-RaquelNeural",
+                "default": "pt-BR-FranciscaNeural"
+            },
+            "ru": "ru-RU-SvetlanaNeural",
+            "th": "th-TH-AcharaNeural",
+            "id": "id-ID-GadisNeural",
+            "ja": "ja-JP-NanamiNeural",
+            "ko": "ko-KR-SunHiNeural"
+        }
+        
+        if lang_prefix in mappings:
+            val = mappings[lang_prefix]
+            if isinstance(val, dict):
+                loc = target_locale or "default"
+                return val.get(loc) or val.get("default")
+            return val
+            
+        return "en-US-EmmaNeural"
 
     def _resolve_asset_path(self, logo: Optional[str], channel_id: Optional[str] = None) -> Optional[Path]:
         if not logo:
@@ -510,7 +542,10 @@ class PipelineRunner:
                 # Initialize default selected outputs if not custom configured
                 snapshot = job.config_snapshot or {}
                 if "selected_outputs" not in snapshot or not snapshot["selected_outputs"]:
-                    snapshot["selected_outputs"] = ["fb_reels"]
+                    if job.input_aspect_type == "horizontal":
+                        snapshot["selected_outputs"] = ["yt_video"]
+                    else:
+                        snapshot["selected_outputs"] = ["fb_reels", "yt_shorts"]
                     job.config_snapshot = snapshot
                     
                 # Initialize outputs status structure
@@ -668,7 +703,17 @@ class PipelineRunner:
                     logger.warning("No transcript segments found to translate.")
                 else:
                     logger.info(f"Step 5 starting: translating {len(segments)} dialogue lines.")
-                    segments = self.translator.translate(segments, tone)
+                    snapshot = job.config_snapshot or {}
+                    target_lang = snapshot.get("target_language", "vi-VN")
+                    target_loc = snapshot.get("target_locale")
+                    trans_mode = snapshot.get("translation_mode", "natural")
+                    segments = self.translator.translate(
+                        segments,
+                        tone,
+                        target_language=target_lang,
+                        target_locale=target_loc,
+                        translation_mode=trans_mode
+                    )
                     for idx, segment in enumerate(segments, start=1):
                         self._log_segment_progress("Translated", idx, len(segments), segment, segment.translated_text)
                     logger.info(f"Step 5 completed: translated {len(segments)} dialogue lines.")
@@ -691,10 +736,16 @@ class PipelineRunner:
                         segment.tts_path = None
                     self.store.save_translated(job_id, segments)
                 elif segments:
+                    snapshot = job.config_snapshot or {}
+                    target_lang = snapshot.get("target_language", "vi-VN")
+                    target_loc = snapshot.get("target_locale")
+                    resolved_voice = self._resolve_tts_voice(target_lang, target_loc, voice)
+                    logger.info(f"Resolved TTS voice for language '{target_lang}': {resolved_voice} (original: {voice})")
+                    
                     segments = await self.tts_service.generate_voiceovers(
                         segments=segments,
                         work_dir=work_dir,
-                        voice=voice,
+                        voice=resolved_voice,
                         rate=rate,
                         pitch=pitch
                     )
@@ -856,7 +907,7 @@ class PipelineRunner:
                             logo_path=logo_path,
                             mask_subtitle=mask_subtitle,
                             render_subtitles=subtitles_enabled,
-                            subtitle_layout=snapshot.get("subtitle_layout"),
+                            subtitle_layout=snapshot.get(f"{out}_subtitle_layout") or snapshot.get("subtitle_layout"),
                             subtitle_cover_mode=subtitle_cover_mode,
                             subtitle_bg_opacity=subtitle_bg_opacity,
                             subtitle_mask_padding_x=subtitle_mask_padding_x,
@@ -934,10 +985,15 @@ class PipelineRunner:
                             youtube_video_description: str
                             youtube_video_tags: str
 
+                        snapshot = job.config_snapshot or {}
+                        target_lang = snapshot.get("target_language", "vi-VN")
+                        target_loc = snapshot.get("target_locale") or "mặc định"
                         summary_prompt = (
                             "Bạn là chuyên gia sáng tạo nội dung mạng xã hội đa kênh. Hãy dựa vào nội dung đối thoại bên dưới "
-                            "để viết các captions, tiêu đề giật gân chuẩn SEO và các hashtags phù hợp cho từng nền tảng: "
-                            "Facebook Reels, YouTube Shorts, và YouTube Video thường. Trả về định dạng JSON đúng schema được cung cấp.\n\n"
+                            f"để viết các captions, tiêu đề giật gân chuẩn SEO và các hashtags bằng ngôn ngữ đích '{target_lang}' (locale: '{target_loc}') "
+                            "phù hợp cho từng nền tảng: Facebook Reels, YouTube Shorts, và YouTube Video thường. "
+                            f"Lưu ý đặc biệt: Tất cả các trường văn bản mô tả, tiêu đề và hashtag trong JSON kết quả PHẢI được viết bằng chính ngôn ngữ đích '{target_lang}'. "
+                            "Trả về định dạng JSON đúng schema được cung cấp.\n\n"
                             "Nội dung thoại:\n"
                         )
                         summary_prompt += "\n".join([s.translated_text for s in segments[:15]])
@@ -960,7 +1016,6 @@ class PipelineRunner:
                         youtube_video_tags = ai_data.get("youtube_video_tags", youtube_video_tags)
                         
                         # Save to job config snapshot so client can display it
-                        snapshot = job.config_snapshot or {}
                         snapshot["facebook_caption"] = facebook_caption
                         snapshot["facebook_hashtags"] = facebook_hashtags
                         snapshot["youtube_shorts_title"] = youtube_shorts_title
@@ -977,9 +1032,20 @@ class PipelineRunner:
                 # Save to caption.txt (Keep legacy caption format for compatibility)
                 caption_file = output_dir / "caption.txt"
                 with open(caption_file, "w", encoding="utf-8") as f:
-                    f.write(f"Facebook Reels Caption:\n{facebook_caption} {facebook_hashtags}\n\n")
-                    f.write(f"YouTube Shorts Title:\n{youtube_shorts_title}\n\n")
-                    f.write(f"YouTube Video Title:\n{youtube_video_title}\n")
+                    f.write(f"=== FACEBOOK REELS ===\nCaption:\n{facebook_caption} {facebook_hashtags}\n\n")
+                    f.write(f"=== YOUTUBE SHORTS ===\nTitle:\n{youtube_shorts_title}\nDescription:\n{youtube_shorts_description}\n\n")
+                    f.write(f"=== YOUTUBE VIDEO ===\nTitle:\n{youtube_video_title}\nDescription:\n{youtube_video_description}\nTags:\n{youtube_video_tags}\n")
+                    
+                if settings.default_export_path:
+                    completed_dir = Path(settings.default_export_path)
+                else:
+                    completed_dir = PROJECT_ROOT / "outputs" / "Completed"
+                completed_dir.mkdir(parents=True, exist_ok=True)
+                dest_completed_caption = completed_dir / f"{job_id}_caption.txt"
+                try:
+                    shutil.copy2(caption_file, dest_completed_caption)
+                except Exception as copy_err:
+                    logger.warning(f"Failed to copy caption to Completed folder: {copy_err}")
                     
                 job.steps["metadata"] = "completed"
                 job.status = "completed"

@@ -349,6 +349,13 @@
             </div>
 
             <div id="subtitle-layout-section" class="hidden flex flex-col gap-4 bg-white/5 border border-purple-500/20 rounded-xl p-4">
+                <div class="flex items-center gap-2 bg-slate-900 p-1.5 rounded-lg border border-white/5">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase px-2">Định dạng:</span>
+                    <button type="button" id="layout-switch-fb_reels" onclick="switchSubtitleFormat('fb_reels')" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition-all">FB Reels (9:16)</button>
+                    <button type="button" id="layout-switch-yt_shorts" onclick="switchSubtitleFormat('yt_shorts')" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition-all">YT Shorts (9:16)</button>
+                    <button type="button" id="layout-switch-yt_video" onclick="switchSubtitleFormat('yt_video')" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition-all">YT Video (16:9)</button>
+                </div>
+
                 <div class="flex items-center justify-between gap-3">
                     <div>
                         <h4 class="text-xs font-bold text-purple-300 uppercase tracking-widest">Chọn vị trí phụ đề</h4>
@@ -360,6 +367,15 @@
 
                 <div id="subtitle-preview-wrap" class="relative mx-auto w-full max-w-[340px] aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 select-none">
                     <video id="subtitle-preview-video" class="absolute inset-0 w-full h-full object-contain" controls muted playsinline preload="metadata"></video>
+                    
+                    <!-- Draggable crop box overlay for landscape-to-portrait manual crop -->
+                    <div id="preview-crop-overlay" class="hidden absolute inset-0 pointer-events-none" style="z-index: 5;">
+                        <div id="preview-crop-shade-left" class="absolute left-0 top-0 bottom-0 bg-black/60"></div>
+                        <div id="preview-crop-window" class="absolute top-0 bottom-0 border-2 border-dashed border-amber-400 cursor-ew-resize pointer-events-auto" style="width: 31.625%; left: 34.18%;">
+                            <div class="absolute top-1 left-1 bg-amber-400/80 text-black text-[8px] font-bold px-1.5 py-0.5 rounded shadow pointer-events-none select-none">CẮT KHUNG HÌNH (9:16)</div>
+                        </div>
+                        <div id="preview-crop-shade-right" class="absolute right-0 top-0 bottom-0 bg-black/60"></div>
+                    </div>
                     <div id="subtitle-layout-box"
                         class="absolute cursor-move border border-dashed border-purple-500/40 bg-transparent flex items-center justify-center text-center select-none"
                         style="left:8%; top:72%; width:84%; height:11%;">

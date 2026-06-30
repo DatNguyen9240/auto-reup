@@ -955,6 +955,32 @@ function filterJobsByChannel(channelId) {
     renderJobsList();
 }
 
+function onChangeTargetLanguage(lang) {
+    const container = document.getElementById('target_locale_container');
+    const select = document.getElementById('target_locale');
+    if (!container || !select) return;
+    
+    // Check lang prefix or exact matching
+    const prefix = lang.split('-')[0].toLowerCase();
+    
+    if (prefix === 'es') {
+        container.classList.remove('hidden');
+        select.innerHTML = `
+            <option value="es-MX" selected>Mỹ Latinh / Mexico (es-MX)</option>
+            <option value="es-ES">Tây Ban Nha (es-ES)</option>
+        `;
+    } else if (prefix === 'pt') {
+        container.classList.remove('hidden');
+        select.innerHTML = `
+            <option value="pt-BR" selected>Brazil (pt-BR)</option>
+            <option value="pt-PT">Bồ Đào Nha (pt-PT)</option>
+        `;
+    } else {
+        container.classList.add('hidden');
+        select.innerHTML = '<option value="">Mặc định</option>';
+    }
+}
+
 // Unified per-video pending flow. These definitions intentionally override the
 // older global queue helpers above while keeping the existing drag/drop callers.
 function detectPlatform(url) {
@@ -967,9 +993,6 @@ function detectPlatform(url) {
 }
 
 function defaultPendingConfig() {
-    if (window.globalConfig && window.globalConfig.defaults) {
-        return JSON.parse(JSON.stringify(window.globalConfig.defaults));
-    }
     const getVal = (id, fallback) => {
         const el = document.getElementById(id);
         return el ? el.value : fallback;
@@ -979,25 +1002,32 @@ function defaultPendingConfig() {
         return el ? el.checked : fallback;
     };
 
+    const base = (window.globalConfig && window.globalConfig.defaults)
+        ? JSON.parse(JSON.stringify(window.globalConfig.defaults))
+        : {};
+
     return {
-        tone: getVal('tone', 'review_phim'),
-        voice: getVal('voice', 'vi-VN-HoaiMyNeural'),
-        rate: getVal('rate', '+0%'),
-        pitch: getVal('pitch', '+0Hz'),
-        bgm: getVal('bgm', ''),
-        logo: getVal('logo', ''),
-        channel_id: getVal('dest_channel', ''),
-        platform_folder: getVal('dest_platform', ''),
-        subtitle_cover_mode: getVal('subtitle_cover_mode', 'text_box_only'),
-        subtitle_bg_opacity: parseFloat(getVal('subtitle_bg_opacity', '0.20')),
-        subtitle_mask_padding_x: parseInt(getVal('subtitle_mask_padding_x', '20')),
-        subtitle_mask_padding_y: parseInt(getVal('subtitle_mask_padding_y', '12')),
-        ocr_sample_interval_sec: parseFloat(getVal('ocr_sample_interval_sec', '0.75')),
-        ocr_crop_bottom_ratio: parseFloat(getVal('ocr_crop_bottom_ratio', '0.45')),
-        tts_enabled: getChecked('tts_enabled', true),
-        subtitles_enabled: getChecked('subtitles_enabled', true),
-        mask: getChecked('mask', true),
-        ocr_only_mode: false
+        tone: getVal('tone', base.tone || 'review_phim'),
+        voice: getVal('voice', base.voice || 'vi-VN-HoaiMyNeural'),
+        rate: getVal('rate', base.rate || '+0%'),
+        pitch: getVal('pitch', base.pitch || '+0Hz'),
+        bgm: getVal('bgm', base.bgm || ''),
+        logo: getVal('logo', base.logo || ''),
+        channel_id: getVal('dest_channel', base.channel_id || ''),
+        platform_folder: getVal('dest_platform', base.platform_folder || ''),
+        subtitle_cover_mode: getVal('subtitle_cover_mode', base.subtitle_cover_mode || 'text_box_only'),
+        subtitle_bg_opacity: parseFloat(getVal('subtitle_bg_opacity', base.subtitle_bg_opacity || '0.20')),
+        subtitle_mask_padding_x: parseInt(getVal('subtitle_mask_padding_x', base.subtitle_mask_padding_x || '20')),
+        subtitle_mask_padding_y: parseInt(getVal('subtitle_mask_padding_y', base.subtitle_mask_padding_y || '12')),
+        ocr_sample_interval_sec: parseFloat(getVal('ocr_sample_interval_sec', base.ocr_sample_interval_sec || '0.75')),
+        ocr_crop_bottom_ratio: parseFloat(getVal('ocr_crop_bottom_ratio', base.ocr_crop_bottom_ratio || '0.45')),
+        tts_enabled: getChecked('tts_enabled', base.tts_enabled ?? true),
+        subtitles_enabled: getChecked('subtitles_enabled', base.subtitles_enabled ?? true),
+        mask: getChecked('mask', base.mask ?? true),
+        ocr_only_mode: getChecked('ocr_only_mode', base.ocr_only_mode ?? false),
+        target_language: getVal('target_language', base.target_language || 'vi-VN'),
+        target_locale: getVal('target_locale', base.target_locale || ''),
+        translation_mode: getVal('translation_mode', base.translation_mode || 'natural'),
     };
 }
 
@@ -1105,16 +1135,45 @@ function renderQueueList() {
                 <button type="button" onclick="removeVideoFromQueue('${entry.id}')" class="text-slate-500 hover:text-rose-400 p-1 transition-colors">Xóa</button>
             </div>
             <div class="grid grid-cols-2 gap-2">
-                <select onchange="updatePendingConfig('${entry.id}','tone',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${optionList(globalConfig.tones, cfg.tone)}</select>
-                <select onchange="updatePendingConfig('${entry.id}','voice',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${optionList(globalConfig.voices, cfg.voice)}</select>
-                <select onchange="updatePendingConfig('${entry.id}','rate',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${optionList(globalConfig.rates, cfg.rate)}</select>
-                <select onchange="updatePendingConfig('${entry.id}','pitch',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${optionList(globalConfig.pitches, cfg.pitch)}</select>
-                <select onchange="updatePendingConfig('${entry.id}','bgm',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${pendingBgmOptions(cfg.bgm)}</select>
-
-                <select onchange="updatePendingConfig('${entry.id}','channel_id',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">${pendingChannelOptions(cfg.channel_id)}</select>
-                <select onchange="updatePendingConfig('${entry.id}','platform_folder',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">
+                <select onchange="updatePendingConfig('${entry.id}','tone',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2" title="Tone">${optionList(globalConfig.tones, cfg.tone)}</select>
+                <select onchange="updatePendingConfig('${entry.id}','voice',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2" title="Voice">${optionList(globalConfig.voices, cfg.voice)}</select>
+                <select onchange="updatePendingConfig('${entry.id}','rate',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2" title="Rate">${optionList(globalConfig.rates, cfg.rate)}</select>
+                <select onchange="updatePendingConfig('${entry.id}','pitch',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2" title="Pitch">${optionList(globalConfig.pitches, cfg.pitch)}</select>
+                <select onchange="updatePendingConfig('${entry.id}','bgm',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2" title="BGM">${pendingBgmOptions(cfg.bgm)}</select>
+                <select onchange="updatePendingConfig('${entry.id}','channel_id',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2" title="Page">${pendingChannelOptions(cfg.channel_id)}</select>
+                <select onchange="updatePendingConfig('${entry.id}','platform_folder',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2" title="Platform">
                     <option value="" ${!cfg.platform_folder ? 'selected' : ''}>Không chia</option><option value="TikTok" ${cfg.platform_folder === 'TikTok' ? 'selected' : ''}>TikTok</option><option value="YouTube" ${cfg.platform_folder === 'YouTube' ? 'selected' : ''}>YouTube</option><option value="Facebook" ${cfg.platform_folder === 'Facebook' ? 'selected' : ''}>Facebook</option><option value="Douyin" ${cfg.platform_folder === 'Douyin' ? 'selected' : ''}>Douyin</option>
                 </select>
+                
+                <select onchange="updatePendingConfig('${entry.id}','target_language',this.value); renderQueueList();" class="bg-slate-900 border border-slate-800 rounded-lg p-2" title="Ngôn ngữ đích">
+                    <option value="vi-VN" ${cfg.target_language === 'vi-VN' ? 'selected' : ''}>Tiếng Việt</option>
+                    <option value="en-US" ${cfg.target_language === 'en-US' ? 'selected' : ''}>English</option>
+                    <option value="es-ES" ${cfg.target_language === 'es-ES' ? 'selected' : ''}>Español</option>
+                    <option value="pt-BR" ${cfg.target_language === 'pt-BR' ? 'selected' : ''}>Português</option>
+                    <option value="ru-RU" ${cfg.target_language === 'ru-RU' ? 'selected' : ''}>Русский</option>
+                    <option value="th-TH" ${cfg.target_language === 'th-TH' ? 'selected' : ''}>Thai</option>
+                    <option value="id-ID" ${cfg.target_language === 'id-ID' ? 'selected' : ''}>Indonesian</option>
+                    <option value="ja-JP" ${cfg.target_language === 'ja-JP' ? 'selected' : ''}>Japanese</option>
+                    <option value="ko-KR" ${cfg.target_language === 'ko-KR' ? 'selected' : ''}>Korean</option>
+                </select>
+                
+                <select onchange="updatePendingConfig('${entry.id}','translation_mode',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2" title="Chế độ dịch">
+                    <option value="natural" ${cfg.translation_mode === 'natural' ? 'selected' : ''}>Dịch tự nhiên</option>
+                    <option value="localized" ${cfg.translation_mode === 'localized' ? 'selected' : ''}>Bản địa hóa</option>
+                    <option value="literal" ${cfg.translation_mode === 'literal' ? 'selected' : ''}>Dịch sát nghĩa</option>
+                </select>
+
+                ${(cfg.target_language && (cfg.target_language.startsWith('es') || cfg.target_language.startsWith('pt'))) ? `
+                <select onchange="updatePendingConfig('${entry.id}','target_locale',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2 col-span-2" title="Locale">
+                    ${cfg.target_language.startsWith('es') ? `
+                        <option value="es-MX" ${cfg.target_locale === 'es-MX' ? 'selected' : ''}>Mỹ Latinh (es-MX)</option>
+                        <option value="es-ES" ${cfg.target_locale === 'es-ES' ? 'selected' : ''}>Tây Ban Nha (es-ES)</option>
+                    ` : `
+                        <option value="pt-BR" ${cfg.target_locale === 'pt-BR' ? 'selected' : ''}>Brazil (pt-BR)</option>
+                        <option value="pt-PT" ${cfg.target_locale === 'pt-PT' ? 'selected' : ''}>Bồ Đào Nha (pt-PT)</option>
+                    `}
+                </select>
+                ` : ''}
             </div>
 
             <div class="flex items-center justify-between gap-2 text-[10px] text-slate-400">
@@ -1217,6 +1276,133 @@ function applySubtitleLayoutBox(layout = DEFAULT_SUBTITLE_LAYOUT) {
     box.style.height = `${(layout.height ?? DEFAULT_SUBTITLE_LAYOUT.height) * 100}%`;
 }
 
+let currentSubtitleJob = null;
+let activeLayoutFormat = 'fb_reels';
+let formatSubtitleLayouts = {};
+let formatCrops = {};
+
+function switchSubtitleFormat(fmt) {
+    if (!currentSubtitleJob) return;
+    activeLayoutFormat = fmt;
+    
+    // Update button styles
+    ['fb_reels', 'yt_shorts', 'yt_video'].forEach(f => {
+        const btn = document.getElementById(`layout-switch-${f}`);
+        if (btn) {
+            if (f === fmt) {
+                btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-600 text-white shadow-sm transition-all";
+            } else {
+                btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition-all";
+            }
+        }
+    });
+
+    const wrap = document.getElementById('subtitle-preview-wrap');
+    const cropOverlay = document.getElementById('preview-crop-overlay');
+    const layoutBox = document.getElementById('subtitle-layout-box');
+    
+    if (!wrap || !cropOverlay || !layoutBox) return;
+
+    const isInputHorizontal = currentSubtitleJob.input_aspect_type === 'horizontal';
+    const isTargetVertical = (fmt === 'fb_reels' || fmt === 'yt_shorts');
+    const reframeMode = currentSubtitleJob.config_snapshot?.[`${fmt}_reframe_mode`] || 'manual_crop';
+    const showManualCrop = isInputHorizontal && isTargetVertical && (reframeMode === 'manual_crop');
+
+    if (showManualCrop) {
+        wrap.className = "relative mx-auto w-full max-w-[450px] aspect-[16/9] bg-black rounded-xl overflow-hidden border border-white/10 select-none";
+        cropOverlay.classList.remove('hidden');
+        
+        const cropWindow = document.getElementById('preview-crop-window');
+        if (layoutBox.parentNode !== cropWindow) {
+            cropWindow.appendChild(layoutBox);
+        }
+        
+        const defaultCrop = { crop_x_percent: 0.342, crop_y_percent: 0, crop_width_percent: 0.316, crop_height_percent: 1.0 };
+        const savedCrop = formatCrops[fmt] || currentSubtitleJob.config_snapshot?.[`${fmt}_crop`] || defaultCrop;
+        formatCrops[fmt] = { ...savedCrop };
+        
+        const leftPercent = formatCrops[fmt].crop_x_percent * 100;
+        cropWindow.style.left = `${leftPercent}%`;
+        
+        updateCropShades(leftPercent);
+        setupCropDragging(cropWindow, wrap);
+        
+    } else {
+        cropOverlay.classList.add('hidden');
+        if (layoutBox.parentNode !== wrap) {
+            wrap.appendChild(layoutBox);
+        }
+        
+        if (isTargetVertical) {
+            wrap.className = "relative mx-auto w-full max-w-[340px] aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 select-none";
+        } else {
+            wrap.className = "relative mx-auto w-full max-w-[450px] aspect-[16/9] bg-black rounded-xl overflow-hidden border border-white/10 select-none";
+        }
+    }
+
+    const defaultLayout = (fmt === 'yt_shorts')
+        ? { x: 0.08, y: 0.60, width: 0.84, height: 0.11 }
+        : { x: 0.08, y: 0.72, width: 0.84, height: 0.11 };
+        
+    const savedLayout = formatSubtitleLayouts[fmt] || currentSubtitleJob.config_snapshot?.[`${fmt}_subtitle_layout`] || currentSubtitleJob.config_snapshot?.subtitle_layout || defaultLayout;
+    subtitleLayoutState = { ...savedLayout };
+    applySubtitleLayoutBox(subtitleLayoutState);
+}
+
+function updateCropShades(leftPercent) {
+    const shadeLeft = document.getElementById('preview-crop-shade-left');
+    const shadeRight = document.getElementById('preview-crop-shade-right');
+    const widthPercent = 31.625;
+    
+    if (shadeLeft) shadeLeft.style.width = `${leftPercent}%`;
+    if (shadeRight) {
+        shadeRight.style.left = `${leftPercent + widthPercent}%`;
+        shadeRight.style.width = `${100 - (leftPercent + widthPercent)}%`;
+    }
+}
+
+function setupCropDragging(cropWindow, wrap) {
+    let isDragging = false;
+    let startX = 0;
+    let startLeft = 0;
+
+    cropWindow.onmousedown = (e) => {
+        if (e.target !== cropWindow) return;
+        e.preventDefault();
+        isDragging = true;
+        startX = e.clientX;
+        
+        const wrapWidth = wrap.clientWidth;
+        const currentLeftPx = parseFloat(cropWindow.style.left) * wrapWidth / 100 || 0;
+        startLeft = currentLeftPx;
+
+        document.onmousemove = (moveEvent) => {
+            if (!isDragging) return;
+            const deltaX = moveEvent.clientX - startX;
+            let newLeftPx = startLeft + deltaX;
+            
+            const maxLeftPx = wrapWidth - cropWindow.clientWidth;
+            newLeftPx = Math.max(0, Math.min(maxLeftPx, newLeftPx));
+            
+            const leftPercent = (newLeftPx / wrapWidth) * 100;
+            cropWindow.style.left = `${leftPercent}%`;
+            
+            if (!formatCrops[activeLayoutFormat]) {
+                formatCrops[activeLayoutFormat] = {};
+            }
+            formatCrops[activeLayoutFormat].crop_x_percent = newLeftPx / wrapWidth;
+            
+            updateCropShades(leftPercent);
+        };
+
+        document.onmouseup = () => {
+            isDragging = false;
+            document.onmousemove = null;
+            document.onmouseup = null;
+        };
+    };
+}
+
 function saveSubtitleLayoutLocalState() {
     const opacity = parseFloat(document.getElementById('subtitle-layout-opacity')?.value || subtitleLayoutState.background_opacity || '0.20');
     subtitleLayoutState = {
@@ -1224,6 +1410,9 @@ function saveSubtitleLayoutLocalState() {
         ...getSubtitleLayoutBoxPercent(),
         background_opacity: Number.isFinite(opacity) ? opacity : 0.20
     };
+    if (activeLayoutFormat) {
+        formatSubtitleLayouts[activeLayoutFormat] = { ...subtitleLayoutState };
+    }
 }
 
 function updateSubtitleLayoutSummary(job) {
@@ -1235,8 +1424,14 @@ function updateSubtitleLayoutSummary(job) {
 }
 
 function resetSubtitleLayoutBox() {
-    subtitleLayoutState = { ...DEFAULT_SUBTITLE_LAYOUT, background_opacity: subtitleLayoutState.background_opacity ?? 0.20, preset: 'custom' };
-    applySubtitleLayoutBox(DEFAULT_SUBTITLE_LAYOUT);
+    const defaultLayout = (activeLayoutFormat === 'yt_shorts')
+        ? { x: 0.08, y: 0.60, width: 0.84, height: 0.11 }
+        : { x: 0.08, y: 0.72, width: 0.84, height: 0.11 };
+    subtitleLayoutState = { ...defaultLayout, background_opacity: subtitleLayoutState.background_opacity ?? 0.20, preset: 'custom' };
+    applySubtitleLayoutBox(subtitleLayoutState);
+    if (activeLayoutFormat) {
+        formatSubtitleLayouts[activeLayoutFormat] = { ...subtitleLayoutState };
+    }
 }
 
 function previewSubtitleBackplateOpacity(value) {
@@ -1293,17 +1488,41 @@ function setupSubtitleLayoutEditor(job) {
     const isNewEditorJob = subtitleLayoutEditorJobId !== job.job_id;
     if (isNewEditorJob) {
         subtitleLayoutEditorJobId = job.job_id;
-        const saved = job.config_snapshot?.subtitle_layout || DEFAULT_SUBTITLE_LAYOUT;
-        const savedOpacity = job.config_snapshot?.subtitle_bg_opacity ?? 0.20;
-        const savedPreset = job.config_snapshot?.subtitle_preset || 'middle';
-        subtitleLayoutState = { ...DEFAULT_SUBTITLE_LAYOUT, ...saved, background_opacity: savedOpacity, preset: savedPreset };
+        currentSubtitleJob = job;
+        
+        const snapshot = job.config_snapshot || {};
+        formatSubtitleLayouts = {};
+        formatCrops = {};
+        
+        ['fb_reels', 'yt_shorts', 'yt_video'].forEach(fmt => {
+            if (snapshot[`${fmt}_subtitle_layout`]) {
+                formatSubtitleLayouts[fmt] = snapshot[`${fmt}_subtitle_layout`];
+            }
+            if (snapshot[`${fmt}_crop`]) {
+                formatCrops[fmt] = snapshot[`${fmt}_crop`];
+            }
+        });
+
+        const selectedOutputs = snapshot.selected_outputs || ['fb_reels'];
+        
+        ['fb_reels', 'yt_shorts', 'yt_video'].forEach(fmt => {
+            const btn = document.getElementById(`layout-switch-${fmt}`);
+            if (btn) {
+                if (selectedOutputs.includes(fmt)) {
+                    btn.classList.remove('hidden');
+                } else {
+                    btn.classList.add('hidden');
+                }
+            }
+        });
+        
+        activeLayoutFormat = selectedOutputs[0] || 'fb_reels';
+        
         if (!video.src || !video.src.includes(job.job_id)) {
             video.src = `/api/jobs/${job.job_id}/preview-video`;
         }
-        const opacityInput = document.getElementById('subtitle-layout-opacity');
-        if (opacityInput) opacityInput.value = subtitleLayoutState.background_opacity;
-        applySubtitleLayoutBox(subtitleLayoutState);
-        previewSubtitleBackplateOpacity(subtitleLayoutState.background_opacity);
+        
+        switchSubtitleFormat(activeLayoutFormat);
         
         // Populate inputs if saved in snapshot
         const selectAsset = document.getElementById('subtitle-asset-select');
@@ -1532,13 +1751,36 @@ async function continueRenderWithSubtitleLayout() {
     if (!selectedJobId) return;
     const btn = document.getElementById('btn-continue-render');
     saveSubtitleLayoutLocalState();
-    const opacity = subtitleLayoutState.background_opacity;
-    const layout = { ...subtitleLayoutState };
+    
     if (btn) {
         btn.disabled = true;
         btn.innerText = 'Đang render...';
     }
     try {
+        // 1. Save Crops if horizontal input
+        if (currentSubtitleJob && currentSubtitleJob.input_aspect_type === 'horizontal') {
+            for (const fmt of ['fb_reels', 'yt_shorts']) {
+                if (formatCrops[fmt]) {
+                    const c = formatCrops[fmt];
+                    await fetch(`/api/jobs/${selectedJobId}/crop`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            output_type: fmt,
+                            reframe_mode: 'manual_crop',
+                            crop_x_percent: c.crop_x_percent,
+                            crop_y_percent: 0.0,
+                            crop_width_percent: 0.31625,
+                            crop_height_percent: 1.0
+                        })
+                    });
+                }
+            }
+        }
+
+        const opacity = subtitleLayoutState.background_opacity;
+        const layout = { ...subtitleLayoutState };
+
         const endpoint = subtitleLayoutSubmitMode === 'rerender'
             ? `/api/jobs/${selectedJobId}/rerender-subtitle-layout`
             : `/api/jobs/${selectedJobId}/subtitle-layout`;
@@ -1553,6 +1795,21 @@ async function continueRenderWithSubtitleLayout() {
             background_opacity: opacity,
             preset: layout.preset || 'custom'
         };
+        
+        const mapLayout = (l) => {
+            if (!l) return null;
+            return {
+                subtitle_x_percent: l.x,
+                subtitle_y_percent: l.y,
+                subtitle_width_percent: l.width,
+                subtitle_height_percent: l.height,
+                subtitle_bg_opacity: l.background_opacity || 0.20,
+                preset: l.preset || 'custom'
+            };
+        };
+        payload.fb_reels_subtitle_layout = mapLayout(formatSubtitleLayouts.fb_reels);
+        payload.yt_shorts_subtitle_layout = mapLayout(formatSubtitleLayouts.yt_shorts);
+        payload.yt_video_subtitle_layout = mapLayout(formatSubtitleLayouts.yt_video);
         
         if (assetName) {
             payload.asset = assetName;

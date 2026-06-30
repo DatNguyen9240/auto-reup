@@ -94,6 +94,9 @@ class JobCreateRequest(BaseModel):
     selected_outputs: Optional[List[str]] = None
     config_snapshot: Optional[Dict[str, Any]] = None
     ocr_only_mode: bool = False
+    target_language: str = "vi-VN"
+    target_locale: Optional[str] = None
+    translation_mode: str = "natural"
 
 class SegmentUpdateRequest(BaseModel):
     segments: List[Segment]
@@ -133,6 +136,9 @@ class SubtitleLayoutRequest(BaseModel):
     asset_opacity: Optional[float] = 1.0
     asset_color: Optional[str] = None
     blur_masks: Optional[List[Dict[str, Any]]] = None
+    fb_reels_subtitle_layout: Optional[Dict[str, float]] = None
+    yt_shorts_subtitle_layout: Optional[Dict[str, float]] = None
+    yt_video_subtitle_layout: Optional[Dict[str, float]] = None
 
 def _normalize_subtitle_layout(req: SubtitleLayoutRequest) -> Dict[str, Any]:
     layout = {
@@ -179,6 +185,13 @@ def _save_subtitle_layout_snapshot(job: Job, req: SubtitleLayoutRequest) -> Dict
         
     if req.blur_masks is not None:
         snapshot["blur_masks"] = req.blur_masks
+        
+    if req.fb_reels_subtitle_layout is not None:
+        snapshot["fb_reels_subtitle_layout"] = req.fb_reels_subtitle_layout
+    if req.yt_shorts_subtitle_layout is not None:
+        snapshot["yt_shorts_subtitle_layout"] = req.yt_shorts_subtitle_layout
+    if req.yt_video_subtitle_layout is not None:
+        snapshot["yt_video_subtitle_layout"] = req.yt_video_subtitle_layout
 
     job.config_snapshot = snapshot
     store.save_job(job)
@@ -486,6 +499,9 @@ async def create_job(req: JobCreateRequest):
     job.platform_folder = req.platform_folder
     job.channel_id = req.channel_id
     job.ocr_only_mode = req.ocr_only_mode
+    job.target_language = req.target_language
+    job.target_locale = req.target_locale
+    job.translation_mode = req.translation_mode
     job.config_snapshot = config_snapshot
     job.steps.setdefault("subtitle_layout", "pending")
     for step in job.steps:
@@ -1414,7 +1430,11 @@ def get_global_config():
             "tts_enabled": True,
             "subtitles_enabled": True,
             "mask": True,
-            "ocr_only_mode": False
+            "ocr_only_mode": False,
+            "target_language": settings.default_target_language or "vi-VN",
+            "target_locale": "",
+            "translation_mode": settings.default_translation_mode or "natural",
+            "selected_outputs": ["fb_reels", "yt_shorts"]
         }
     }
 

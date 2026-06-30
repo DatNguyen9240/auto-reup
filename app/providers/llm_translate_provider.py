@@ -117,11 +117,18 @@ class LLMTranslateProvider(TranslateProvider):
                 
         raise TranslationError(f"All configured Gemini API Keys failed. Last error: {last_error}")
 
-    def translate(self, segments: List[Segment], tone: str) -> List[Segment]:
+    def translate(
+        self,
+        segments: List[Segment],
+        tone: str,
+        target_language: str = "vi-VN",
+        target_locale: Optional[str] = None,
+        translation_mode: str = "natural"
+    ) -> List[Segment]:
         if not segments:
             return []
             
-        logger.info(f"Translating {len(segments)} segments with tone '{tone}' using Gemini.")
+        logger.info(f"Translating {len(segments)} segments with tone '{tone}', lang '{target_language}', locale '{target_locale}', mode '{translation_mode}' using Gemini.")
         
         # Prepare chunk data to preserve contextual flows for the LLM
         payload = []
@@ -131,12 +138,71 @@ class LLMTranslateProvider(TranslateProvider):
                 "text": s.source_text
             })
             
-        prompt = f"""Bạn là một chuyên gia dịch thuật video chuyên nghiệp từ nước ngoài sang tiếng Việt.
-Hãy dịch danh sách phụ đề video ngắn dưới đây sang tiếng Việt.
+        # Mode description mapping
+        mode_instructions = {
+            "literal": (
+                "Dịch sát nghĩa (Literal translation). Dịch chính xác từng chữ, giữ nguyên nghĩa đen "
+                "và cấu trúc câu nếu có thể. Thích hợp cho nội dung khoa học, kỹ thuật, thông tin, hướng dẫn."
+            ),
+            "natural": (
+                "Dịch tự nhiên (Natural translation). Dịch trôi chảy, tự nhiên như người bản xứ nói thông thường, "
+                "đảm bảo nhịp điệu và ngữ nghĩa tự nhiên."
+            ),
+            "localized": (
+                "Dịch phóng khoáng/địa phương hóa (Localized / Viral style). Dịch theo văn hóa người xem. "
+                "Hãy chuyển nghĩa các tiếng lóng, thành ngữ, meme, drama từ tiếng Trung sang các câu nói thịnh hành (viral), "
+                "hài hước hoặc slang tương đương của ngôn ngữ đích để tạo cảm giác gần gũi nhất."
+            )
+        }
+        mode_desc = mode_instructions.get(translation_mode, mode_instructions["natural"])
 
-BỐI CẢNH & PHONG CÁCH:
-- Video ngắn dạng kịch tính, tóm tắt phim/review phim.
-- Giọng văn kịch tính, cuốn hút, tự nhiên, trôi chảy.
+        # Language specific rules
+        lang_instructions = {
+            "vi": (
+                "Dịch sang tiếng Việt tự nhiên, có đầy đủ dấu. Tránh dịch Hán-Việt quá cứng nhắc. "
+                "Với review phim/drama, câu cú phải giật gân, hấp dẫn và tự nhiên."
+            ),
+            "en": (
+                "Translate to English. Keep sentences short, direct, and natural. "
+                "Use casual English slang if appropriate for memes/drama, but avoid overly formal language."
+            ),
+            "es": (
+                f"Translate to Spanish (Locale: {target_locale or 'Neutral'}). "
+                f"Use es-MX (Mexican Spanish) slang if locale is es-MX, or es-ES (Spain Spanish) if locale is es-ES. "
+                "If neutral Spanish is targeted, keep it universally understandable across Latin America and Spain."
+            ),
+            "pt": (
+                f"Translate to Portuguese (Locale: {target_locale or 'pt-BR'}). "
+                f"Use pt-BR (Brazilian Portuguese) expressions if locale is pt-BR, or pt-PT (Portugal Portuguese) if locale is pt-PT. "
+                "Do not mix Brazilian and European Portuguese slangs."
+            ),
+            "ru": (
+                "Translate to Russian. Ensure natural phrasing, avoid literal translations of idioms. "
+                "Control sentence length and split long clauses if necessary to fit the timing."
+            ),
+            "th": (
+                "Translate to Thai. Use natural Thai phrasing suitable for social media videos."
+            ),
+            "id": (
+                "Translate to Indonesian. Keep it casual, natural, and direct."
+            ),
+            "ja": (
+                "Translate to Japanese. Use natural spoken Japanese. Keep lines very concise (max 22 characters per line)."
+            ),
+            "ko": (
+                "Translate to Korean. Use natural spoken Korean phrasing. Keep lines concise."
+            )
+        }
+        lang_prefix = target_language.split("-")[0].lower()
+        lang_desc = lang_instructions.get(lang_prefix, lang_instructions["en"])
+
+        prompt = f"""Bạn là một chuyên gia dịch thuật video chuyên nghiệp sang ngôn ngữ đích: {target_language} (locale: {target_locale or 'mặc định'}).
+Hãy dịch danh sách phụ đề video ngắn dưới đây.
+
+PHONG CÁCH DỊCH:
+- Tông giọng chung của video: {tone}
+- Chế độ dịch: {mode_desc}
+- Yêu cầu ngôn ngữ đích: {lang_desc}
 
 YÊU CẦU QUAN TRỌNG:
 1. SỬA LỖI CHÍNH TẢ & ĐỒNG ÂM (ASR CORRECTION):
@@ -144,24 +210,24 @@ YÊU CẦU QUAN TRỌNG:
    - "逆名" thực chất là "匿名" (nặc danh).
    - "契礼子散" thực chất là "妻离子散" (vợ con ly tán, tan nhà nát cửa).
    - "印着头皮" thực chất là "硬着头皮" (nhắm mắt đưa chân, cố chịu đựng).
-   - "复约" thực chất là "赴约" (đến hẹn, đi gặp).
-   - "舞运" thực chất là "迷晕" (đánh thuốc mê, làm bất tỉnh).
    - "让人招这儿" thực chất là "店里/这儿" (ở đây, ở cửa hàng).
 
 2. ĐẠI TỪ NHÂN XƯNG CHÍNH XÁC:
-   Do phát âm tiếng Trung của "他" (anh ấy) và "她" (cô ấy) đều là "tā", công cụ ASR thường viết sai lẫn lộn chữ " she" và "he".
-   Hãy đọc toàn bộ ngữ cảnh câu chuyện để dịch đại từ chính xác:
-   - Hàn Đông (韩东) là nam (người chồng - "丈夫" / "男人"), nên khi các câu sau nhắc đến Hàn Đông mà phụ đề viết "她", hãy dịch thành "anh", "anh ấy", "hắn" (không được dịch thành "cô", "nàng").
-   - Lâm Mỹ Nguyệt (林美月) và Mia (米亚) là nữ, hãy dùng "cô ấy", "cô", "chị ấy".
+   Hãy đọc toàn bộ ngữ cảnh câu chuyện để dịch đại từ chính xác tương thích với nhân vật nam/nữ trong câu chuyện ở ngôn ngữ đích.
 
-3. Dịch tự nhiên, sinh động, phù hợp với văn phong video ngắn dạng "{tone}".
-4. Giữ nguyên cấu trúc ID, trả về định dạng danh sách JSON tương tự đầu vào với trường "translated_text" là bản dịch tiếng Việt.
-5. Không tự ý gộp/tách câu, đảm bảo số lượng phần tử trả về trùng khớp hoàn toàn với đầu vào.
-6. TỐI ƯU ĐỘ DÀI: Hãy dịch cực kỳ ngắn gọn, súc tích, lược bỏ các từ rườm rà. Câu dịch tiếng Việt phải ngắn gọn để khi lồng tiếng bằng giọng đọc AI không bị nói quá nhanh.
+3. DỊCH PHÓNG KHOÁNG, KHÔNG DỊCH WORD-BY-WORD:
+   Không dịch từng chữ một cách máy móc. Hãy chuyển thể nghĩa, sắc thái biểu đạt, tiếng lóng sang câu tương đương có nghĩa tương đương ở ngôn ngữ đích.
+
+4. KHỐNG CHẾ ĐỘ DÀI PHỤ ĐỀ:
+   - Phụ đề dịch ra tối đa 2 dòng.
+   - Giới hạn số ký tự trên mỗi dòng tùy thuộc ngôn ngữ (Tiếng Anh/Việt/Indo: tối đa 45 ký tự; Tây Ban Nha/Bồ Đào Nha/Nga: tối đa 50 ký tự; Nhật/Hàn: tối đa 22 ký tự).
+   - Hãy rút gọn câu từ nếu cần thiết nhưng vẫn giữ nguyên ý chính và cảm xúc để người dùng đọc kịp và giọng đọc AI (TTS) có đủ thời gian đọc mà không bị nói quá nhanh.
+
+5. Giữ nguyên cấu trúc ID, trả về định dạng danh sách JSON tương tự đầu vào với trường "translated_text" là bản dịch bằng ngôn ngữ {target_language}.
+6. Không tự ý gộp/tách câu, đảm bảo số lượng phần tử trả về trùng khớp hoàn toàn với đầu vào.
 7. Chỉ trả về JSON hợp lệ, không bọc trong block Markdown hay giải thích gì thêm.
 8. ĐỒNG BỘ TÊN KÊNH THƯƠNG HIỆU:
-   Nếu trong phụ đề gốc xuất hiện tên kênh của tác giả video tiếng Trung (như '真探说' hoặc các tên tự giới thiệu kênh ở cuối video), hãy dịch/thay thế nó thành tên kênh thương hiệu tiếng Việt sau: '{settings.channel_name}'. 
-   Ví dụ: '我是真探说' -> 'Tôi là {settings.channel_name}'.
+   Nếu trong phụ đề gốc xuất hiện tên kênh của tác giả video tiếng Trung, hãy dịch/thay thế nó thành tên kênh thương hiệu sau: '{settings.channel_name}'.
 
 Danh sách phụ đề cần dịch:
 {json.dumps(payload, ensure_ascii=False, indent=2)}

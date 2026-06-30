@@ -129,6 +129,57 @@
                     <input type="text" id="new_channel_name" placeholder="Ví dụ: Page Phim 1" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
                 </div>
 
+                <!-- New Localization & Output Formats Row -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border border-white/5 rounded-xl p-3.5 bg-slate-950/40">
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1.5">Ngôn ngữ đích</label>
+                        <select id="target_language" onchange="onChangeTargetLanguage(this.value)" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg p-2 text-xs focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                            <option value="vi-VN">Tiếng Việt</option>
+                            <option value="en-US">English</option>
+                            <option value="es-ES">Español</option>
+                            <option value="pt-BR">Português</option>
+                            <option value="ru-RU">Русский</option>
+                            <option value="th-TH">Thai</option>
+                            <option value="id-ID">Indonesian</option>
+                            <option value="ja-JP">Japanese</option>
+                            <option value="ko-KR">Korean</option>
+                        </select>
+                    </div>
+                    <div id="target_locale_container" class="hidden">
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1.5">Vùng miền / Locale</label>
+                        <select id="target_locale" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg p-2 text-xs focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                            <option value="">Mặc định</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1.5">Chế độ dịch thuật</label>
+                        <select id="translation_mode" class="w-full bg-slate-900 border border-slate-700/60 rounded-lg p-2 text-xs focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                            <option value="natural" selected>Dịch tự nhiên (Natural)</option>
+                            <option value="localized">Bản địa hóa (Localized / Viral)</option>
+                            <option value="literal">Dịch sát nghĩa (Literal)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Output formats checkboxes inside queue config form -->
+                <div class="flex flex-col gap-2 bg-slate-900/40 border border-slate-800/80 rounded-xl p-3.5">
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Lựa chọn định dạng xuất</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer select-none">
+                            <input type="checkbox" id="queue-out-fb-reels" value="fb_reels" checked class="rounded border-slate-700 bg-slate-900 text-purple-600 focus:ring-purple-500/50">
+                            <span>FB Reels (9:16)</span>
+                        </label>
+                        <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer select-none">
+                            <input type="checkbox" id="queue-out-yt-shorts" value="yt_shorts" checked class="rounded border-slate-700 bg-slate-900 text-purple-600 focus:ring-purple-500/50">
+                            <span>YT Shorts (9:16)</span>
+                        </label>
+                        <label class="flex items-center gap-1.5 text-xs text-slate-300 cursor-pointer select-none">
+                            <input type="checkbox" id="queue-out-yt-video" value="yt_video" class="rounded border-slate-700 bg-slate-900 text-purple-600 focus:ring-purple-500/50">
+                            <span>YT Video (16:9)</span>
+                        </label>
+                    </div>
+                </div>
+
                 <!-- Che sub check slider -->
                 <div class="flex items-center justify-between bg-slate-900/40 border border-slate-800/80 rounded-xl p-3.5">
                     <span class="text-xs font-semibold text-slate-300">Che phụ đề gốc tiếng Trung</span>

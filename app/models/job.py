@@ -28,6 +28,9 @@ class Job(BaseModel):
     channel_id: Optional[str] = None
     is_published: bool = False
     ocr_only_mode: bool = False
+    target_language: str = "vi-VN"
+    target_locale: Optional[str] = None
+    translation_mode: str = "natural"
     input_width: int = 0
     input_height: int = 0
     input_aspect_ratio: float = 1.0

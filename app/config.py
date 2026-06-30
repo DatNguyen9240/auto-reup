@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     default_voice: str = "vi-VN-HoaiMyNeural" # edge-tts voice ID
     default_rate: str = "+0%"
     default_pitch: str = "+0Hz"
+    default_target_language: str = "vi-VN"
+    default_translation_mode: str = "natural"
     
     # Channel Configuration
     channel_name: str = Field(default="AutoTool Review", validation_alias="CHANNEL_NAME")
@@ -57,10 +59,37 @@ settings = Settings()
 
 # Global list of available TTS voices
 AVAILABLE_VOICES = [
-    {"id": "vi-VN-HoaiMyNeural", "name": "Nữ Nam (Hoài Mỹ)"},
-    {"id": "vi-VN-NamMinhNeural", "name": "Nam Trung (Nam Minh)"},
-    {"id": "en-US-EmmaNeural", "name": "English US Female (Emma)"},
-    {"id": "en-US-BrianNeural", "name": "English US Male (Brian)"},
+    # Vietnamese
+    {"id": "vi-VN-HoaiMyNeural", "name": "Tiếng Việt - Nữ Nam (Hoài Mỹ)"},
+    {"id": "vi-VN-NamMinhNeural", "name": "Tiếng Việt - Nam Trung (Nam Minh)"},
+    # English
+    {"id": "en-US-EmmaNeural", "name": "English US - Nữ (Emma)"},
+    {"id": "en-US-BrianNeural", "name": "English US - Nam (Brian)"},
+    # Spanish
+    {"id": "es-MX-DaliaNeural", "name": "Español MX - Nữ (Dalia)"},
+    {"id": "es-MX-JorgeNeural", "name": "Español MX - Nam (Jorge)"},
+    {"id": "es-ES-ElviraNeural", "name": "Español ES - Nữ (Elvira)"},
+    {"id": "es-ES-AlvaroNeural", "name": "Español ES - Nam (Alvaro)"},
+    # Portuguese
+    {"id": "pt-BR-FranciscaNeural", "name": "Português BR - Nữ (Francisca)"},
+    {"id": "pt-BR-AntonioNeural", "name": "Português BR - Nam (Antonio)"},
+    {"id": "pt-PT-RaquelNeural", "name": "Português PT - Nữ (Raquel)"},
+    {"id": "pt-PT-DuarteNeural", "name": "Português PT - Nam (Duarte)"},
+    # Russian
+    {"id": "ru-RU-SvetlanaNeural", "name": "Русский - Nữ (Svetlana)"},
+    {"id": "ru-RU-DmitryNeural", "name": "Русский - Nam (Dmitry)"},
+    # Thai
+    {"id": "th-TH-AcharaNeural", "name": "Thai - Nữ (Achara)"},
+    {"id": "th-TH-NiwatNeural", "name": "Thai - Nam (Niwat)"},
+    # Indonesian
+    {"id": "id-ID-GadisNeural", "name": "Indonesian - Nữ (Gadis)"},
+    {"id": "id-ID-ArdiNeural", "name": "Indonesian - Nam (Ardi)"},
+    # Japanese
+    {"id": "ja-JP-NanamiNeural", "name": "Japanese - Nữ (Nanami)"},
+    {"id": "ja-JP-KeitaNeural", "name": "Japanese - Nam (Keita)"},
+    # Korean
+    {"id": "ko-KR-SunHiNeural", "name": "Korean - Nữ (SunHi)"},
+    {"id": "ko-KR-InJoonNeural", "name": "Korean - Nam (InJoon)"},
 ]
 
 # Global list of available translation tones
