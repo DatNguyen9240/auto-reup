@@ -138,7 +138,7 @@ async function deleteJob(jobId) {
         alert("Không thể xóa job đang chạy!");
         return;
     }
-    const confirmed = await showConfirm(`Bạn có chắc chắn muốn xóa vĩnh viễn Job ${jobId} và toàn bộ file video liên quan để giải phóng bộ nhớ không?`);
+    const confirmed = await showConfirm(`Bạn có chắc chắn muốn xóa vĩnh viễn công việc ${jobId} và toàn bộ file video liên quan để giải phóng bộ nhớ không?`);
     if (!confirmed) return;
     
     try {
@@ -162,7 +162,7 @@ async function deleteJob(jobId) {
 
 // Cancel a running job
 async function cancelJob(jobId) {
-    const confirmed = await showConfirm("Bạn có chắc chắn muốn ngắt tiến trình và XÓA Job này không?");
+    const confirmed = await showConfirm("Bạn có chắc chắn muốn ngắt tiến trình và xóa công việc này không?");
     if (!confirmed) return;
     try {
         // 1. Send cancel request to halt processing

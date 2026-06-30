@@ -10,7 +10,7 @@ let globalConfig = {};
 let libraryVideos = [];
 let pendingVideoItems = [];
 let videoQueue = pendingVideoItems;
-let currentFilterChannelId = localStorage.getItem('currentFilterChannelId') || 'default';
+let currentFilterChannelId = localStorage.getItem('currentFilterChannelId') || '';
 
 // SPA HTML Views Map
 const VIEWS = {
@@ -157,7 +157,8 @@ function renderJobsList() {
         const totalSteps = Object.keys(job.steps).length;
         const completedSteps = Object.values(job.steps).filter(s => s === 'completed').length;
         const pct = Math.round((completedSteps / totalSteps) * 100);
-        const createdTime = new Date(job.created_at).toLocaleString();
+        const createdDate = parseDashboardDate(job.created_at || job.timestamp || job.date);
+        const createdTime = createdDate ? createdDate.toLocaleString() : '';
         const snapshot = job.config_snapshot || {};
         const platformLabel = snapshot.platform || job.platform_folder || '';
         const channelLabel = (globalChannels.find(c => c.id === snapshot.channel_id || c.id === job.channel_id) || {}).name || '';
@@ -439,8 +440,6 @@ function copyCaption() {
     document.execCommand('copy');
     alert('Đã copy caption vào clipboard!');
 }
-
-
 
 // Render files list under local tree library column
 function renderLibrary() {
@@ -809,187 +808,6 @@ async function loadChannels() {
     }
 }
 
-// Modal Create Channel
-function openCreateChannelModal() {
-    console.log("openCreateChannelModal clicked!");
-    const nameEl = document.getElementById('chan-new-name');
-    const pathEl = document.getElementById('chan-new-path');
-    const modalEl = document.getElementById('create-channel-modal');
-    console.log("Create Modal Elements found:", !!nameEl, !!pathEl, !!modalEl);
-    if (nameEl) nameEl.value = '';
-    if (pathEl) pathEl.value = '';
-    if (modalEl) {
-        modalEl.classList.remove('hidden');
-        console.log("Hidden removed, class is now:", modalEl.className);
-    }
-}
-function closeCreateChannelModal() {
-    console.log("closeCreateChannelModal clicked!");
-    const modalEl = document.getElementById('create-channel-modal');
-    if (modalEl) modalEl.classList.add('hidden');
-}
-
-// Modal Manage Channels
-async function openManageChannelsModal() {
-    console.log("openManageChannelsModal clicked!");
-    await loadChannels();
-    renderManageChannelsList();
-    const modalEl = document.getElementById('manage-channels-modal');
-    console.log("Manage Modal Element found:", !!modalEl);
-    if (modalEl) {
-        modalEl.classList.remove('hidden');
-        console.log("Hidden removed, class is now:", modalEl.className);
-    }
-}
-function closeManageChannelsModal() {
-    console.log("closeManageChannelsModal clicked!");
-    const modalEl = document.getElementById('manage-channels-modal');
-    if (modalEl) modalEl.classList.add('hidden');
-}
-
-// Modal Edit Channel
-function openEditChannelModal(id, name, path) {
-    console.log("openEditChannelModal clicked!", id, name, path);
-    const idEl = document.getElementById('chan-edit-id');
-    const nameEl = document.getElementById('chan-edit-name');
-    const pathEl = document.getElementById('chan-edit-path');
-    const modalEl = document.getElementById('edit-channel-modal');
-    console.log("Edit Modal Elements found:", !!idEl, !!nameEl, !!pathEl, !!modalEl);
-    if (idEl) idEl.value = id;
-    if (nameEl) nameEl.value = name;
-    if (pathEl) pathEl.value = path;
-    if (modalEl) {
-        modalEl.classList.remove('hidden');
-        console.log("Hidden removed, class is now:", modalEl.className);
-    }
-}
-function closeEditChannelModal() {
-    console.log("closeEditChannelModal clicked!");
-    const modalEl = document.getElementById('edit-channel-modal');
-    if (modalEl) modalEl.classList.add('hidden');
-}
-
-
-
-// CRUD operations
-async function saveNewChannel() {
-    const name = document.getElementById('chan-new-name').value.trim();
-    const path = document.getElementById('chan-new-path').value.trim();
-    if (!name || !path) {
-        showToast("Vui lòng điền đủ Tên Kênh và Đường dẫn!", "warning");
-        return;
-    }
-    
-    try {
-        const res = await fetch('/api/channels', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ name, path })
-        });
-        if (res.ok) {
-            showToast("Đã lưu kênh output mới!", "success");
-            closeCreateChannelModal();
-            await loadChannels();
-            if (!document.getElementById('manage-channels-modal').classList.contains('hidden')) {
-                renderManageChannelsList();
-            }
-            if (currentTab === 'dashboard') {
-                await loadJobs();
-            }
-        } else {
-            const data = await res.json();
-            showToast(data.detail || "Lỗi lưu kênh!", "error");
-        }
-    } catch (err) {
-        showToast("Lỗi kết nối máy chủ!", "error");
-    }
-}
-
-async function updateExistingChannel() {
-    const id = document.getElementById('chan-edit-id').value;
-    const name = document.getElementById('chan-edit-name').value.trim();
-    const path = document.getElementById('chan-edit-path').value.trim();
-    if (!name || !path) {
-        showToast("Vui lòng điền đủ thông tin!", "warning");
-        return;
-    }
-    
-    try {
-        const res = await fetch(`/api/channels/${id}`, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ name, path })
-        });
-        if (res.ok) {
-            showToast("Đã cập nhật kênh!", "success");
-            closeEditChannelModal();
-            await loadChannels();
-            renderManageChannelsList();
-            if (currentTab === 'dashboard') {
-                await loadJobs();
-            }
-        } else {
-            const data = await res.json();
-            showToast(data.detail || "Lỗi cập nhật!", "error");
-        }
-    } catch (err) {
-        showToast("Lỗi kết nối máy chủ!", "error");
-    }
-}
-
-async function deleteExistingChannel(id) {
-    const confirmed = await showConfirm("Bạn có chắc chắn muốn xóa kênh này?");
-    if (!confirmed) return;
-    
-    try {
-        const res = await fetch(`/api/channels/${id}`, { method: 'DELETE' });
-        if (res.ok) {
-            showToast("Đã xóa kênh!", "success");
-            await loadChannels();
-            renderManageChannelsList();
-            if (currentTab === 'dashboard') {
-                await loadJobs();
-            }
-        } else {
-            showToast("Lỗi khi xóa kênh!", "error");
-        }
-    } catch (err) {
-        showToast("Lỗi kết nối máy chủ!", "error");
-    }
-}
-
-// Render the list of channels in the manage modal
-function renderManageChannelsList() {
-    const container = document.getElementById('manage-channels-list');
-    if (!container) return;
-    
-    if (globalChannels.length === 0) {
-        container.innerHTML = `<div class="text-center text-slate-500 py-6 text-xs font-semibold">Chưa cấu hình kênh nào</div>`;
-        return;
-    }
-    
-    container.innerHTML = globalChannels.map(chan => {
-        if (!chan) return '';
-        const name = chan.name || '';
-        const path = chan.path || '';
-        const nameEscaped = name.replace(/'/g, "\\'");
-        const pathEscaped = path.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-        
-        return `
-            <div class="flex items-center justify-between bg-slate-900 border border-white/5 p-3 rounded-xl gap-4">
-                <div class="flex flex-col min-w-0">
-                    <span class="font-semibold text-xs text-white truncate">${name}</span>
-                    <span class="text-[10px] text-slate-400 truncate" title="${path}">${path}</span>
-                </div>
-                <div class="flex items-center gap-1.5 flex-shrink-0">
-                    <button onclick="openEditChannelModal('${chan.id}', '${nameEscaped}', '${pathEscaped}')" class="text-[10px] font-bold bg-purple-650/20 text-purple-300 hover:bg-purple-600 hover:text-white px-2.5 py-1.5 rounded-lg border border-purple-500/10 transition-all">Sửa</button>
-                    <button onclick="deleteExistingChannel('${chan.id}')" class="text-[10px] font-bold bg-rose-600/20 text-rose-300 hover:bg-rose-650 hover:text-white px-2.5 py-1.5 rounded-lg border border-rose-500/10 transition-all">Xóa</button>
-                </div>
-            </div>
-        `;
-    }).filter(html => html !== '').join('');
-}
-
 // Move/Publish job files to a selected channel directory
 async function publishJob(jobId, channelId) {
     if (!channelId) return;
@@ -1253,13 +1071,13 @@ function renderQueueList() {
             </div>
             <div class="grid grid-cols-2 gap-2">
                 <select onchange="updatePendingConfig('${entry.id}','subtitle_cover_mode',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2">
-                    <option value="text_box_only" ${cfg.subtitle_cover_mode !== 'none' ? 'selected' : ''}>Text box only</option><option value="none" ${cfg.subtitle_cover_mode === 'none' ? 'selected' : ''}>None</option>
+                    <option value="text_box_only" ${cfg.subtitle_cover_mode !== 'none' ? 'selected' : ''}>Chỉ hộp chữ</option><option value="none" ${cfg.subtitle_cover_mode === 'none' ? 'selected' : ''}>Không dùng</option>
                 </select>
                 <input type="number" min="0" max="1" step="0.01" value="${cfg.subtitle_bg_opacity}" onchange="updatePendingConfig('${entry.id}','subtitle_bg_opacity',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-slate-100">
             </div>
             <div class="flex items-center justify-between gap-2 text-[10px] text-slate-400">
                 <label><input type="checkbox" ${cfg.tts_enabled ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','tts_enabled',this.checked)"> TTS</label>
-                <label><input type="checkbox" ${cfg.subtitles_enabled ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','subtitles_enabled',this.checked)"> Subtitle</label>
+                <label><input type="checkbox" ${cfg.subtitles_enabled ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','subtitles_enabled',this.checked)"> Phụ đề</label>
                 <button type="button" onclick="applyPendingConfigToAll('${entry.id}')" class="text-purple-300 hover:text-white font-semibold">Áp dụng cho tất cả</button>
             </div>
         `;
@@ -1371,7 +1189,7 @@ function updateSubtitleLayoutSummary(job) {
     const snapshot = job?.config_snapshot || {};
     const opacity = Math.round((snapshot.subtitle_bg_opacity ?? subtitleLayoutState.background_opacity ?? 0.42) * 100);
     const preset = snapshot.subtitle_preset || subtitleLayoutState.preset || 'middle';
-    const presetLabel = { low: 'Thap', middle: 'Giua', high: 'Cao', custom: 'Custom' }[preset] || preset;
+    const presetLabel = { low: 'Thấp', middle: 'Giữa', high: 'Cao', custom: 'Tùy chỉnh' }[preset] || preset;
     summary.innerText = `Preset: ${presetLabel} | Opacity: ${opacity}%`;
 }
 
@@ -1401,8 +1219,8 @@ function setSubtitleEditorSubmitMode(mode) {
     const btn = document.getElementById('btn-continue-render');
     if (!btn) return;
     btn.innerText = subtitleLayoutSubmitMode === 'rerender'
-        ? 'Render Lai Voi Vi Tri Moi'
-        : 'Tiep Tuc Render Video';
+        ? 'Render lại với vị trí mới'
+        : 'Tiếp tục render video';
 }
 
 function escapeHtml(value) {
@@ -1419,8 +1237,8 @@ function updateSubtitlePreviewText() {
     const textWrap = box?.querySelector('div.pointer-events-none');
     if (!textWrap) return;
     const sample = (selectedSegments || []).find(seg => (seg.translated_text || seg.text || '').trim());
-    const text = (sample?.translated_text || sample?.text || 'Ba nam truoc, khoi nghiep that bai, no').trim();
-    textWrap.innerHTML = `${escapeHtml(text)}<br><span class="text-[10px] font-semibold text-white/80">[Keo tha de chinh vi tri phu de]</span>`;
+    const text = (sample?.translated_text || sample?.text || 'Ba năm trước, khởi nghiệp thất bại, nợ').trim();
+    textWrap.innerHTML = `${escapeHtml(text)}<br><span class="text-[10px] font-semibold text-white/80">[Kéo thả để chỉnh vị trí phụ đề]</span>`;
 }
 
 function setupSubtitleLayoutEditor(job) {
@@ -1521,7 +1339,7 @@ async function continueRenderWithSubtitleLayout() {
     const layout = { ...subtitleLayoutState };
     if (btn) {
         btn.disabled = true;
-        btn.innerText = 'Dang render...';
+        btn.innerText = 'Đang render...';
     }
     try {
         const endpoint = subtitleLayoutSubmitMode === 'rerender'
@@ -1553,9 +1371,9 @@ async function continueRenderWithSubtitleLayout() {
             if (player) player.src = `/api/jobs/${selectedJobId}/video?v=${Date.now()}`;
             const freshJob = await (await fetch(`/api/jobs/${selectedJobId}`)).json();
             updateSubtitleLayoutSummary(freshJob);
-            showToast('Da render lai video voi vi tri phu de moi', 'success');
+            showToast('Đã render lại video với vị trí phụ đề mới', 'success');
         } else {
-            showToast('Da luu vi tri phu de, dang render video...', 'success');
+            showToast('Đã lưu vị trí phụ đề, đang render video...', 'success');
         }
         await loadJobs();
     } catch (err) {
@@ -1564,8 +1382,8 @@ async function continueRenderWithSubtitleLayout() {
         if (btn) {
             btn.disabled = false;
             btn.innerText = subtitleLayoutSubmitMode === 'rerender'
-                ? 'Render Lai Voi Vi Tri Moi'
-                : 'Tiep Tuc Render Video';
+                ? 'Render lại với vị trí mới'
+                : 'Tiếp tục render video';
         }
     }
 }
@@ -1586,29 +1404,29 @@ function updatePipelineSteps(job) {
     if (!list) return;
     list.innerHTML = '';
     const friendlyNames = {
-        intake: '1. Tai / Nhap video',
-        analyze: '2. Phan tich khung hinh',
-        extract_audio: '3. Tach am thanh goc',
-        transcribe: '4. Nhan dien giong noi (ASR)',
-        translate: '5. Dich thuat phu de (AI)',
-        tts: '6. Sinh giong noi moi (TTS)',
-        mix_audio: '7. Tron am thanh & nhac nen',
-        subtitle_layout: '8. Chon vi tri phu de',
-        render: '9. Render video doc 9:16',
-        metadata: '10. Tieu de & HashTags (AI)'
+        intake: '1. Tải / Nhập video',
+        analyze: '2. Phân tích khung hình',
+        extract_audio: '3. Tách âm thanh gốc',
+        transcribe: '4. Nhận diện giọng nói (ASR)',
+        translate: '5. Dịch phụ đề (AI)',
+        tts: '6. Sinh giọng nói mới (TTS)',
+        mix_audio: '7. Trộn âm thanh & nhạc nền',
+        subtitle_layout: '8. Chọn vị trí phụ đề',
+        render: '9. Render video',
+        metadata: '10. Tiêu đề & Hashtags (AI)'
     };
     for (const step of Object.keys(friendlyNames)) {
         const status = job.steps?.[step] || 'pending';
-        let statusIcon = '<span class="text-slate-600">Dang cho</span>';
+        let statusIcon = '<span class="text-slate-600">Đang chờ</span>';
         let textStyle = 'text-slate-400';
         if (status === 'completed') {
-            statusIcon = '<span class="text-emerald-400 font-bold">Hoan tat</span>';
+            statusIcon = '<span class="text-emerald-400 font-bold">Hoàn tất</span>';
             textStyle = 'text-slate-300';
         } else if (status === 'failed') {
-            statusIcon = '<span class="text-rose-400 font-bold">That bai</span>';
+            statusIcon = '<span class="text-rose-400 font-bold">Thất bại</span>';
             textStyle = 'text-white font-semibold';
         } else if (step === job.current_step && job.status === 'running') {
-            statusIcon = '<span class="text-purple-400 font-bold animate-pulse">Dang xu ly</span>';
+            statusIcon = '<span class="text-purple-400 font-bold animate-pulse">Đang xử lý</span>';
             textStyle = 'text-white font-semibold';
         } else if (step === job.current_step && isWaitingForSubtitleLayout(job)) {
             statusIcon = '<span class="text-purple-300 font-bold animate-pulse">Cho ban chon</span>';
@@ -1649,7 +1467,7 @@ async function openDetailPanel(jobId) {
         const logData = await logResp.json();
         const consoleBox = document.getElementById('detail-console');
         if (consoleBox && !isEditingSubtitleLayout) {
-            consoleBox.innerText = logData.logs || logData.content || 'Chua co nhat ky hoat dong.';
+            consoleBox.innerText = logData.logs || logData.content || 'Chưa có nhật ký hoạt động.';
             consoleBox.scrollTop = consoleBox.scrollHeight;
         }
 
@@ -1673,13 +1491,236 @@ async function openDetailPanel(jobId) {
             loadAIcaption(selectedJobId);
         } else if (freshJob.status === 'failed') {
             clearInterval(refreshInterval);
-            showToast('Job da ket thuc that bai hoac bi ngat.', 'error');
+            showToast('Công việc đã kết thúc thất bại hoặc bị ngắt.', 'error');
         }
     };
 
     if (refreshInterval) clearInterval(refreshInterval);
     await refreshDetailStatus();
     refreshInterval = setInterval(refreshDetailStatus, 3500);
+}
+
+function renderJobsList() {
+    const container = document.getElementById('jobs-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    let filteredJobs = [...jobsData];
+    if (currentFilterChannelId === 'default') {
+        filteredJobs = filteredJobs.filter(job => {
+            const channel = job.channel_id || job.channel_name;
+            return !channel || channel === 'default';
+        });
+    } else if (currentFilterChannelId) {
+        filteredJobs = filteredJobs.filter(job => {
+            const channel = job.channel_id || job.channel_name;
+            return channel === currentFilterChannelId;
+        });
+    }
+
+    const query = (document.getElementById('dashboard-search')?.value || '').trim().toLowerCase();
+    const dateFilter = document.getElementById('dashboard-date-filter')?.value || 'all';
+    const statusFilter = document.getElementById('dashboard-status-filter')?.value || '';
+    const sourceFilter = document.getElementById('dashboard-source-filter')?.value || '';
+    const sortMode = document.getElementById('dashboard-sort')?.value || 'newest';
+
+    filteredJobs = filteredJobs.filter(job => {
+        if (query) {
+            const blob = [
+                job.job_id,
+                job.source_url,
+                job.source_video_id,
+                job.video_id,
+                job.url,
+                job.input_path,
+                job.platform,
+                job.source_platform,
+                job.platform_folder,
+                job.caption,
+                job.title,
+                job.channel_name
+            ].filter(Boolean).join(' ').toLowerCase();
+            if (!blob.includes(query)) return false;
+        }
+
+        if (!matchesDashboardDate(job, dateFilter)) return false;
+
+        if (statusFilter) {
+            const normalized = normalizeDashboardStatus(job.status);
+            if (statusFilter === 'queued') {
+                if (!['created', 'queued'].includes(normalized)) return false;
+            } else if (statusFilter === 'running') {
+                if (!['running', 'processing', 'rendering'].includes(normalized)) return false;
+            } else if (normalized !== statusFilter) {
+                return false;
+            }
+        }
+
+        if (sourceFilter) {
+            const source = detectDashboardSource(job);
+            if (source !== sourceFilter) return false;
+        }
+
+        return true;
+    });
+
+    filteredJobs.sort((a, b) => sortDashboardJobs(a, b, sortMode));
+
+    if (filteredJobs.length === 0) {
+        container.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500 border border-dashed border-white/5 rounded-2xl">Không tìm thấy công việc nào phù hợp với bộ lọc.</div>';
+        return;
+    }
+
+    filteredJobs.forEach(job => {
+        const totalSteps = Object.keys(job.steps || {}).length || 1;
+        const completedSteps = Object.values(job.steps || {}).filter(s => s === 'completed').length;
+        const pct = Number.isFinite(job.progress) ? job.progress : Math.round((completedSteps / totalSteps) * 100);
+        const createdTime = new Date(job.created_at).toLocaleString();
+        const snapshot = job.config_snapshot || {};
+        const platformLabel = snapshot.platform || job.platform_folder || 'Local';
+        const channelLabel = job.channel_name || (globalChannels.find(c => c.id === job.channel_id) || {}).name || '';
+        const title = (job.input_path || job.job_id).split(/[\\/]/).pop();
+        const activeStatuses = new Set(['queued', 'processing', 'rendering', 'running']);
+        const statusHtml = statusBadgeHtml(job);
+        const thumb = job.status === 'completed'
+            ? `<video src="/api/jobs/${job.job_id}/video" class="w-full h-full object-cover" preload="metadata" muted playsinline></video>`
+            : activeStatuses.has(job.status)
+                ? '<div class="absolute inset-0 flex items-center justify-center bg-purple-500/10 text-purple-400"><svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H16M4 8h5.183M12 4v4m0 0H8"></path></svg></div>'
+                : '<div class="absolute inset-0 flex items-center justify-center bg-slate-950 text-slate-500"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></div>';
+        const actionButton = job.status === 'created'
+            ? `<button onclick="resumeJob('${job.job_id}')" class="hover:bg-emerald-500/10 text-emerald-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 transition-all">Bắt đầu xử lý</button>`
+            : activeStatuses.has(job.status)
+                ? `<button onclick="cancelJob('${job.job_id}')" class="hover:bg-amber-500/10 text-amber-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-500/20 hover:border-amber-500/40 transition-all">Ngắt</button>`
+                : `<button onclick="deleteJob('${job.job_id}')" class="hover:bg-rose-500/10 text-rose-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-500/20 hover:border-rose-500/40 transition-all">Xóa</button>`;
+        const channelDropdown = job.status === 'completed'
+            ? `<select onchange="publishJob('${job.job_id}', this.value); this.selectedIndex = 0;" class="appearance-none bg-slate-900 hover:bg-slate-800 text-slate-200 text-[10px] font-semibold py-1.5 pl-3 pr-8 rounded-lg cursor-pointer transition-all focus:outline-none border border-slate-700/60 hover:border-purple-500/50">
+                    <option value="" disabled selected>${channelLabel ? 'Kênh: ' + channelLabel : 'Chuyển vào kênh'}</option>
+                    ${globalChannels.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+                    ${job.channel_id ? '<option value="default">Đầu ra mặc định</option>' : ''}
+                </select>`
+            : '';
+        const card = document.createElement('div');
+        card.className = 'glass-card rounded-xl p-4 hover:border-white/15 transition-all flex flex-col gap-3.5 relative group';
+        card.innerHTML = `
+            <div class="flex gap-3 items-start min-w-0">
+                <div class="w-12 h-12 rounded-lg bg-slate-900 border border-white/5 flex-shrink-0 overflow-hidden flex items-center justify-center relative">${thumb}</div>
+                <div class="flex-1 min-w-0 flex flex-col justify-between h-12">
+                    <div class="flex justify-between items-start gap-2">
+                        <div class="flex flex-col min-w-0">
+                            <span class="text-[9px] font-mono text-purple-400 font-bold leading-none">${job.job_id}</span>
+                            <h3 class="font-semibold text-white mt-1 text-xs truncate leading-tight" title="${escapeHtml(job.input_path || job.job_id)}">${escapeHtml(title)}</h3>
+                        </div>
+                        ${statusHtml}
+                    </div>
+                </div>
+            </div>
+            <div class="flex flex-col gap-1">
+                <div class="flex flex-wrap gap-1 text-[9px] text-slate-400"><span>${escapeHtml(platformLabel)}</span>${channelLabel ? `<span>- ${escapeHtml(channelLabel)}</span>` : ''}</div>
+                <div class="flex justify-between text-[10px] text-slate-400"><span>Tiến độ</span><span>${pct}% (${completedSteps}/${totalSteps})</span></div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden"><div class="bg-gradient-to-r from-purple-500 to-rose-500 h-full transition-all duration-500" style="width: ${pct}%"></div></div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2 mt-1 pt-3 border-t border-white/5">
+                <span class="text-[10px] text-slate-400 font-medium">${createdTime}</span>
+                <div class="flex flex-wrap items-center gap-2">${channelDropdown}${actionButton}<button onclick="openDetailPanel('${job.job_id}')" class="bg-white/5 hover:bg-white/10 hover:text-white text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/5 transition-all">Chi tiết</button></div>
+            </div>`;
+        container.appendChild(card);
+    });
+}
+
+function updateDashboardFilters() {
+    const dateFilter = document.getElementById('dashboard-date-filter')?.value || 'all';
+    document.getElementById('dashboard-custom-date-row')?.classList.toggle('hidden', dateFilter !== 'custom');
+    renderJobsList();
+}
+
+function resetDashboardFilters() {
+    const setValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value;
+    };
+    setValue('dashboard-search', '');
+    setValue('dashboard-date-filter', 'all');
+    setValue('dashboard-filter-channel', '');
+    setValue('dashboard-status-filter', '');
+    setValue('dashboard-source-filter', '');
+    setValue('dashboard-sort', 'newest');
+    setValue('dashboard-date-from', '');
+    setValue('dashboard-date-to', '');
+    currentFilterChannelId = '';
+    localStorage.setItem('currentFilterChannelId', '');
+    updateDashboardFilters();
+}
+
+function parseDashboardDate(value) {
+    const date = value ? new Date(value) : null;
+    return date && !Number.isNaN(date.getTime()) ? date : null;
+}
+
+function matchesDashboardDate(job, filter) {
+    if (!filter || filter === 'all') return true;
+    const date = parseDashboardDate(job.created_at || job.timestamp || job.date);
+    if (!date) return true;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (filter === 'today') return date >= today;
+    if (filter === '7d') return date >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    if (filter === '30d') return date >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    if (filter === 'custom') {
+        const fromValue = document.getElementById('dashboard-date-from')?.value;
+        const toValue = document.getElementById('dashboard-date-to')?.value;
+        const from = fromValue ? new Date(`${fromValue}T00:00:00`) : null;
+        const to = toValue ? new Date(`${toValue}T23:59:59`) : null;
+        if (from && date < from) return false;
+        if (to && date > to) return false;
+    }
+    return true;
+}
+
+function normalizeDashboardStatus(status) {
+    const value = status || '';
+    if (value === 'waiting_for_subtitle_layout' || value === 'awaiting_subtitle_layout') return 'running';
+    return value;
+}
+
+function statusBadgeHtml(job) {
+    const status = normalizeDashboardStatus(job.status);
+    if (status === 'completed') return '<span class="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-300 font-bold rounded-md border border-emerald-500/20">Hoàn thành</span>';
+    if (status === 'failed') return '<span class="text-[10px] px-2 py-0.5 bg-rose-500/20 text-rose-300 font-bold rounded-md border border-rose-500/20">Lỗi</span>';
+    if (status === 'cancelled') return '<span class="text-[10px] px-2 py-0.5 bg-slate-950 text-slate-400 font-bold rounded-md border border-white/5">Đã hủy</span>';
+    if (status === 'queued') return '<span class="text-[10px] px-2 py-0.5 bg-slate-700/60 text-slate-200 font-bold rounded-md border border-white/5">Đang chờ</span>';
+    if (status === 'running') return '<span class="text-[10px] px-2 py-0.5 bg-indigo-500/20 text-indigo-300 font-bold rounded-md animate-pulse border border-indigo-500/20">Đang xử lý</span>';
+    if (status === 'created') return '<span class="text-[10px] px-2 py-0.5 bg-slate-800 text-slate-300 font-bold rounded-md">Đã tạo</span>';
+    return `<span class="text-[10px] px-2 py-0.5 bg-slate-800 text-slate-300 font-bold rounded-md">${escapeHtml(status || 'created')}</span>`;
+}
+
+function detectDashboardSource(job) {
+    const explicit = job.source_platform || job.platform || job.platform_folder || job.config_snapshot?.platform;
+    if (explicit) {
+        const normalized = String(explicit).toLowerCase();
+        if (normalized.includes('douyin')) return 'Douyin';
+        if (normalized.includes('bilibili')) return 'Bilibili';
+        if (normalized.includes('xiaohongshu')) return 'Xiaohongshu';
+        if (normalized.includes('upload') || normalized.includes('local')) return 'Upload local';
+    }
+    const text = [job.source_url, job.url, job.input_path].filter(Boolean).join(' ').toLowerCase();
+    if (text.includes('douyin.com')) return 'Douyin';
+    if (text.includes('bilibili.com') || text.includes('b23.tv')) return 'Bilibili';
+    if (text.includes('xiaohongshu.com') || text.includes('xhslink.com')) return 'Xiaohongshu';
+    return text.startsWith('http') ? '' : 'Upload local';
+}
+
+function sortDashboardJobs(a, b, mode) {
+    const progressOf = (job) => {
+        if (Number.isFinite(job.progress)) return job.progress;
+        const steps = job.steps || {};
+        const total = Math.max(Object.keys(steps).length, 1);
+        return Math.round((Object.values(steps).filter(s => s === 'completed').length / total) * 100);
+    };
+    if (mode === 'oldest') return (parseDashboardDate(a.created_at)?.getTime() || 0) - (parseDashboardDate(b.created_at)?.getTime() || 0);
+    if (mode === 'progress_desc') return progressOf(b) - progressOf(a);
+    if (mode === 'progress_asc') return progressOf(a) - progressOf(b);
+    if (mode === 'status') return String(a.status || '').localeCompare(String(b.status || ''));
+    return (parseDashboardDate(b.created_at)?.getTime() || 0) - (parseDashboardDate(a.created_at)?.getTime() || 0);
 }
 
 function closeDetailPanel() {
@@ -1701,5 +1742,3 @@ function closeDetailPanel() {
         if (previewPlayer) previewPlayer.src = '';
     }, 300);
 }
-
-

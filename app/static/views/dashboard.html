@@ -1,33 +1,77 @@
 <div id="view-dashboard" class="flex-1 flex flex-col overflow-hidden w-full bg-slate-950">
-    <!-- Right Side: Channel Workspaces & Jobs List -->
     <div class="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-
-        <!-- Running Jobs Section -->
         <div class="flex flex-col gap-4 mt-2">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-white/5 pb-3 gap-3">
+            <div class="flex flex-col border-b border-white/5 pb-3 gap-3">
                 <div>
-                    <h2 class="font-outfit font-semibold text-sm text-white uppercase tracking-wider">Danh Sách Jobs Đang Chạy</h2>
-                    <p class="text-[10px] text-slate-400">Chọn một job để xem tiến trình và chỉnh sửa phụ đề</p>
+                    <h2 class="font-outfit font-semibold text-sm text-white uppercase tracking-wider">DANH SÁCH CÔNG VIỆC</h2>
+                    <p class="text-[10px] text-slate-400">Chọn một công việc để xem tiến trình và chỉnh sửa phụ đề</p>
                 </div>
-                <div class="flex gap-2 flex-wrap items-center">
-                    <select id="dashboard-filter-channel" onchange="filterJobsByChannel(this.value)"
-                        class="bg-slate-900 border border-slate-700/60 rounded-lg py-1.5 px-2.5 text-xs text-slate-100 transition-colors focus:outline-none focus:border-purple-500 cursor-pointer">
-                        <option value="">Tất cả kênh</option>
-                        <option value="default">Output mặc định (Không kênh)</option>
-                    </select>
-
-                    <button onclick="loadJobs()"
-                        class="bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-white/5 transition-all">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H16M4 8h5.183M12 4v4m0 0H8"></path>
-                        </svg>
-                        Làm Mới
-                    </button>
+                <div class="flex flex-col gap-2">
+                    <div class="flex gap-2 items-center">
+                        <input id="dashboard-search" oninput="updateDashboardFilters()" placeholder="Tìm theo ID video, ID công việc, URL..."
+                            class="flex-1 bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-xs text-slate-100 focus:outline-none focus:border-purple-500">
+                        <button onclick="loadJobs()"
+                            class="bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-white/5 transition-all">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H16M4 8h5.183M12 4v4m0 0H8"></path>
+                            </svg>
+                            Làm mới
+                        </button>
+                        <button onclick="resetDashboardFilters()"
+                            class="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white px-3 py-2 rounded-lg text-xs font-semibold border border-slate-700/60 transition-all">
+                            Xóa bộ lọc
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                        <select id="dashboard-date-filter" onchange="updateDashboardFilters()"
+                            class="bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-xs text-slate-100 focus:outline-none focus:border-purple-500">
+                            <option value="all">Tất cả ngày</option>
+                            <option value="today">Hôm nay</option>
+                            <option value="7d">7 ngày qua</option>
+                            <option value="30d">30 ngày qua</option>
+                            <option value="custom">Tùy chọn</option>
+                        </select>
+                        <select id="dashboard-filter-channel" onchange="filterJobsByChannel(this.value)"
+                            class="bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-xs text-slate-100 transition-colors focus:outline-none focus:border-purple-500 cursor-pointer">
+                            <option value="">Tất cả trang</option>
+                            <option value="default">Chưa gán kênh</option>
+                        </select>
+                        <select id="dashboard-status-filter" onchange="updateDashboardFilters()"
+                            class="bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-xs text-slate-100 focus:outline-none focus:border-purple-500">
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="running">Đang xử lý</option>
+                            <option value="completed">Hoàn thành</option>
+                            <option value="failed">Lỗi</option>
+                            <option value="cancelled">Đã hủy</option>
+                            <option value="queued">Đang chờ / đã tạo</option>
+                        </select>
+                        <select id="dashboard-source-filter" onchange="updateDashboardFilters()"
+                            class="bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-xs text-slate-100 focus:outline-none focus:border-purple-500">
+                            <option value="">Tất cả nguồn</option>
+                            <option value="Douyin">Douyin</option>
+                            <option value="Bilibili">Bilibili</option>
+                            <option value="Xiaohongshu">Xiaohongshu</option>
+                            <option value="Upload local">Upload local</option>
+                        </select>
+                        <select id="dashboard-sort" onchange="updateDashboardFilters()"
+                            class="bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-xs text-slate-100 focus:outline-none focus:border-purple-500">
+                            <option value="newest">Mới nhất trước</option>
+                            <option value="oldest">Cũ nhất trước</option>
+                            <option value="progress_desc">Tiến độ cao nhất</option>
+                            <option value="progress_asc">Tiến độ thấp nhất</option>
+                            <option value="status">Trạng thái</option>
+                        </select>
+                    </div>
+                    <div id="dashboard-custom-date-row" class="hidden grid grid-cols-2 gap-2">
+                        <input id="dashboard-date-from" type="date" onchange="updateDashboardFilters()"
+                            class="bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-xs text-slate-100 focus:outline-none focus:border-purple-500">
+                        <input id="dashboard-date-to" type="date" onchange="updateDashboardFilters()"
+                            class="bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-xs text-slate-100 focus:outline-none focus:border-purple-500">
+                    </div>
                 </div>
             </div>
             <div id="jobs-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 gap-4">
-                <!-- Dynamic Job Cards go here -->
             </div>
         </div>
     </div>

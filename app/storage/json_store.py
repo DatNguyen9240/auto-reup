@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from typing import List, Optional
+from datetime import datetime
 from app.models.job import Job
 from app.models.segment import Segment
 from app.utils.file_utils import write_json
@@ -14,6 +15,7 @@ class JsonStore:
         return self.projects_dir / job_id
         
     def save_job(self, job: Job):
+        job.updated_at = datetime.utcnow().isoformat()
         job_dir = self.get_job_dir(job.job_id)
         state_file = job_dir / "job_state.json"
         write_json(state_file, job.model_dump())

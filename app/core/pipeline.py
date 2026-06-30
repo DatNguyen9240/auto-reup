@@ -135,7 +135,7 @@ class PipelineRunner:
                 bgm_name = preset["bgm"]
                 logger.info(f"Applying preset BGM '{bgm_name}' for tone '{tone}'")
 
-        job.status = "running"
+        job.status = "processing"
         job.steps.setdefault("subtitle_layout", "pending")
         self.store.save_job(job)
         
@@ -481,7 +481,7 @@ class PipelineRunner:
             if job.steps.get("render", "pending") == "pending":
                 job.current_step = "render"
                 job.steps["subtitle_layout"] = "completed"
-                job.status = "running"
+                job.status = "rendering"
                 self.store.save_job(job)
                 logger.info("--- Step 9: Render ---")
                 

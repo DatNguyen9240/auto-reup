@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AutoTool Studio - AI Video Translation Dashboard</title>
+    <title>AutoTool Studio - Bảng điều khiển Việt hóa video</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
@@ -46,22 +46,22 @@
             </div>
             <div>
                 <h1 class="font-outfit font-bold text-xl tracking-tight text-gradient">AutoTool Studio</h1>
-                <p class="text-xs text-slate-400 font-medium">AI Video Localization & Publisher Engine</p>
+                <p class="text-xs text-slate-400 font-medium">Công cụ Việt hóa video & quản lý đăng tải</p>
             </div>
         </div>
 
         <nav class="flex items-center gap-2">
             <button onclick="switchTab('dashboard')" id="btn-tab-dashboard"
                 class="px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 text-white transition-all">
-                Dashboard
+                Bảng điều khiển
             </button>
             <button onclick="switchTab('search')" id="btn-tab-search"
                 class="px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all">
-                Tìm Kiếm Video
+                Tìm kiếm video
             </button>
             <button onclick="switchTab('cookies')" id="btn-tab-cookies"
                 class="px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all">
-                Cookie Tools
+                Công cụ Cookie
             </button>
         </nav>
     </header>
@@ -90,14 +90,12 @@
 
             <form id="job-form" onsubmit="submitJob(event)" class="flex flex-col gap-4">
                 <div class="flex flex-col gap-2">
-                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Video links</label>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Link video</label>
                     <textarea id="input_video_url" rows="5" placeholder="Dán 1 hoặc nhiều link, mỗi dòng 1 link..."
                         class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500 resize-none"></textarea>
                     <div class="flex gap-2">
                         <button type="button" onclick="addUrlToQueue()"
                             class="flex-1 bg-purple-600/25 text-purple-300 border border-purple-500/20 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-purple-600 hover:text-white transition-all active:scale-[0.98]">Thêm vào hàng chờ</button>
-                        <button type="button" onclick="openManageChannelsModal()"
-                            class="bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-lg py-2 px-3 text-xs font-semibold text-slate-200 transition-all">Kênh</button>
                     </div>
                 </div>
 
@@ -124,7 +122,7 @@
                 <!-- Tab 1: Config Fields -->
                 <div id="sidebar-tab-config" class="flex flex-col gap-5">
                     <!-- Split Tone/Voice Row -->
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tone
                                 Dịch</label>
@@ -145,7 +143,7 @@
                     </div>
 
                     <!-- Split Speed/Pitch Row -->
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tốc
                                 Độ</label>
@@ -192,20 +190,6 @@
 
                     <!-- Output Channels Manager Block -->
                     <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Quản
-                                Lý Kênh Output</label>
-                            <div class="flex gap-1.5">
-                                <button type="button" onclick="openCreateChannelModal()"
-                                    class="flex-1 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-lg py-2 px-1 text-[11px] font-semibold text-slate-200 transition-all flex items-center justify-center gap-1 active:scale-[0.98]">
-                                    ➕ Thêm
-                                </button>
-                                <button type="button" onclick="openManageChannelsModal()"
-                                    class="flex-1 bg-slate-900 hover:bg-slate-800 border border-slate-700/60 rounded-lg py-2 px-1 text-[11px] font-semibold text-slate-200 transition-all flex items-center justify-center gap-1 active:scale-[0.98]">
-                                    ⚙️ Quản lý
-                                </button>
-                            </div>
-                        </div>
                         <div>
                             <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Chia
                                 Nền Tảng</label>
@@ -285,7 +269,7 @@
                 <span
                     class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-extrabold uppercase tracking-widest"
                     id="detail-job-id-badge">JOB ID</span>
-                <h3 class="font-outfit font-bold text-lg text-white mt-1" id="detail-job-title">Job Details</h3>
+                <h3 class="font-outfit font-bold text-lg text-white mt-1" id="detail-job-title">Chi tiết công việc</h3>
             </div>
             <button onclick="closeDetailPanel()"
                 class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
@@ -318,11 +302,11 @@
             <div id="subtitle-layout-section" class="hidden flex flex-col gap-4 bg-white/5 border border-purple-500/20 rounded-xl p-4">
                 <div class="flex items-center justify-between gap-3">
                     <div>
-                        <h4 class="text-xs font-bold text-purple-300 uppercase tracking-widest">Chon Vi Tri Phu De</h4>
-                        <p class="text-[10px] text-slate-400 mt-1">Keo/tha va resize box phu de, sau do bam render.</p>
+                        <h4 class="text-xs font-bold text-purple-300 uppercase tracking-widest">Chọn vị trí phụ đề</h4>
+                        <p class="text-[10px] text-slate-400 mt-1">Kéo/thả và resize box phụ đề, sau đó bấm render.</p>
                     </div>
                     <button type="button" onclick="resetSubtitleLayoutBox()"
-                        class="bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold px-2.5 py-1.5 rounded text-slate-300">Reset</button>
+                        class="bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold px-2.5 py-1.5 rounded text-slate-300">Đặt lại</button>
                 </div>
 
                 <div id="subtitle-preview-wrap" class="relative mx-auto w-full max-w-[260px] aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 select-none">
@@ -332,7 +316,7 @@
                         style="left:8%; top:72%; width:84%; height:11%;">
                         <div class="pointer-events-none text-white font-extrabold leading-tight text-[13px]" style="text-shadow: 0 2px 3px #000, 0 0 2px #000;">
                             Ba nam truoc, khoi nghiep that bai, no<br>
-                            <span class="text-[10px] font-semibold text-white/80">[Keo tha de chinh vi tri phu de]</span>
+                            <span class="text-[10px] font-semibold text-white/80">[Kéo thả để chỉnh vị trí phụ đề]</span>
                         </div>
                         <div id="subtitle-layout-resize"
                             class="absolute right-0 bottom-0 w-4 h-4 cursor-se-resize rounded-tl bg-purple-400/80"></div>
@@ -341,15 +325,15 @@
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Nen phu de</label>
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Nền phụ đề</label>
                         <input id="subtitle-layout-opacity" type="range" min="0.30" max="0.45" step="0.01" value="0.42"
                             oninput="previewSubtitleBackplateOpacity(this.value)" class="w-full">
                     </div>
                     <div>
                         <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Preset</label>
                         <div class="grid grid-cols-3 gap-1">
-                            <button type="button" onclick="setSubtitlePreset('low')" class="bg-slate-900 border border-slate-700 rounded py-1 text-[10px]">Thap</button>
-                            <button type="button" onclick="setSubtitlePreset('middle')" class="bg-slate-900 border border-slate-700 rounded py-1 text-[10px]">Giua</button>
+                            <button type="button" onclick="setSubtitlePreset('low')" class="bg-slate-900 border border-slate-700 rounded py-1 text-[10px]">Thấp</button>
+                            <button type="button" onclick="setSubtitlePreset('middle')" class="bg-slate-900 border border-slate-700 rounded py-1 text-[10px]">Giữa</button>
                             <button type="button" onclick="setSubtitlePreset('high')" class="bg-slate-900 border border-slate-700 rounded py-1 text-[10px]">Cao</button>
                         </div>
                     </div>
@@ -432,19 +416,19 @@
                 <div class="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col gap-3">
                     <div class="flex items-center justify-between gap-3">
                         <div>
-                            <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Vi tri phu de</h4>
-                            <p id="subtitle-layout-summary" class="text-[10px] text-slate-400 mt-1">Preset: Giua | Opacity: 42%</p>
+                            <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Vị trí phụ đề</h4>
+                            <p id="subtitle-layout-summary" class="text-[10px] text-slate-400 mt-1">Preset: Giữa | Độ mờ: 42%</p>
                         </div>
                         <button type="button" onclick="openCompletedSubtitleLayoutEditor()"
                             class="bg-purple-600/25 text-purple-300 border border-purple-500/20 px-3 py-1.5 rounded-lg text-[11px] font-bold hover:bg-purple-600 hover:text-white transition-all">
-                            Chinh Vi Tri Phu De
+                            Chỉnh vị trí phụ đề
                         </button>
                     </div>
                 </div>
 
                 <!-- 3. Final Output Preview -->
                 <div class="flex flex-col gap-3">
-                    <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Video Kết Quả (9:16)</h4>
+                    <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Video kết quả (9:16)</h4>
 
                     <div class="flex flex-col lg:flex-row gap-4">
                         <!-- Video player wrapper -->
@@ -463,7 +447,7 @@
                                             d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m-5 4h5m-5 4h3m1 2a2 2 0 100-4 2 2 0 000 4z">
                                         </path>
                                     </svg>
-                                    Copy
+                                    Sao chép
                                 </button>
                             </div>
                             <textarea id="caption-textarea" readonly
@@ -586,115 +570,6 @@
                 </div>
             </div>
 
-            <!-- Create Channel Modal -->
-            <div id="create-channel-modal"
-                class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div
-                    class="glass-panel w-full max-w-md rounded-2xl border border-white/15 p-6 flex flex-col gap-4 shadow-2xl relative bg-slate-950">
-                    <div class="flex justify-between items-center">
-                        <h3 class="font-outfit font-bold text-lg text-white flex items-center gap-2">➕ Thêm Kênh Output
-                            Mới</h3>
-                        <button onclick="closeCreateChannelModal()"
-                            class="text-slate-400 hover:text-white transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <div class="flex flex-col gap-3">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">Tên Kênh</label>
-                            <input type="text" id="chan-new-name" placeholder="Ví dụ: Kênh Shorts Youtube"
-                                class="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-200">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">Đường Dẫn Thư Mục</label>
-                            <input type="text" id="chan-new-path" placeholder="D:\Youtube\Shorts"
-                                class="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-200">
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end gap-2.5 mt-2">
-                        <button onclick="closeCreateChannelModal()"
-                            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-all">Hủy</button>
-                        <button onclick="saveNewChannel()"
-                            class="px-4 py-2 bg-gradient-to-r from-purple-600 to-rose-500 text-white rounded-lg text-xs font-semibold transition-all active:scale-[0.98]">Lưu
-                            Kênh</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Manage Channels Modal -->
-            <div id="manage-channels-modal"
-                class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div
-                    class="glass-panel w-full max-w-lg rounded-2xl border border-white/15 p-6 flex flex-col gap-4 shadow-2xl relative bg-slate-950">
-                    <div class="flex justify-between items-center border-b border-white/5 pb-3">
-                        <h3 class="font-outfit font-bold text-lg text-white flex items-center gap-2">⚙️ Quản Lý Kênh
-                            Output</h3>
-                        <button onclick="closeManageChannelsModal()"
-                            class="text-slate-400 hover:text-white transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <div class="max-h-[300px] overflow-y-auto flex flex-col gap-2.5 pr-1" id="manage-channels-list">
-                        <!-- Populated dynamically -->
-                    </div>
-
-                    <div class="flex justify-end pt-2 border-t border-white/5">
-                        <button onclick="closeManageChannelsModal()"
-                            class="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-lg text-xs font-semibold transition-all">Đóng</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Edit Channel Modal -->
-            <div id="edit-channel-modal"
-                class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div
-                    class="glass-panel w-full max-w-md rounded-2xl border border-white/15 p-6 flex flex-col gap-4 shadow-2xl relative bg-slate-950">
-                    <div class="flex justify-between items-center">
-                        <h3 class="font-outfit font-bold text-lg text-white flex items-center gap-2">✏️ Chỉnh Sửa Kênh
-                        </h3>
-                        <button onclick="closeEditChannelModal()"
-                            class="text-slate-400 hover:text-white transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <input type="hidden" id="chan-edit-id">
-                    <div class="flex flex-col gap-3">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">Tên Kênh</label>
-                            <input type="text" id="chan-edit-name"
-                                class="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-200">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 mb-1">Đường Dẫn Thư Mục</label>
-                            <input type="text" id="chan-edit-path"
-                                class="w-full bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-200">
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end gap-2.5 mt-2">
-                        <button onclick="closeEditChannelModal()"
-                            class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-all">Hủy</button>
-                        <button onclick="updateExistingChannel()"
-                            class="px-4 py-2 bg-gradient-to-r from-purple-600 to-rose-500 text-white rounded-lg text-xs font-semibold transition-all active:scale-[0.98]">Cập
-                            Nhật</button>
-                    </div>
-                </div>
-            </div>
-            
             <!-- Custom Confirm Modal -->
             <div id="confirm-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all duration-300 opacity-0">
                 <div class="glass-card w-full max-w-sm rounded-2xl border border-white/10 p-6 flex flex-col gap-4 shadow-2xl bg-slate-950/95 transform scale-95 transition-all duration-300">

@@ -56,6 +56,20 @@ store = JsonStore(PROJECTS_DIR)
 # In-memory progress tracker to lock and override state if running
 running_jobs = set()
 
+def job_progress(job: Job) -> int:
+    steps = job.steps or {}
+    if not steps:
+        return 0
+    return round((sum(1 for s in steps.values() if s == "completed") / len(steps)) * 100)
+
+def enrich_job_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    job = Job(**data)
+    data.update({
+        "progress": job_progress(job),
+        "thumbnail_url": f"/api/jobs/{job.job_id}/video" if job.status == "completed" and job.output_path else None,
+    })
+    return data
+
 class JobCreateRequest(BaseModel):
     input_video: str
     tone: str = "review_phim"
@@ -136,9 +150,81 @@ def _save_subtitle_layout_snapshot(job: Job, req: SubtitleLayoutRequest) -> Dict
     with open(store.get_job_dir(job.job_id) / "job_config.json", "w", encoding="utf-8") as f:
         json.dump(snapshot, f, indent=2, ensure_ascii=False)
     return normalized
+
+def job_work_dir(job: Job) -> Path:
+    return store.get_job_dir(job.job_id) / "work"
+
+def job_output_dir(job: Job) -> Path:
+    return store.get_job_dir(job.job_id) / "output"
     
 
 pipeline_lock = threading.Lock()
+
+def resolve_logo_path(logo: Optional[str]) -> Optional[Path]:
+    if not logo:
+        return None
+    overlay_path = PROJECT_ROOT / "examples" / "overlay" / logo
+    if overlay_path.exists() and overlay_path.is_file():
+        return overlay_path
+    logo_path = Path(logo)
+    if not logo_path.is_absolute():
+        logo_path = PROJECT_ROOT / logo_path
+    return logo_path
+
+def pipeline_args_from_snapshot(job: Job) -> tuple:
+    snapshot = job.config_snapshot or {}
+    return (
+        job.job_id,
+        snapshot.get("tone", "review_phim"),
+        snapshot.get("voice", settings.default_voice),
+        snapshot.get("rate", settings.default_rate),
+        snapshot.get("pitch", settings.default_pitch),
+        snapshot.get("bgm") or None,
+        resolve_logo_path(snapshot.get("logo")),
+        bool(snapshot.get("mask", True)),
+        bool(snapshot.get("tts_enabled", True)),
+        bool(snapshot.get("subtitles_enabled", True)),
+        snapshot.get("subtitle_cover_mode", settings.subtitle_cover_mode),
+        float(snapshot.get("subtitle_bg_opacity", settings.subtitle_bg_opacity)),
+        int(snapshot.get("subtitle_mask_padding_x", settings.subtitle_mask_padding_x)),
+        int(snapshot.get("subtitle_mask_padding_y", settings.subtitle_mask_padding_y)),
+        float(snapshot.get("ocr_sample_interval_sec", settings.ocr_sample_interval_sec)),
+        float(snapshot.get("ocr_crop_bottom_ratio", settings.ocr_crop_bottom_ratio)),
+    )
+
+def enqueue_pipeline_job(job: Job, args: Optional[tuple] = None) -> bool:
+    if job.job_id in running_jobs:
+        logger.info(f"Job {job.job_id} is already enqueued/running.")
+        return False
+    args = args or pipeline_args_from_snapshot(job)
+    job.status = "queued"
+    if not job.current_step:
+        job.current_step = "intake"
+    store.save_job(job)
+    logger.info(f"Enqueued job: {job.job_id}")
+    thread = threading.Thread(target=run_pipeline_in_thread, args=args, daemon=True)
+    running_jobs.add(job.job_id)
+    thread.start()
+    return True
+
+def requeue_stuck_jobs_on_startup():
+    recoverable = {"created", "queued", "processing", "running", "rendering"}
+    if not PROJECTS_DIR.exists():
+        return
+    for item in PROJECTS_DIR.iterdir():
+        if not item.is_dir():
+            continue
+        job = store.load_job(item.name)
+        if not job or job.status not in recoverable:
+            continue
+        if job.job_id in running_jobs:
+            continue
+        logger.info(f"Recovering stuck job on startup: {job.job_id} status={job.status}")
+        enqueue_pipeline_job(job)
+
+@app.on_event("startup")
+def startup_requeue_jobs():
+    threading.Thread(target=requeue_stuck_jobs_on_startup, daemon=True).start()
 
 def run_pipeline_in_thread(
     job_id: str,
@@ -158,9 +244,15 @@ def run_pipeline_in_thread(
     ocr_sample_interval_sec: float = settings.ocr_sample_interval_sec,
     ocr_crop_bottom_ratio: float = settings.ocr_crop_bottom_ratio,
 ):
-    running_jobs.add(job_id)
     try:
         with pipeline_lock:
+            job = store.load_job(job_id)
+            if job:
+                job.status = "processing"
+                if not job.current_step:
+                    job.current_step = "intake"
+                store.save_job(job)
+            logger.info(f"Worker started job: {job_id}")
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
@@ -228,24 +320,15 @@ async def create_job(req: JobCreateRequest):
         job_id = f"job_url_{url_hash}"
 
     job = store.load_job(job_id)
-    if job and (job.status == "running" or job_id in running_jobs):
-        return {"job_id": job_id, "status": "running", "message": "Job is already running"}
-
-    logo_path = None
-    if req.logo:
-        overlay_path = PROJECT_ROOT / "examples" / "overlay" / req.logo
-        if overlay_path.exists() and overlay_path.is_file():
-            logo_path = overlay_path
-        else:
-            logo_path = Path(req.logo)
-            if not logo_path.is_absolute():
-                logo_path = PROJECT_ROOT / logo_path
+    if job and (job.status in {"queued", "processing", "rendering", "running"} or job_id in running_jobs):
+        return {"job_id": job_id, "status": job.status, "message": "Job is already queued or running"}
 
     if not job:
         job = runner.create_job(str(input_path) if not is_url else input_video, job_id)
     
     config_snapshot = req.config_snapshot or req.model_dump(exclude={"config_snapshot"})
-    job.status = "created"
+    job.status = "queued"
+    job.current_step = "intake"
     job.channel_folder = req.channel_folder
     job.platform_folder = req.platform_folder
     job.channel_id = req.channel_id
@@ -258,23 +341,23 @@ async def create_job(req: JobCreateRequest):
     with open(store.get_job_dir(job_id) / "job_config.json", "w", encoding="utf-8") as f:
         json.dump(config_snapshot, f, indent=2, ensure_ascii=False)
 
-    thread = threading.Thread(
-        target=run_pipeline_in_thread,
-        args=(
-            job_id, req.tone, req.voice, req.rate, req.pitch, req.bgm, logo_path, req.mask,
-            req.tts_enabled, req.subtitles_enabled,
-            req.subtitle_cover_mode, req.subtitle_bg_opacity, req.subtitle_mask_padding_x,
-            req.subtitle_mask_padding_y, req.ocr_sample_interval_sec, req.ocr_crop_bottom_ratio
-        )
-    )
-    thread.start()
+    logger.info(f"Created job: {job_id}")
+    logger.info(f"Work dir: {store.get_job_dir(job_id) / 'work'}")
+    enqueue_pipeline_job(job, args=(
+        job_id, req.tone, req.voice, req.rate, req.pitch, req.bgm, resolve_logo_path(req.logo), req.mask,
+        req.tts_enabled, req.subtitles_enabled,
+        req.subtitle_cover_mode, req.subtitle_bg_opacity, req.subtitle_mask_padding_x,
+        req.subtitle_mask_padding_y, req.ocr_sample_interval_sec, req.ocr_crop_bottom_ratio
+    ))
 
-    return {"job_id": job_id, "status": "running", "message": "Job started successfully"}
+    return {"job_id": job_id, "status": "queued", "message": "Job queued successfully"}
 
 @app.get("/api/jobs/{job_id}/preview-video")
 def get_preview_video(job_id: str):
-    job_dir = store.get_job_dir(job_id)
-    work_dir = job_dir / "work"
+    job = store.load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+    work_dir = job_work_dir(job)
     candidates = sorted(work_dir.glob("input.*"))
     if not candidates:
         raise HTTPException(status_code=404, detail="Preview video is not ready yet")
@@ -294,7 +377,7 @@ async def save_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
     job.steps["subtitle_layout"] = "completed"
     job.steps["render"] = "pending"
     job.steps["metadata"] = "pending"
-    job.status = "created"
+    job.status = "queued"
     job.current_step = "render"
     job.errors = []
     store.save_job(job)
@@ -307,29 +390,37 @@ async def save_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
         if logo_path and not logo_path.is_absolute():
             logo_path = PROJECT_ROOT / logo_path
 
-    thread = threading.Thread(
-        target=run_pipeline_in_thread,
-        args=(
-            job_id,
-            snapshot.get("tone", "review_phim"),
-            snapshot.get("voice", settings.default_voice),
-            snapshot.get("rate", settings.default_rate),
-            snapshot.get("pitch", settings.default_pitch),
-            snapshot.get("bgm") or None,
-            logo_path,
-            bool(snapshot.get("mask", True)),
-            bool(snapshot.get("tts_enabled", True)),
-            bool(snapshot.get("subtitles_enabled", True)),
-            "text_box_only",
-            float(snapshot.get("subtitle_bg_opacity", req.subtitle_bg_opacity)),
-            int(snapshot.get("subtitle_mask_padding_x", settings.subtitle_mask_padding_x)),
-            int(snapshot.get("subtitle_mask_padding_y", settings.subtitle_mask_padding_y)),
-            float(snapshot.get("ocr_sample_interval_sec", settings.ocr_sample_interval_sec)),
-            float(snapshot.get("ocr_crop_bottom_ratio", settings.ocr_crop_bottom_ratio)),
-        )
-    )
-    thread.start()
+    enqueue_pipeline_job(job, args=(
+        job_id,
+        snapshot.get("tone", "review_phim"),
+        snapshot.get("voice", settings.default_voice),
+        snapshot.get("rate", settings.default_rate),
+        snapshot.get("pitch", settings.default_pitch),
+        snapshot.get("bgm") or None,
+        logo_path,
+        bool(snapshot.get("mask", True)),
+        bool(snapshot.get("tts_enabled", True)),
+        bool(snapshot.get("subtitles_enabled", True)),
+        "text_box_only",
+        float(snapshot.get("subtitle_bg_opacity", req.subtitle_bg_opacity)),
+        int(snapshot.get("subtitle_mask_padding_x", settings.subtitle_mask_padding_x)),
+        int(snapshot.get("subtitle_mask_padding_y", settings.subtitle_mask_padding_y)),
+        float(snapshot.get("ocr_sample_interval_sec", settings.ocr_sample_interval_sec)),
+        float(snapshot.get("ocr_crop_bottom_ratio", settings.ocr_crop_bottom_ratio)),
+    ))
     return {"status": "rendering", "message": "Subtitle layout saved. Final render started.", "layout": normalized["layout"]}
+
+@app.post("/api/jobs/{job_id}/resume")
+def resume_job(job_id: str):
+    job = store.load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+    if job.status in {"completed", "failed", "cancelled", "waiting_for_subtitle_layout"}:
+        raise HTTPException(status_code=400, detail=f"Job status '{job.status}' cannot be resumed automatically")
+    if job_id in running_jobs:
+        return {"status": job.status, "message": "Job is already queued or running"}
+    enqueue_pipeline_job(job)
+    return {"status": "queued", "message": f"Job {job_id} queued for processing"}
 
 @app.post("/api/jobs/{job_id}/rerender-subtitle-layout")
 def rerender_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
@@ -339,9 +430,8 @@ def rerender_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
     if job_id in running_jobs:
         raise HTTPException(status_code=400, detail="Job is currently running")
 
-    job_dir = store.get_job_dir(job_id)
-    work_dir = job_dir / "work"
-    output_dir = job_dir / "output"
+    work_dir = job_work_dir(job)
+    output_dir = job_output_dir(job)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     normalized = _save_subtitle_layout_snapshot(job, req)
@@ -444,9 +534,9 @@ def list_jobs():
                     try:
                         with open(state_file, "r", encoding="utf-8") as f:
                             data = json.load(f)
-                            if data.get("job_id") in running_jobs:
-                                data["status"] = "running"
-                            jobs.append(data)
+                            if data.get("job_id") in running_jobs and data.get("status") in {"created", "", None}:
+                                data["status"] = "queued"
+                            jobs.append(enrich_job_data(data))
                     except Exception as e:
                         logger.error(f"Error loading state from {state_file}: {e}")
     jobs.sort(key=lambda x: x.get("created_at", ""), reverse=True)
@@ -457,9 +547,9 @@ def get_job(job_id: str):
     job = store.load_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
-    if job.job_id in running_jobs:
-        job.status = "running"
-    return job
+    if job.job_id in running_jobs and job.status in {"created", "", None}:
+        job.status = "queued"
+    return enrich_job_data(job.model_dump())
 
 @app.get("/api/jobs/{job_id}/transcript")
 def get_transcript(job_id: str):
@@ -486,7 +576,8 @@ async def update_transcript(job_id: str, req: SegmentUpdateRequest):
         job.steps["mix_audio"] = "pending"
         job.steps["render"] = "pending"
         job.steps["metadata"] = "pending"
-        job.status = "created"
+        job.status = "queued"
+        job.current_step = "tts"
         job.errors = []
         store.save_job(job)
         
@@ -500,16 +591,12 @@ async def update_transcript(job_id: str, req: SegmentUpdateRequest):
                 if not logo_path.is_absolute():
                     logo_path = PROJECT_ROOT / logo_path
 
-        thread = threading.Thread(
-            target=run_pipeline_in_thread,
-            args=(
-                job_id, req.tone, req.voice, req.rate, req.pitch, req.bgm, logo_path, req.mask,
-                req.tts_enabled, req.subtitles_enabled,
-                req.subtitle_cover_mode, req.subtitle_bg_opacity, req.subtitle_mask_padding_x,
-                req.subtitle_mask_padding_y, req.ocr_sample_interval_sec, req.ocr_crop_bottom_ratio
-            )
-        )
-        thread.start()
+        enqueue_pipeline_job(job, args=(
+            job_id, req.tone, req.voice, req.rate, req.pitch, req.bgm, logo_path, req.mask,
+            req.tts_enabled, req.subtitles_enabled,
+            req.subtitle_cover_mode, req.subtitle_bg_opacity, req.subtitle_mask_padding_x,
+            req.subtitle_mask_padding_y, req.ocr_sample_interval_sec, req.ocr_crop_bottom_ratio
+        ))
         return {"status": "re-running", "message": "Transcript saved and pipeline restarted from TTS step"}
         
     return {"status": "saved", "message": "Transcript saved successfully"}

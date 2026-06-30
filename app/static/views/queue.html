@@ -1,6 +1,6 @@
 <div id="view-queue" class="flex-1 flex flex-col overflow-y-auto p-6 gap-6 bg-slate-950 w-full">
     <div>
-        <h2 class="font-outfit font-bold text-2xl text-white tracking-tight">Video Sắp Làm</h2>
+        <h2 class="font-outfit font-bold text-2xl text-white tracking-tight">Video sắp làm</h2>
         <p class="text-xs text-slate-400">Danh sách các video đang chờ xếp hàng và cấu hình tham số Việt hóa</p>
     </div>
 
@@ -10,7 +10,7 @@
         <!-- Left: Queue & Import (5 cols) -->
         <div class="lg:col-span-5 flex flex-col gap-4">
             <div class="glass-card rounded-2xl p-5 border border-white/5 flex flex-col gap-4">
-                <h3 class="font-outfit font-bold text-sm text-white uppercase tracking-wider">Hàng Chờ Video</h3>
+                <h3 class="font-outfit font-bold text-sm text-white uppercase tracking-wider">Hàng chờ video</h3>
                 
                 <!-- Drop zone and queue list container -->
                 <div id="queue-drop-zone" class="border-2 border-dashed border-purple-500/20 hover:border-purple-500/40 rounded-xl p-4 bg-purple-950/5 flex flex-col gap-3 transition-all min-h-[160px] justify-center items-center text-center">
@@ -19,8 +19,8 @@
                         <svg class="w-10 h-10 opacity-30 text-purple-400 animate-bounce duration-1000" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                         </svg>
-                        <span class="text-xs font-semibold text-slate-400">Kéo & Thả Video Vào Đây</span>
-                        <span class="text-[10px] text-slate-500 max-w-[200px]">Hãy kéo các thẻ video từ trang Tìm Kiếm hoặc thả trực tiếp vào đây</span>
+                        <span class="text-xs font-semibold text-slate-400">Kéo & thả video vào đây</span>
+                        <span class="text-[10px] text-slate-500 max-w-[200px]">Hãy kéo các thẻ video từ trang Tìm kiếm hoặc thả trực tiếp vào đây</span>
                     </div>
                     
                     <!-- Dynamic list items container -->
@@ -47,18 +47,18 @@
         <!-- Right: Config Form (7 cols) -->
         <div class="lg:col-span-7">
             <form id="job-form" onsubmit="submitJob(event)" class="glass-card rounded-2xl p-6 border border-white/5 flex flex-col gap-5">
-                <h3 class="font-outfit font-bold text-sm text-white uppercase tracking-wider">Cấu Hình Dịch Thuật & Lồng Tiếng</h3>
+                <h3 class="font-outfit font-bold text-sm text-white uppercase tracking-wider">Cấu hình dịch thuật & lồng tiếng</h3>
 
                 <!-- Split Tone/Voice Row -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tone Giọng Dịch</label>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tone giọng dịch</label>
                         <select id="tone" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
                             <!-- Dynamically populated -->
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Giọng Đọc AI (TTS)</label>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Giọng đọc AI (TTS)</label>
                         <select id="voice" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
                             <!-- Dynamically populated -->
                         </select>
@@ -68,13 +68,13 @@
                 <!-- Split Speed/Pitch Row -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tốc Độ Đọc</label>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tốc độ đọc</label>
                         <select id="rate" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
                             <!-- Dynamically populated -->
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Cao Độ (Pitch)</label>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Cao độ (Pitch)</label>
                         <select id="pitch" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
                             <!-- Dynamically populated -->
                         </select>
@@ -85,7 +85,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <div class="flex justify-between items-center mb-2">
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Nhạc Nền BGM</label>
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Nhạc nền BGM</label>
                             <button type="button" onclick="openBgmManager()" class="text-[10px] text-purple-400 hover:text-purple-300 font-semibold transition-colors flex items-center gap-0.5">📥 Tải nhạc</button>
                         </div>
                         <select id="bgm" onfocus="loadBgmList()" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
@@ -105,14 +105,14 @@
                 <!-- Organizer Row for Channel & Platform -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Chọn Page / Kênh (Output)</label>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Chọn Page / kênh (Output)</label>
                         <select id="dest_channel" onchange="toggleNewChannelInput()" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
                             <option value="">Output chính</option>
-                            <option value="__new__">[ + Tạo Kênh Mới ]</option>
+                            <option value="__new__">[ + Tạo kênh mới ]</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Chia Nền Tảng</label>
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Chia nền tảng</label>
                         <select id="dest_platform" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
                             <option value="">Không chia</option>
                             <option value="TikTok">TikTok</option>
@@ -125,7 +125,7 @@
 
                 <!-- New Channel name input (hidden by default) -->
                 <div id="new-channel-container" class="hidden">
-                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tên Kênh Mới</label>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tên kênh mới</label>
                     <input type="text" id="new_channel_name" placeholder="Ví dụ: Kênh Phim 1" class="w-full bg-slate-900 border border-slate-700/60 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
                 </div>
 
@@ -140,7 +140,7 @@
 
                 <!-- Submit Button -->
                 <button type="submit" class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-semibold text-sm py-3 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all shadow-md pulse-glow mt-2">
-                    Bắt Đầu Việt Hóa Hàng Loạt
+                    Bắt đầu Việt hóa hàng loạt
                 </button>
             </form>
         </div>
