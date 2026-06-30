@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     default_pitch: str = "+0Hz"
     default_target_language: str = "vi-VN"
     default_translation_mode: str = "natural"
+    cleanup_intermediate_files: bool = True
+    keep_debug_on_success: bool = False
+    keep_temp_on_failure: bool = True
     
     # Channel Configuration
     channel_name: str = Field(default="AutoTool Review", validation_alias="CHANNEL_NAME")

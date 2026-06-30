@@ -36,6 +36,24 @@ class JsonStore:
     def load_transcript(self, job_id: str) -> List[Segment]:
         filepath = self.get_job_dir(job_id) / "work" / "transcript.json"
         if not filepath.exists():
+            # Try to reconstruct from input.srt
+            srt_path = self.get_job_dir(job_id) / "work" / "input.srt"
+            if srt_path.exists():
+                try:
+                    import pysrt
+                    subs = pysrt.open(str(srt_path), encoding="utf-8")
+                    segments = []
+                    for idx, sub in enumerate(subs):
+                        segments.append(Segment(
+                            id=idx + 1,
+                            start_ms=sub.start.ordinal,
+                            end_ms=sub.end.ordinal,
+                            source_text=sub.text,
+                            status="pending"
+                        ))
+                    return segments
+                except Exception:
+                    pass
             return []
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -49,6 +67,34 @@ class JsonStore:
     def load_translated(self, job_id: str) -> List[Segment]:
         filepath = self.get_job_dir(job_id) / "work" / "translated.json"
         if not filepath.exists():
+            # Try to reconstruct from output.srt
+            srt_path = self.get_job_dir(job_id) / "work" / "output.srt"
+            if srt_path.exists():
+                try:
+                    import pysrt
+                    subs = pysrt.open(str(srt_path), encoding="utf-8")
+                    segments = []
+                    source_texts = {}
+                    input_srt = self.get_job_dir(job_id) / "work" / "input.srt"
+                    if input_srt.exists():
+                        try:
+                            in_subs = pysrt.open(str(input_srt), encoding="utf-8")
+                            for idx, sub in enumerate(in_subs):
+                                source_texts[idx + 1] = sub.text
+                        except Exception:
+                            pass
+                    for idx, sub in enumerate(subs):
+                        segments.append(Segment(
+                            id=idx + 1,
+                            start_ms=sub.start.ordinal,
+                            end_ms=sub.end.ordinal,
+                            source_text=source_texts.get(idx + 1, ""),
+                            translated_text=sub.text,
+                            status="completed"
+                        ))
+                    return segments
+                except Exception:
+                    pass
             return []
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)

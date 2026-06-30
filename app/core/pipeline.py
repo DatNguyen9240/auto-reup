@@ -1067,3 +1067,80 @@ class PipelineRunner:
                     file_handler.close()
                 except Exception:
                     pass
+            try:
+                success = (job.status == "completed")
+                cleanup_job_files(job_id, success)
+            except Exception as clean_err:
+                logger.warning(f"Error during intermediate files cleanup: {clean_err}")
+
+
+def cleanup_job_files(job_id: str, success: bool):
+    """
+    Clean up temporary and intermediate files from a job directory.
+    """
+    from app.config import settings
+    from pathlib import Path
+    import shutil
+    
+    if not settings.cleanup_intermediate_files:
+        return
+        
+    project_root = Path(settings.auto_tool_root)
+    job_dir = project_root / "workspace" / "jobs" / job_id
+    
+    if not job_dir.exists():
+        return
+        
+    work_dir = job_dir / "work"
+    output_dir = job_dir / "output"
+    
+    if success:
+        # Delete specific intermediate files in work
+        intermediate_names = [
+            "audio.wav", "mixed_audio.wav", "transcript.json", "translated.json",
+            "metadata.json", "origin_metadata.json", "output.ass"
+        ]
+        for name in intermediate_names:
+            p = work_dir / name
+            if p.exists():
+                try:
+                    p.unlink()
+                except Exception:
+                    pass
+                    
+        # Delete any input video files (like input.mp4, input.avi, etc.) in work
+        for p in work_dir.glob("input.*"):
+            if p.suffix.lower() != ".srt":
+                try:
+                    p.unlink()
+                except Exception:
+                    pass
+                    
+        # Delete tts/ folder in work_dir
+        tts_dir = work_dir / "tts"
+        if tts_dir.exists():
+            try:
+                shutil.rmtree(tts_dir, ignore_errors=True)
+            except Exception:
+                pass
+                
+        # Delete run.log and job_config.json if keep_debug_on_success is False
+        if not settings.keep_debug_on_success:
+            for name in ["run.log", "job_config.json"]:
+                p = job_dir / name
+                if p.exists():
+                    try:
+                        p.unlink()
+                    except Exception:
+                        pass
+                        
+    else:
+        # If job failed and we do NOT want to keep temp/debug files on failure
+        if not settings.keep_temp_on_failure:
+            try:
+                for p in list(work_dir.glob("*")):
+                    if p.suffix.lower() != ".srt" and p.is_file():
+                        p.unlink()
+                shutil.rmtree(work_dir / "tts", ignore_errors=True)
+            except Exception:
+                pass
