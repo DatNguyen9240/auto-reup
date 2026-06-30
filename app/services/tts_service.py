@@ -97,6 +97,8 @@ class TTSService:
                     rate=rate,
                     pitch=pitch
                 )
+                import asyncio
+                await asyncio.sleep(0.25)
             
             # Step 2: Probe raw TTS duration
             raw_duration_ms = self.get_audio_duration_ms(raw_path)
