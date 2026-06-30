@@ -1475,6 +1475,26 @@ function updateSubtitlePreviewText() {
     textWrap.innerHTML = `${escapeHtml(text)}<br><span class="text-[10px] font-semibold text-white/80">[Kéo thả để chỉnh vị trí phụ đề]</span>`;
 }
 
+async function onChangeEditorChannel(channelId) {
+    if (!currentSubtitleJob) return;
+    try {
+        const res = await fetch(`/api/jobs/${currentSubtitleJob.job_id}/publish`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ channel_id: channelId })
+        });
+        if (res.ok) {
+            currentSubtitleJob.channel_id = channelId === 'default' ? null : channelId;
+            showToast("Đã cập nhật kênh đầu ra thành công!", "success");
+            await loadJobs();
+        } else {
+            showToast("Lỗi cập nhật kênh đầu ra!", "error");
+        }
+    } catch (err) {
+        showToast("Lỗi kết nối máy chủ!", "error");
+    }
+}
+
 function setupSubtitleLayoutEditor(job) {
     const section = document.getElementById('subtitle-layout-section');
     const video = document.getElementById('subtitle-preview-video');
@@ -1489,6 +1509,16 @@ function setupSubtitleLayoutEditor(job) {
     if (isNewEditorJob) {
         subtitleLayoutEditorJobId = job.job_id;
         currentSubtitleJob = job;
+        
+        const editorChannelSelect = document.getElementById('editor-channel-select');
+        if (editorChannelSelect) {
+            editorChannelSelect.innerHTML = '<option value="default">Output mặc định</option>';
+            (globalChannels || []).forEach(c => {
+                const opt = new Option(c.name, c.id);
+                editorChannelSelect.add(opt);
+            });
+            editorChannelSelect.value = job.channel_id || 'default';
+        }
         
         const snapshot = job.config_snapshot || {};
         formatSubtitleLayouts = {};
@@ -1601,7 +1631,7 @@ function setupSubtitleLayoutEditor(job) {
     const onPointerDown = (e, nextMode) => {
         isEditingSubtitleLayout = true;
         mode = nextMode;
-        const rect = wrap.getBoundingClientRect();
+        const rect = box.parentElement.getBoundingClientRect();
         const b = box.getBoundingClientRect();
         start = {
             mouseX: e.clientX,

@@ -136,9 +136,9 @@ class SubtitleLayoutRequest(BaseModel):
     asset_opacity: Optional[float] = 1.0
     asset_color: Optional[str] = None
     blur_masks: Optional[List[Dict[str, Any]]] = None
-    fb_reels_subtitle_layout: Optional[Dict[str, float]] = None
-    yt_shorts_subtitle_layout: Optional[Dict[str, float]] = None
-    yt_video_subtitle_layout: Optional[Dict[str, float]] = None
+    fb_reels_subtitle_layout: Optional[Dict[str, Any]] = None
+    yt_shorts_subtitle_layout: Optional[Dict[str, Any]] = None
+    yt_video_subtitle_layout: Optional[Dict[str, Any]] = None
 
 def _normalize_subtitle_layout(req: SubtitleLayoutRequest) -> Dict[str, Any]:
     layout = {
@@ -1080,9 +1080,13 @@ def publish_job_to_channel(job_id: str, req: PublishRequest):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     if job.status != "completed":
-        raise HTTPException(status_code=400, detail="Only completed jobs can be published")
-    if not job.output_path:
-        raise HTTPException(status_code=400, detail="Job output path is missing")
+        job.channel_id = None if req.channel_id == "default" else req.channel_id
+        store.save_job(job)
+        return {
+            "status": "success",
+            "channel_id": job.channel_id,
+            "moved_files": []
+        }
 
     src_video_path = Path(job.output_path)
     safe_stem = re.sub(r'[^a-zA-Z0-9_ -]', '_', src_video_path.parent.name.replace("job_", "").replace("job_url_", ""))
