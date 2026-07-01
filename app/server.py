@@ -24,6 +24,7 @@ from app.storage.json_store import JsonStore
 from app.models.job import Job
 from app.models.segment import Segment
 from app.utils.logger import get_logger, set_current_job_id
+from app.utils.file_utils import read_json
 
 logger = get_logger("Server")
 
@@ -742,11 +743,10 @@ def list_jobs():
                 state_file = item / "job_state.json"
                 if state_file.exists():
                     try:
-                        with open(state_file, "r", encoding="utf-8") as f:
-                            data = json.load(f)
-                            if data.get("job_id") in running_jobs and data.get("status") in {"created", "", None}:
-                                data["status"] = "queued"
-                            jobs.append(enrich_job_data(data))
+                        data = read_json(state_file)
+                        if data.get("job_id") in running_jobs and data.get("status") in {"created", "", None}:
+                            data["status"] = "queued"
+                        jobs.append(enrich_job_data(data))
                     except Exception as e:
                         logger.error(f"Error loading state from {state_file}: {e}")
     jobs.sort(key=lambda x: x.get("created_at", ""), reverse=True)

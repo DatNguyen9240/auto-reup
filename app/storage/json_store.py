@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import datetime
 from app.models.job import Job
 from app.models.segment import Segment
-from app.utils.file_utils import write_json
+from app.utils.file_utils import write_json, read_json
 
 class JsonStore:
     def __init__(self, projects_dir: Path):
@@ -24,9 +24,8 @@ class JsonStore:
         state_file = self.get_job_dir(job_id) / "job_state.json"
         if not state_file.exists():
             return None
-        with open(state_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return Job(**data)
+        data = read_json(state_file)
+        return Job(**data)
             
     def save_transcript(self, job_id: str, segments: List[Segment]):
         filepath = self.get_job_dir(job_id) / "work" / "transcript.json"
@@ -55,9 +54,8 @@ class JsonStore:
                 except Exception:
                     pass
             return []
-        with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return [Segment(**s) for s in data]
+        data = read_json(filepath)
+        return [Segment(**s) for s in data]
             
     def save_translated(self, job_id: str, segments: List[Segment]):
         filepath = self.get_job_dir(job_id) / "work" / "translated.json"
@@ -96,6 +94,5 @@ class JsonStore:
                 except Exception:
                     pass
             return []
-        with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return [Segment(**s) for s in data]
+        data = read_json(filepath)
+        return [Segment(**s) for s in data]
