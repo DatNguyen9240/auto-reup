@@ -345,34 +345,6 @@ async function triggerSearch() {
     }
 }
 
-// Fire cookie utility generation or browser session export
-async function triggerCookieAction(action) {
-    const consoleBox = document.getElementById('cookie-console');
-    const badge = document.getElementById('cookie-status-badge');
-    
-    badge.className = "text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-600/35 text-indigo-300 animate-pulse";
-    badge.innerText = "Đang chạy";
-    
-    consoleBox.innerHTML += `\n[SYSTEM] Triggering cookie ${action}...`;
-
-    try {
-        const response = await fetch(`/api/cookies/${action}`, { method: 'POST' });
-        const res = await response.json();
-        
-        consoleBox.innerHTML += `\n[SYSTEM] ${res.message}`;
-        
-        setTimeout(() => {
-            badge.className = "text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-600/35 text-emerald-300";
-            badge.innerText = "Hoàn tất";
-            consoleBox.innerHTML += `\n[SYSTEM] Tác vụ đã hoàn tất trong background. Vui lòng check file cookies.txt.`;
-        }, 8000);
-    } catch (err) {
-        badge.className = "text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-rose-600/35 text-rose-300";
-        badge.innerText = "Lỗi";
-        consoleBox.innerHTML += `\n[ERROR] Request failed: ${err.message}`;
-    }
-}
-
 // Load all BGM files currently in examples/music
 async function loadBgmList() {
     try {

@@ -16,7 +16,6 @@ let currentFilterChannelId = localStorage.getItem('currentFilterChannelId') || '
 const VIEWS = {
     dashboard: 'views/dashboard.html',
     search: 'views/search.html',
-    cookies: 'views/cookies.html',
     channels: 'views/channels.html'
 };
 
@@ -69,17 +68,11 @@ async function switchTab(tab) {
     
     // Toggle menu highlight styles
     const btnDashboard = document.getElementById('btn-tab-dashboard');
-    const btnCookies = document.getElementById('btn-tab-cookies');
     const btnSearch = document.getElementById('btn-tab-search');
     const btnChannels = document.getElementById('btn-tab-channels');
     
     if (btnDashboard) {
         btnDashboard.className = tab === 'dashboard' 
-            ? "px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 text-white transition-all" 
-            : "px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all";
-    }
-    if (btnCookies) {
-        btnCookies.className = tab === 'cookies' 
             ? "px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 text-white transition-all" 
             : "px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all";
     }
