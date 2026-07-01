@@ -64,6 +64,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Tab Routing Switches (Loads views dynamically)
 async function switchTab(tab) {
+    if (tab === 'config') {
+        openConfigModal();
+        if (currentTab === 'config') {
+            currentTab = 'dashboard';
+        }
+        window.location.hash = currentTab;
+        return;
+    }
+    
     currentTab = tab;
     window.location.hash = tab;
     
@@ -71,32 +80,30 @@ async function switchTab(tab) {
     const btnDashboard = document.getElementById('btn-tab-dashboard');
     const btnSearch = document.getElementById('btn-tab-search');
     const btnChannels = document.getElementById('btn-tab-channels');
-    const btnConfig = document.getElementById('btn-tab-config');
     
     const tabs = {
         dashboard: btnDashboard,
         search: btnSearch,
-        channels: btnChannels,
-        config: btnConfig
+        channels: btnChannels
     };
     
     for (const [t, btn] of Object.entries(tabs)) {
         if (btn) {
             if (t === tab) {
-                btn.className = "w-full text-left px-3 py-2 text-xs font-semibold rounded-lg bg-white/10 text-white transition-all flex items-center gap-2";
+                btn.className = "px-4 py-2 text-xs font-semibold rounded-lg bg-white/10 text-white transition-all flex items-center gap-2";
             } else {
-                btn.className = "w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all flex items-center gap-2";
+                btn.className = "px-4 py-2 text-xs font-semibold rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all flex items-center gap-2";
             }
         }
     }
 
-    // Toggle sidebar create-job section visibility
-    const createJobSection = document.getElementById('sidebar-create-job-section');
-    if (createJobSection) {
+    // Toggle sidebar container visibility
+    const sidebarContainer = document.getElementById('sidebar-container');
+    if (sidebarContainer) {
         if (tab === 'dashboard') {
-            createJobSection.classList.remove('hidden');
+            sidebarContainer.classList.remove('hidden');
         } else {
-            createJobSection.classList.add('hidden');
+            sidebarContainer.classList.add('hidden');
         }
     }
 
@@ -2834,8 +2841,23 @@ async function loadConfigTab() {
     }
 }
 
+async function openConfigModal() {
+    const modal = document.getElementById('config-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        await loadConfigTab();
+    }
+}
+
+function closeConfigModal() {
+    const modal = document.getElementById('config-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
 function openKeysModal() {
-    switchTab('config');
+    openConfigModal();
 }
 
 async function checkKeysStatus() {

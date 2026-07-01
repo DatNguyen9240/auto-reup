@@ -49,6 +49,22 @@
                 <p class="text-xs text-slate-400 font-medium">Công cụ Việt hóa video & quản lý đăng tải</p>
             </div>
         </div>
+
+        <!-- Navigation Menu in Navbar -->
+        <div class="flex items-center gap-2">
+            <button onclick="switchTab('dashboard')" id="btn-tab-dashboard"
+                class="px-4 py-2 text-xs font-semibold rounded-lg bg-white/10 text-white transition-all flex items-center gap-2">
+                📊 Bảng điều khiển
+            </button>
+            <button onclick="switchTab('search')" id="btn-tab-search"
+                class="px-4 py-2 text-xs font-semibold rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all flex items-center gap-2">
+                🔍 Render YouTube
+            </button>
+            <button onclick="switchTab('channels')" id="btn-tab-channels"
+                class="px-4 py-2 text-xs font-semibold rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all flex items-center gap-2">
+                📋 Quản lý Page
+            </button>
+        </div>
     </header>
 
     <!-- Main Workspace Grid -->
@@ -56,27 +72,6 @@
         <!-- Left Side: Persistent Create Job Form Sidebar -->
         <div id="sidebar-container"
             class="w-full md:w-80 border-r border-white/5 overflow-y-auto p-5 flex-shrink-0 flex flex-col gap-4 bg-slate-950/80">
-            
-            <!-- Sidebar Navigation Menu -->
-            <div class="flex flex-col gap-1 border-b border-white/5 pb-4">
-                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 mb-1.5">Menu chính</span>
-                <button onclick="switchTab('dashboard')" id="btn-tab-dashboard"
-                    class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg bg-white/10 text-white transition-all flex items-center gap-2">
-                    📊 Bảng điều khiển
-                </button>
-                <button onclick="switchTab('search')" id="btn-tab-search"
-                    class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all flex items-center gap-2">
-                    🔍 Render YouTube
-                </button>
-                <button onclick="switchTab('channels')" id="btn-tab-channels"
-                    class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all flex items-center gap-2">
-                    📋 Quản lý Page
-                </button>
-                <button onclick="switchTab('config')" id="btn-tab-config"
-                    class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all flex items-center gap-2">
-                    ⚙️ Cấu hình Hệ thống
-                </button>
-            </div>
 
             <!-- Creating Job Section (Dashboard only) -->
             <div id="sidebar-create-job-section" class="flex flex-col gap-4">
@@ -300,6 +295,14 @@
                     Bắt Đầu Việt Hóa Hàng Loạt
                 </button>
             </form>
+            </div>
+
+            <!-- Sidebar Footer (Config Button) -->
+            <div class="mt-auto pt-4 border-t border-white/5 flex-shrink-0">
+                <button onclick="openConfigModal()" id="btn-tab-config"
+                    class="w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all flex items-center gap-2">
+                    ⚙️ Cấu hình Hệ thống
+                </button>
             </div>
         </div>
 
@@ -731,6 +734,113 @@
                                 <button onclick="saveLogoPosition()" class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-bold text-xs py-2.5 rounded-lg hover:opacity-90 transition-all shadow-md">Lưu Vị Trí Logo</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Modal -->
+            <div id="config-modal" onclick="if(event.target === this) closeConfigModal()" class="hidden fixed inset-0 z-[110] bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
+                <div class="glass-card w-full max-w-2xl rounded-2xl border border-white/10 flex flex-col shadow-2xl bg-slate-950/95 overflow-hidden max-h-[85vh]">
+                    <!-- Modal Header -->
+                    <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between flex-shrink-0">
+                        <h3 class="font-outfit font-bold text-base text-white flex items-center gap-2">⚙️ Cấu hình Hệ thống</h3>
+                        <button onclick="closeConfigModal()"
+                            class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Modal Body (Config fields scrollable) -->
+                    <div class="p-6 overflow-y-auto flex flex-col gap-6 scrollbar-thin">
+                        <p class="text-xs text-slate-400 -mt-2">Thiết lập các khóa API Gemini để dịch thuật & đường dẫn xuất video mặc định.</p>
+
+                        <!-- Gemini API Keys Panel -->
+                        <div class="bg-white/5 border border-white/5 rounded-xl p-5 flex flex-col gap-4">
+                            <div class="flex items-center gap-2.5 text-purple-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m-2 4a2 2 0 012 2m-2-4h.01M17 16h.01M3 21h18M3 10h18M3 7h18M3 14h18"></path>
+                                </svg>
+                                <h4 class="font-outfit font-bold text-xs text-white uppercase tracking-wider">Xoay tua Gemini API Keys</h4>
+                            </div>
+                            
+                            <p class="text-[11px] text-slate-400 leading-relaxed">
+                                Nhập tối đa 10 API keys của Gemini. Hệ thống sẽ tự động xoay tua (rotate) lần lượt các key này để tránh giới hạn lượt gọi (Rate Limit).
+                            </p>
+                            
+                            <div class="flex flex-col gap-3 max-h-[220px] overflow-y-auto pr-1">
+                                <div>
+                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key chính (Bắt buộc) <span id="key-status-1" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                                    <input type="password" id="gemini-key-1" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 2 <span id="key-status-2" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                                    <input type="password" id="gemini-key-2" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 3 <span id="key-status-3" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                                    <input type="password" id="gemini-key-3" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 4 <span id="key-status-4" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                                    <input type="password" id="gemini-key-4" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 5 <span id="key-status-5" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                                    <input type="password" id="gemini-key-5" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 6 <span id="key-status-6" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                                    <input type="password" id="gemini-key-6" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 7 <span id="key-status-7" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                                    <input type="password" id="gemini-key-7" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 8 <span id="key-status-8" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                                    <input type="password" id="gemini-key-8" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 9 <span id="key-status-9" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                                    <input type="password" id="gemini-key-9" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 10 <span id="key-status-10" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                                    <input type="password" id="gemini-key-10" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Export Folder Panel -->
+                        <div class="bg-white/5 border border-white/5 rounded-xl p-5 flex flex-col gap-3">
+                            <div class="flex items-center gap-2.5 text-purple-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                </svg>
+                                <h4 class="font-outfit font-bold text-xs text-white uppercase tracking-wider">Thư mục Export mặc định</h4>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Đường dẫn tuyệt đối</label>
+                                <input type="text" id="system-export-path" placeholder="Ví dụ: D:/FinishedVideos" class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                                <p class="text-[10px] text-slate-500 mt-1.5">Nếu cấu hình, video hoàn thành sẽ tự động được copy ra thư mục này để lưu trữ lâu dài.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div class="px-6 py-4 border-t border-white/5 flex justify-end gap-3 bg-slate-950 flex-shrink-0">
+                        <button onclick="checkKeysStatus()" class="mr-auto px-4 py-2 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/20 text-purple-300 rounded-xl text-xs font-semibold transition-all">
+                            🔄 Check Keys
+                        </button>
+                        <button onclick="closeConfigModal()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-white/5 rounded-xl text-xs font-semibold transition-all">
+                            Hủy
+                        </button>
+                        <button onclick="saveGeminiKeys()" class="px-5 py-2 bg-gradient-to-r from-purple-600 to-rose-500 text-white rounded-xl text-xs font-semibold transition-all active:scale-[0.98] shadow-md hover:opacity-90">
+                            Lưu thay đổi
+                        </button>
                     </div>
                 </div>
             </div>
