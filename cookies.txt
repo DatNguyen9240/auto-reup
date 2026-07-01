@@ -15,7 +15,6 @@
 .aistudio.google.com	TRUE	/	FALSE	1790573499	_gcl_gs	2.1.k1$i1782797495$u180749367
 .amcdn.vn	TRUE	/	TRUE	1817346963	__OS	"10_Windows 10_ _ _14_149.0.0.0__0"
 .amcdn.vn	TRUE	/	TRUE	1817346971	__create	1782786960
-.amcdn.vn	TRUE	/	TRUE	1782873363	__tb	0
 .amcdn.vn	TRUE	/	TRUE	1817346971	__uid	4076905522983732000
 .antigravity.google	TRUE	/	FALSE	1817281763	_ga	GA1.1.1619340756.1782721763
 .antigravity.google	TRUE	/	FALSE	1817281763	_ga_47V54ZJ3EV	GS2.1.s1782721763$o1$g0$t1782721763$j60$l0$h0
@@ -135,7 +134,6 @@
 .linkedin.com	TRUE	/	TRUE	1814250102	bcookie	"v=2&7b51357c-eaa2-4ba5-8b37-260ada6efa8a"
 .linkedin.com	TRUE	/	TRUE	1798266102	li_gc	MTswOzE3ODI3MTQxMDE7MjswMjG1S81ykclBnDvxZJqPmHtYj6mPWcep1FGRxZGUPYqbFg==
 .logging.admicro.vn	TRUE	/	TRUE	1817346971	__create	1782786960
-.logging.admicro.vn	TRUE	/	TRUE	1782873363	__tb	0
 .logging.admicro.vn	TRUE	/	TRUE	1817346971	__uid	4076905522983732000
 .openai.com	TRUE	/	FALSE	1814327712	oai-did	6c425fcf-6c8f-4916-87dd-c4999d493024
 .openai.com	TRUE	/	TRUE	1814327712	oaicom-stable-id	d021115e-703b-45dd-8334-557fd08666d9

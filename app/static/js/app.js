@@ -2687,7 +2687,7 @@ async function checkApiKeysOnStartup() {
             const data = await response.json();
             if (!data.configured) {
                 // Main key is empty: highlight config button and alert
-                const btn = document.getElementById('btn-tab-keys');
+                const btn = document.getElementById('btn-sidebar-keys');
                 if (btn) {
                     btn.classList.add('animate-pulse', 'border', 'border-purple-500', 'text-purple-300');
                 }
@@ -2709,7 +2709,13 @@ async function checkApiKeysOnStartup() {
 }
 
 function openKeysModal() {
-    document.getElementById('keys-modal').classList.remove('hidden');
+    console.log("openKeysModal called");
+    const modal = document.getElementById('keys-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    } else {
+        console.error("Error: Element keys-modal not found!");
+    }
     checkKeysStatus();
 }
 
@@ -2800,7 +2806,7 @@ async function saveGeminiKeys() {
             showToast("Đã lưu cấu hình xoay tua API Keys thành công!", "success");
             
             // Remove pulse highlight from button if fixed
-            const btn = document.getElementById('btn-tab-keys');
+            const btn = document.getElementById('btn-sidebar-keys');
             if (btn) {
                 btn.classList.remove('animate-pulse', 'border', 'border-purple-500', 'text-purple-300');
             }
