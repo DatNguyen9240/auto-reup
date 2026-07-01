@@ -10,10 +10,19 @@ logger = get_logger("RenderService")
 class RenderService:
     def _escape_windows_path(self, path: Path) -> str:
         """Escapes Windows paths for use within FFmpeg filter arguments (like subtitles)."""
+        try:
+            # Try to get relative path from current working directory to avoid Windows drive letters/colons
+            rel_path = os.path.relpath(path, start=os.getcwd())
+            p_str = str(rel_path).replace("\\", "/")
+            if ":" not in p_str:
+                return p_str
+        except Exception as e:
+            logger.warning(f"Could not compute relative path for escaping: {e}")
+            
         p_str = str(path.resolve()).replace("\\", "/")
         if ":" in p_str:
             drive, rest = p_str.split(":", 1)
-            p_str = f"{drive}\\:{rest}"
+            p_str = f"{drive}\\\\\\:{rest}"
         return p_str
 
     def _wrap_subtitle_text(self, text: str, max_chars: int) -> str:
@@ -60,9 +69,9 @@ class RenderService:
             
         layout = subtitle_layout or {}
         x_pct = float(layout.get("x", 0.08))
-        y_pct = float(layout.get("y", 0.72))
+        y_pct = float(layout.get("y", 0.56))
         w_pct = float(layout.get("width", 0.84))
-        h_pct = float(layout.get("height", 0.11))
+        h_pct = float(layout.get("height", 0.08))
 
         x_pct = max(0.0, min(0.95, x_pct))
         y_pct = max(0.0, min(0.95, y_pct))
@@ -123,7 +132,7 @@ class RenderService:
         h_out: int = 1920,
         reframe_mode: str = "keep_original",
         crop_layout: dict = None,
-        logo_position: str = "top_center",
+        logo_position: str = "top_left",
         logo_layout: dict = None,
         asset_path: Path = None,
         asset_layout: dict = None,
@@ -143,15 +152,15 @@ class RenderService:
             if (w_in / h_in) > (w_out / h_out):
                 # Landscape source to vertical target
                 filters.extend([
-                    f"[0:v]scale={w_out}:-1[scaled_fg]",
-                    f"[0:v]scale=-1:{h_out},crop={w_out}:{h_out},boxblur=20:5[bg]",
+                    f"[0:v]scale={w_out}:-2[scaled_fg]",
+                    f"[0:v]scale=-2:{h_out},crop={w_out}:{h_out},boxblur=20:5[bg]",
                     f"[bg][scaled_fg]overlay=x=0:y=(H-h)/2[layout]"
                 ])
             else:
                 # Vertical source to landscape target
                 filters.extend([
-                    f"[0:v]scale=-1:{h_out}[scaled_fg]",
-                    f"[0:v]scale={w_out}:-1,crop={w_out}:{h_out},boxblur=20:5[bg]",
+                    f"[0:v]scale=-2:{h_out}[scaled_fg]",
+                    f"[0:v]scale={w_out}:-2,crop={w_out}:{h_out},boxblur=20:5[bg]",
                     f"[bg][scaled_fg]overlay=x=(W-w)/2:y=0[layout]"
                 ])
         elif reframe_mode == "manual_crop" and crop_layout:
@@ -231,7 +240,7 @@ class RenderService:
             if custom_x is not None and custom_y is not None:
                 expr = f"x=W*{custom_x}:y=H*{custom_y}"
             else:
-                pos = logo_position or "top_center"
+                pos = logo_position or "top_left"
                 if pos == "top_left":
                     expr = "x=W*0.05:y=H*0.05"
                 elif pos == "top_right":
@@ -243,10 +252,12 @@ class RenderService:
                 else: # top_center
                     expr = "x=(W-w)/2:y=120"
                 
-            # Scale logo to match the 12.5% width of the editor box relative to workspace
-            logo_w = int(w_out * 0.125)
+            # Scale logo to match custom width percentage if available
+            custom_w = logo_layout.get("width_percent") if logo_layout else None
+            logo_w = int(w_out * (float(custom_w) if custom_w is not None else 0.085))
+            logo_w = (logo_w // 2) * 2
             filters.append(
-                f"[{logo_input_index}:v]scale={logo_w}:-1[scaled_logo]"
+                f"[{logo_input_index}:v]scale={logo_w}:-2[scaled_logo]"
             )
             filters.append(
                 f"{current_grid}[scaled_logo]overlay={expr}[logoed]"
@@ -297,12 +308,15 @@ class RenderService:
             a_w = asset_layout.get("width_percent", 0.20)
             a_h = asset_layout.get("height_percent", 0.08)
             a_opacity = asset_layout.get("opacity", 1.0)
-            blur_radius = max(3, min(40, int(a_opacity * 30)))
             
-            px_x = max(0, min(w_out - 10, int(w_out * a_x)))
-            px_y = max(0, min(h_out - 10, int(h_out * a_y)))
-            px_w = max(10, min(w_out - px_x, int(w_out * a_w)))
-            px_h = max(10, min(h_out - px_y, int(h_out * a_h)))
+            px_x = (max(0, min(w_out - 10, int(w_out * a_x))) // 2) * 2
+            px_y = (max(0, min(h_out - 10, int(h_out * a_y))) // 2) * 2
+            px_w = (max(10, min(w_out - px_x, int(w_out * a_w))) // 2) * 2
+            px_h = (max(10, min(h_out - px_y, int(h_out * a_h))) // 2) * 2
+            
+            # Cap boxblur radius to prevent FFmpeg crash for small dimensions
+            max_allowed = min(px_w // 4, px_h // 4)
+            blur_radius = max(1, min(max_allowed, int(a_opacity * 30)))
             
             filters.append(
                 f"{current_grid}split[orig_sp][for_blur]"
@@ -323,12 +337,15 @@ class RenderService:
                 m_w = mask.get("width_percent", 0.20)
                 m_h = mask.get("height_percent", 0.08)
                 m_opacity = mask.get("opacity", 0.6)
-                blur_radius = max(3, min(40, int(m_opacity * 30)))
                 
-                px_x = max(0, min(w_out - 10, int(w_out * m_x)))
-                px_y = max(0, min(h_out - 10, int(h_out * m_y)))
-                px_w = max(10, min(w_out - px_x, int(w_out * m_w)))
-                px_h = max(10, min(h_out - px_y, int(h_out * m_h)))
+                px_x = (max(0, min(w_out - 10, int(w_out * m_x))) // 2) * 2
+                px_y = (max(0, min(h_out - 10, int(h_out * m_y))) // 2) * 2
+                px_w = (max(10, min(w_out - px_x, int(w_out * m_w))) // 2) * 2
+                px_h = (max(10, min(h_out - px_y, int(h_out * m_h))) // 2) * 2
+                
+                # Cap boxblur radius to prevent FFmpeg crash for small dimensions
+                max_allowed = min(px_w // 4, px_h // 4)
+                blur_radius = max(1, min(max_allowed, int(m_opacity * 30)))
                 
                 next_grid = f"[masked_seq_{idx}]"
                 filters.append(
@@ -397,7 +414,7 @@ class RenderService:
         
         logger.info(f"FFmpeg render command: {' '.join(cmd)}")
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True)
             logger.info("Video rendering completed successfully.")
             return output_path
         except subprocess.CalledProcessError as e:

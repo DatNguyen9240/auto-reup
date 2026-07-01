@@ -608,7 +608,7 @@ async function submitJob(e) {
                 normalized_url: item.normalized_url,
                 platform: item.platform,
                 selected_outputs: selected_outputs.length > 0 ? selected_outputs : null,
-                logo_position: document.getElementById('logo_position')?.value || 'top_center',
+                logo_position: document.getElementById('logo_position')?.value || 'top_left',
                 logo_layout: window.logoLayout || null,
                 ...cfg
             }

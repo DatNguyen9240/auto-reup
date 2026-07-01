@@ -123,9 +123,9 @@ class SegmentUpdateRequest(BaseModel):
 
 class SubtitleLayoutRequest(BaseModel):
     subtitle_x_percent: float = 0.08
-    subtitle_y_percent: float = 0.72
+    subtitle_y_percent: float = 0.56
     subtitle_width_percent: float = 0.84
-    subtitle_height_percent: float = 0.11
+    subtitle_height_percent: float = 0.08
     subtitle_bg_opacity: float = 0.42
     background_opacity: Optional[float] = None
     preset: str = "custom"
@@ -136,6 +136,10 @@ class SubtitleLayoutRequest(BaseModel):
     asset_height_percent: Optional[float] = None
     asset_opacity: Optional[float] = 1.0
     asset_color: Optional[str] = None
+    logo_x_percent: Optional[float] = None
+    logo_y_percent: Optional[float] = None
+    logo_width_percent: Optional[float] = None
+    logo_height_percent: Optional[float] = None
     blur_masks: Optional[List[Dict[str, Any]]] = None
     fb_reels_subtitle_layout: Optional[Dict[str, Any]] = None
     yt_shorts_subtitle_layout: Optional[Dict[str, Any]] = None
@@ -184,6 +188,18 @@ def _save_subtitle_layout_snapshot(job: Job, req: SubtitleLayoutRequest) -> Dict
             "color": req.asset_color or "#000000"
         }
         
+    if req.logo_x_percent is not None and req.logo_y_percent is not None:
+        if req.logo_x_percent == -1 and req.logo_y_percent == -1:
+            snapshot["logo"] = ""
+            snapshot["logo_layout"] = None
+        else:
+            snapshot["logo_layout"] = {
+                "x_percent": req.logo_x_percent,
+                "y_percent": req.logo_y_percent,
+                "width_percent": req.logo_width_percent,
+                "height_percent": req.logo_height_percent
+            }
+
     if req.blur_masks is not None:
         snapshot["blur_masks"] = req.blur_masks
         
@@ -210,23 +226,43 @@ def job_output_dir(job: Job) -> Path:
 pipeline_semaphore = threading.Semaphore(settings.max_concurrent_jobs)
 
 def resolve_logo_path(logo: Optional[str], channel_id: Optional[str] = None) -> Optional[Path]:
+    # 1. Priority: If channel_id is provided, check the page directory first for custom logo files
+    if channel_id:
+        try:
+            channels = load_channels_data()
+            chan = next((c for c in channels if c.get("id") == channel_id), None)
+            if chan:
+                chan_dir = resolve_channel_path(chan.get("name"), chan.get("path"))
+                name = chan.get("name")
+                for candidate in ["logo.png", "logo.jpg", f"logo_{channel_id}.png", f"logo_{channel_id}.jpg", f"{name}.png", f"{name}.jpg"]:
+                    # Try assets subfolder first, then root of channel dir
+                    p_assets = chan_dir / "assets" / candidate
+                    if p_assets.exists() and p_assets.is_file():
+                        return p_assets
+                    p_root = chan_dir / candidate
+                    if p_root.exists() and p_root.is_file():
+                        return p_root
+        except Exception as e:
+            logger.error(f"Error checking page-specific logo file: {e}")
+
+    # 2. Fallback: Resolve custom logo string if provided
     if logo:
-        # 1. Global overlay
+        # A. Global overlay
         overlay_path = PROJECT_ROOT / "examples" / "overlay" / logo
         if overlay_path.exists() and overlay_path.is_file():
             return overlay_path
             
-        # 2. Absolute path
+        # B. Absolute path
         logo_path = Path(logo)
         if logo_path.is_absolute() and logo_path.exists():
             return logo_path
             
-        # 3. Relative to project root
+        # C. Relative to project root
         proj_path = PROJECT_ROOT / logo
         if proj_path.exists() and proj_path.is_file():
             return proj_path
             
-        # 4. Relative to channel folder if channel_id is provided
+        # D. Relative to channel folder if channel_id is provided
         if channel_id:
             try:
                 channels = load_channels_data()
@@ -243,6 +279,7 @@ def resolve_logo_path(logo: Optional[str], channel_id: Optional[str] = None) -> 
             except Exception as e:
                 logger.error(f"Failed resolving channel-specific logo: {e}")
             
+    # 3. Fallback: Check if channel has a specific logo name registered
     if channel_id:
         try:
             channels = load_channels_data()
@@ -256,21 +293,8 @@ def resolve_logo_path(logo: Optional[str], channel_id: Optional[str] = None) -> 
                     p_logo_abs = Path(p_logo)
                     if p_logo_abs.is_absolute() and p_logo_abs.exists():
                         return p_logo_abs
-                name = chan.get("name")
-                # Also try looking inside the channel directory directly
-                chan_dir = resolve_channel_path(chan.get("name"), chan.get("path"))
-                for candidate in [f"logo_{channel_id}.png", f"logo_{channel_id}.jpg", f"{name}.png", f"{name}.jpg", "logo.png", "logo.jpg"]:
-                    p1 = chan_dir / candidate
-                    if p1.exists() and p1.is_file():
-                        return p1
-                    p2 = chan_dir / "assets" / candidate
-                    if p2.exists() and p2.is_file():
-                        return p2
-                    p3 = PROJECT_ROOT / "examples" / "overlay" / candidate
-                    if p3.exists() and p3.is_file():
-                        return p3
         except Exception as e:
-            logger.error(f"Error checking channel logo: {e}")
+            logger.error(f"Error checking channel logo fallback: {e}")
             
     return None
 
@@ -436,30 +460,8 @@ def run_pipeline_in_thread(
                     ocr_crop_bottom_ratio=ocr_crop_bottom_ratio,
                 ))
                 
-                # Copy output to central outputs folder
-                job = store.load_job(job_id)
-                if job and job.status == "completed" and job.output_path:
-                    import shutil
-                    if settings.default_export_path:
-                        output_dir = Path(settings.default_export_path)
-                    else:
-                        output_dir = PROJECT_ROOT / "outputs" / "Completed"
-                    output_dir = output_dir / job_id
-                    output_dir.mkdir(parents=True, exist_ok=True)
-                    
-                    src_video = Path(job.output_path)
-                    safe_stem = re.sub(r'[^a-zA-Z0-9_ -]', '_', src_video.parent.name.replace("job_", "").replace("job_url_", ""))
-                    dest_video = output_dir / f"{safe_stem}_vietnam.mp4"
-                    
-                    if src_video.exists():
-                        shutil.copy2(src_video, dest_video)
-                        logger.info(f"Automatically saved final video to outputs: {dest_video}")
-                        
-                    src_caption = src_video.parent / "caption.txt"
-                    if src_caption.exists():
-                        dest_caption = output_dir / "caption.txt"
-                        shutil.copy2(src_caption, dest_caption)
-                        logger.info(f"Automatically saved caption to outputs: {dest_caption}")
+                # Pipeline handles all exports and cleanup directly now
+                pass
             finally:
                 loop.close()
     except Exception as e:
@@ -534,6 +536,17 @@ def get_preview_video(job_id: str):
     if not candidates:
         raise HTTPException(status_code=404, detail="Preview video is not ready yet")
     return FileResponse(candidates[0])
+
+@app.get("/api/jobs/{job_id}/logo")
+def get_job_logo(job_id: str):
+    job = store.load_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found")
+    snapshot = job.config_snapshot or {}
+    logo_path = resolve_logo_path(snapshot.get("logo"), snapshot.get("channel_id") or job.channel_id)
+    if not logo_path or not logo_path.exists() or not logo_path.is_file():
+        raise HTTPException(status_code=404, detail="Logo not found")
+    return FileResponse(logo_path)
 
 @app.post("/api/jobs/{job_id}/subtitle-layout")
 async def save_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
@@ -672,14 +685,9 @@ def rerender_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
             asset_path = resolve_logo_path(asset, snapshot.get("channel_id"))
 
         # Resolve format target specs
-        out_format = "fb_reels"
         selected_outputs = snapshot.get("selected_outputs") or []
-        if selected_outputs:
-            out_format = selected_outputs[0]
-            
-        w_out, h_out = (1920, 1080) if out_format == "yt_video" else (1080, 1920)
-        reframe_mode = snapshot.get(f"{out_format}_reframe_mode", "keep_original")
-        crop_layout = snapshot.get(f"{out_format}_crop")
+        if not selected_outputs:
+            selected_outputs = ["fb_reels"]
 
         job.status = "running"
         job.current_step = "render"
@@ -689,40 +697,112 @@ def rerender_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
         store.save_job(job)
         running_jobs.add(job_id)
 
-        final_video = output_dir / "final.mp4"
-        temp_video = output_dir / "final_layout_tmp.mp4"
-        if temp_video.exists():
-            temp_video.unlink(missing_ok=True)
-        runner.render_service.render(
-            video_path=dest_video,
-            audio_path=audio_path,
-            srt_path=output_srt,
-            output_path=temp_video,
-            metadata=metadata,
-            logo_path=logo_path,
-            mask_subtitle=bool(snapshot.get("mask", True)),
-            render_subtitles=bool(snapshot.get("subtitles_enabled", True)),
-            subtitle_layout=normalized["layout"],
-            subtitle_cover_mode="text_box_only",
-            subtitle_bg_opacity=normalized["opacity"],
-            w_out=w_out,
-            h_out=h_out,
-            reframe_mode=reframe_mode,
-            crop_layout=crop_layout,
-            logo_position=snapshot.get("logo_position", "top_center"),
-            logo_layout=snapshot.get("logo_layout"),
-            asset_path=asset_path,
-            asset_layout=snapshot.get("asset_layout"),
-            blur_masks=snapshot.get("blur_masks", [])
-        )
-        os.replace(temp_video, final_video)
+        # Resolve Page/Completed export folder
+        channel_id = snapshot.get("channel_id") or job.channel_id
+        completed_dir = None
+        if channel_id and channel_id != "default":
+            channels = load_channels_data()
+            chan = next((c for c in channels if c.get("id") == channel_id), None)
+            if chan:
+                chan_name = chan.get("name", "UnknownChannel")
+                chan_path = chan.get("path", "").strip()
+                if chan_path:
+                    p = Path(chan_path)
+                    if not p.is_absolute():
+                        p = PROJECT_ROOT / p
+                    completed_dir = p / job_id
+                else:
+                    completed_dir = PROJECT_ROOT / "outputs" / chan_name / job_id
+                    
+        if not completed_dir:
+            if settings.default_export_path:
+                completed_dir = Path(settings.default_export_path) / job_id
+            else:
+                completed_dir = PROJECT_ROOT / "outputs" / "Completed" / job_id
+                
+        completed_dir.mkdir(parents=True, exist_ok=True)
+
+        # Loop through all selected formats and render
+        for out in selected_outputs:
+            if out == "yt_video":
+                w_out, h_out = 1920, 1080
+                filename = "yt_video_16x9.mp4"
+            elif out == "yt_shorts":
+                w_out, h_out = 1080, 1920
+                filename = "yt_shorts_9x16.mp4"
+            else:
+                w_out, h_out = 1080, 1920
+                filename = "fb_reels_9x16.mp4"
+
+            reframe_mode = "blur_background"
+            crop_layout = None
+
+            temp_video = output_dir / f"temp_{filename}"
+            if temp_video.exists():
+                temp_video.unlink(missing_ok=True)
+
+            runner.render_service.render(
+                video_path=dest_video,
+                audio_path=audio_path,
+                srt_path=output_srt,
+                output_path=temp_video,
+                metadata=metadata,
+                logo_path=logo_path,
+                mask_subtitle=bool(snapshot.get("mask", True)),
+                render_subtitles=bool(snapshot.get("subtitles_enabled", True)),
+                subtitle_layout=snapshot.get(f"{out}_subtitle_layout") or normalized["layout"],
+                subtitle_cover_mode="text_box_only",
+                subtitle_bg_opacity=normalized["opacity"],
+                w_out=w_out,
+                h_out=h_out,
+                reframe_mode=reframe_mode,
+                crop_layout=crop_layout,
+                logo_position=snapshot.get("logo_position", "top_left"),
+                logo_layout=snapshot.get("logo_layout"),
+                asset_path=asset_path,
+                asset_layout=snapshot.get("asset_layout"),
+                blur_masks=snapshot.get("blur_masks", [])
+            )
+
+            # Move to export directory
+            dest_video_path = completed_dir / filename
+            if dest_video_path.exists():
+                dest_video_path.unlink()
+            import shutil
+            shutil.move(str(temp_video), str(dest_video_path))
+
+            # Reference the exported video path in job outputs
+            if out not in job.outputs:
+                from datetime import datetime
+                job.outputs[out] = {
+                    "output_type": out,
+                    "width": w_out,
+                    "height": h_out,
+                    "duration": metadata.get("duration", 0),
+                    "created_at": datetime.utcnow().isoformat()
+                }
+            job.outputs[out]["file_path"] = str(dest_video_path.resolve())
+            job.outputs[out]["render_status"] = "completed"
+
+            if not job.output_path or out == selected_outputs[0]:
+                job.output_path = str(dest_video_path.resolve())
+
+        # Copy srt files to export dir if they exist
+        input_srt = work_dir / "input.srt"
+        if input_srt.exists():
+            shutil.copy2(input_srt, completed_dir / "input.srt")
+        if output_srt.exists():
+            shutil.copy2(output_srt, completed_dir / "output.srt")
+
+        # Delete intermediate output folder in projects directory
+        if output_dir.exists():
+            shutil.rmtree(output_dir, ignore_errors=True)
 
         job = store.load_job(job_id) or job
         job.status = "completed"
         job.current_step = "metadata"
         job.steps["render"] = "completed"
         job.steps["metadata"] = "completed"
-        job.output_path = str(final_video.resolve())
         store.save_job(job)
         return {"status": "completed", "message": "Video re-rendered with new subtitle layout", "layout": normalized["layout"]}
     except HTTPException:
@@ -1109,7 +1189,10 @@ def publish_job_to_channel(job_id: str, req: PublishRequest):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     if job.status != "completed":
-        job.channel_id = None if req.channel_id == "default" else req.channel_id
+        target_channel = None if req.channel_id == "default" else req.channel_id
+        job.channel_id = target_channel
+        if job.config_snapshot is not None:
+            job.config_snapshot["channel_id"] = target_channel
         store.save_job(job)
         return {
             "status": "success",

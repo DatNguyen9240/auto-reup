@@ -16,7 +16,8 @@ let currentFilterChannelId = localStorage.getItem('currentFilterChannelId') || '
 const VIEWS = {
     dashboard: 'views/dashboard.html',
     search: 'views/search.html',
-    channels: 'views/channels.html'
+    channels: 'views/channels.html',
+    config: 'views/config.html'
 };
 
 let pollingTimeout = null;
@@ -70,30 +71,32 @@ async function switchTab(tab) {
     const btnDashboard = document.getElementById('btn-tab-dashboard');
     const btnSearch = document.getElementById('btn-tab-search');
     const btnChannels = document.getElementById('btn-tab-channels');
+    const btnConfig = document.getElementById('btn-tab-config');
     
-    if (btnDashboard) {
-        btnDashboard.className = tab === 'dashboard' 
-            ? "px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 text-white transition-all" 
-            : "px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all";
-    }
-    if (btnSearch) {
-        btnSearch.className = tab === 'search' 
-            ? "px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 text-white transition-all" 
-            : "px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all";
-    }
-    if (btnChannels) {
-        btnChannels.className = tab === 'channels' 
-            ? "px-4 py-2 text-sm font-semibold rounded-lg bg-white/10 text-white transition-all" 
-            : "px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all";
+    const tabs = {
+        dashboard: btnDashboard,
+        search: btnSearch,
+        channels: btnChannels,
+        config: btnConfig
+    };
+    
+    for (const [t, btn] of Object.entries(tabs)) {
+        if (btn) {
+            if (t === tab) {
+                btn.className = "w-full text-left px-3 py-2 text-xs font-semibold rounded-lg bg-white/10 text-white transition-all flex items-center gap-2";
+            } else {
+                btn.className = "w-full text-left px-3 py-2 text-xs font-semibold rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-all flex items-center gap-2";
+            }
+        }
     }
 
-    // Toggle sidebar visibility - only show on dashboard page
-    const sidebar = document.getElementById('sidebar-container');
-    if (sidebar) {
+    // Toggle sidebar create-job section visibility
+    const createJobSection = document.getElementById('sidebar-create-job-section');
+    if (createJobSection) {
         if (tab === 'dashboard') {
-            sidebar.classList.remove('hidden');
+            createJobSection.classList.remove('hidden');
         } else {
-            sidebar.classList.add('hidden');
+            createJobSection.classList.add('hidden');
         }
     }
 
@@ -121,6 +124,8 @@ async function switchTab(tab) {
                 }
             } else if (tab === 'channels') {
                 await initChannelsView();
+            } else if (tab === 'config') {
+                await loadConfigTab();
             }
             
             // Populate dynamic selects
@@ -405,12 +410,21 @@ function updatePipelineSteps(job) {
 
 // Load subtitles transcript list inside modal
 async function loadTranscript(jobId) {
+    const container = document.getElementById('transcript-container');
+    if (!container) return;
     try {
         const response = await fetch(`/api/jobs/${jobId}/transcript`);
+        if (!response.ok) {
+            container.innerHTML = `
+                <div class="text-[10px] text-slate-500 italic text-center py-4 bg-slate-900/20 border border-dashed border-white/5 rounded-xl">
+                    Chưa tạo được danh sách phụ đề cho Job này.
+                </div>
+            `;
+            selectedSegments = [];
+            return;
+        }
         const data = await response.json();
         selectedSegments = data;
-        
-        const container = document.getElementById('transcript-container');
         container.innerHTML = '';
         
         data.forEach((seg, idx) => {
@@ -449,7 +463,10 @@ async function loadAIcaption(jobId) {
     try {
         const response = await fetch(`/api/jobs/${jobId}/caption`);
         const data = await response.json();
-        document.getElementById('caption-textarea').value = data.content || '';
+        const textarea = document.getElementById('caption-textarea');
+        if (textarea) {
+            textarea.value = data.content || '';
+        }
     } catch (err) {
         console.error("Failed to load caption:", err);
     }
@@ -458,9 +475,11 @@ async function loadAIcaption(jobId) {
 // Copy AI captions to clipboard
 function copyCaption() {
     const textarea = document.getElementById('caption-textarea');
-    textarea.select();
-    document.execCommand('copy');
-    alert('Đã copy caption vào clipboard!');
+    if (textarea) {
+        textarea.select();
+        document.execCommand('copy');
+        alert('Đã copy caption vào clipboard!');
+    }
 }
 
 // Render files list under local tree library column
@@ -1229,7 +1248,7 @@ function setupQueueDragNDrop() {
 }
 
 // --- Manual subtitle layout preview flow ---
-const DEFAULT_SUBTITLE_LAYOUT = { x: 0.08, y: 0.72, width: 0.84, height: 0.11 };
+const DEFAULT_SUBTITLE_LAYOUT = { x: 0.08, y: 0.57, width: 0.84, height: 0.08 };
 let subtitleLayoutEditorReady = false;
 let subtitleLayoutEditorListenersBound = false;
 let subtitleLayoutEditorJobId = null;
@@ -1269,6 +1288,71 @@ let activeLayoutFormat = 'fb_reels';
 let formatSubtitleLayouts = {};
 let formatCrops = {};
 
+let logoRemovedForThisJob = false;
+
+function loadJobLogoPreview(job) {
+    const logoDiv = document.getElementById('subtitle-logo-preview');
+    const logoImg = document.getElementById('subtitle-logo-preview-img');
+    if (!logoDiv || !logoImg) return;
+    
+    logoDiv.classList.add('hidden');
+    logoImg.src = '';
+    
+    logoImg.src = `/api/jobs/${job.job_id}/logo?t=${Date.now()}`;
+    
+    logoImg.onload = () => {
+        logoDiv.classList.remove('hidden');
+        
+        const snapshot = job.config_snapshot || {};
+        const logoLayout = snapshot.logo_layout || null;
+        
+        // Initialize window.logoLayout so drag state is preserved
+        window.logoLayout = logoLayout;
+        
+        logoDiv.style.left = '';
+        logoDiv.style.right = '';
+        logoDiv.style.top = '';
+        logoDiv.style.bottom = '';
+        logoDiv.style.transform = '';
+        
+        if (logoLayout && logoLayout.x_percent !== undefined) {
+            logoDiv.style.left = `${logoLayout.x_percent * 100}%`;
+            logoDiv.style.top = `${logoLayout.y_percent * 100}%`;
+            if (logoLayout.width_percent) {
+                logoDiv.style.width = `${logoLayout.width_percent * 100}%`;
+            } else {
+                logoDiv.style.width = '40px';
+            }
+            if (logoLayout.height_percent) {
+                logoDiv.style.height = `${logoLayout.height_percent * 100}%`;
+            } else {
+                logoDiv.style.height = '25px';
+            }
+        } else {
+            // Reset to default dimensions
+            logoDiv.style.width = '40px';
+            logoDiv.style.height = '25px';
+            
+            // If active layout format is vertical (9:16) where 16:9 landscape is centered,
+            // place default logo at the top-left of the original video (left: 6%, top: 36%)
+            if (activeLayoutFormat === 'yt_video') {
+                logoDiv.style.left = '2.5%';
+                logoDiv.style.top = '2.5%';
+                window.logoLayout = { x_percent: 0.025, y_percent: 0.025 };
+            } else {
+                logoDiv.style.left = '2.5%';
+                logoDiv.style.top = '35.5%';
+                window.logoLayout = { x_percent: 0.025, y_percent: 0.355 };
+            }
+        }
+    };
+    
+    logoImg.onerror = () => {
+        logoDiv.classList.add('hidden');
+        window.logoLayout = null;
+    };
+}
+
 function switchSubtitleFormat(fmt) {
     if (!currentSubtitleJob) return;
     activeLayoutFormat = fmt;
@@ -1293,7 +1377,7 @@ function switchSubtitleFormat(fmt) {
 
     const isInputHorizontal = currentSubtitleJob.input_aspect_type === 'horizontal';
     const isTargetVertical = (fmt === 'fb_reels' || fmt === 'yt_shorts');
-    const reframeMode = currentSubtitleJob.config_snapshot?.[`${fmt}_reframe_mode`] || 'manual_crop';
+    const reframeMode = currentSubtitleJob.config_snapshot?.[`${fmt}_reframe_mode`] || 'blur_background';
     const showManualCrop = isInputHorizontal && isTargetVertical && (reframeMode === 'manual_crop');
 
     if (showManualCrop) {
@@ -1328,13 +1412,16 @@ function switchSubtitleFormat(fmt) {
         }
     }
 
-    const defaultLayout = (fmt === 'yt_shorts')
-        ? { x: 0.08, y: 0.60, width: 0.84, height: 0.11 }
-        : { x: 0.08, y: 0.72, width: 0.84, height: 0.11 };
+    const defaultLayout = (fmt === 'yt_video')
+        ? { x: 0.08, y: 0.75, width: 0.84, height: 0.08 }
+        : { x: 0.08, y: 0.57, width: 0.84, height: 0.08 };
         
     const savedLayout = formatSubtitleLayouts[fmt] || currentSubtitleJob.config_snapshot?.[`${fmt}_subtitle_layout`] || currentSubtitleJob.config_snapshot?.subtitle_layout || defaultLayout;
     subtitleLayoutState = { ...savedLayout };
     applySubtitleLayoutBox(subtitleLayoutState);
+    
+    // Also update logo preview coordinates based on layout format change
+    loadJobLogoPreview(currentSubtitleJob);
 }
 
 function updateCropShades(leftPercent) {
@@ -1412,9 +1499,9 @@ function updateSubtitleLayoutSummary(job) {
 }
 
 function resetSubtitleLayoutBox() {
-    const defaultLayout = (activeLayoutFormat === 'yt_shorts')
-        ? { x: 0.08, y: 0.60, width: 0.84, height: 0.11 }
-        : { x: 0.08, y: 0.72, width: 0.84, height: 0.11 };
+    const defaultLayout = (activeLayoutFormat === 'yt_video')
+        ? { x: 0.08, y: 0.75, width: 0.84, height: 0.08 }
+        : { x: 0.08, y: 0.57, width: 0.84, height: 0.08 };
     subtitleLayoutState = { ...defaultLayout, background_opacity: subtitleLayoutState.background_opacity ?? 0.20, preset: 'custom' };
     applySubtitleLayoutBox(subtitleLayoutState);
     if (activeLayoutFormat) {
@@ -1472,9 +1559,14 @@ async function onChangeEditorChannel(channelId) {
             body: JSON.stringify({ channel_id: channelId })
         });
         if (res.ok) {
-            currentSubtitleJob.channel_id = channelId === 'default' ? null : channelId;
+            const newChanId = channelId === 'default' ? null : channelId;
+            currentSubtitleJob.channel_id = newChanId;
+            if (currentSubtitleJob.config_snapshot) {
+                currentSubtitleJob.config_snapshot.channel_id = newChanId;
+            }
             showToast("Đã cập nhật kênh đầu ra thành công!", "success");
             await loadJobs();
+            loadJobLogoPreview(currentSubtitleJob);
         } else {
             showToast("Lỗi cập nhật kênh đầu ra!", "error");
         }
@@ -1497,6 +1589,7 @@ function setupSubtitleLayoutEditor(job) {
     if (isNewEditorJob) {
         subtitleLayoutEditorJobId = job.job_id;
         currentSubtitleJob = job;
+        logoRemovedForThisJob = false;
         
         const editorChannelSelect = document.getElementById('editor-channel-select');
         if (editorChannelSelect) {
@@ -1542,44 +1635,6 @@ function setupSubtitleLayoutEditor(job) {
         
         switchSubtitleFormat(activeLayoutFormat);
         
-        // Populate inputs if saved in snapshot
-        const selectAsset = document.getElementById('subtitle-asset-select');
-        const opacityInputAsset = document.getElementById('subtitle-asset-opacity');
-        const assetEl = document.getElementById('subtitle-asset-box');
-        
-        const savedAsset = job.config_snapshot?.asset || '';
-        const savedAssetLayout = job.config_snapshot?.asset_layout || { x_percent: 0.40, y_percent: 0.08, width_percent: 0.20, height_percent: 0.08, opacity: 1.0 };
-        
-        subtitleAssetBoxState = { ...savedAssetLayout };
-        
-        // Dynamically load assets (combines global and channel-specific folders)
-        if (selectAsset) {
-            selectAsset.innerHTML = '<option value="">Không sử dụng</option>';
-            fetch(`/api/jobs/${job.job_id}/assets`)
-                .then(r => r.json())
-                .then(assets => {
-                    (assets || []).forEach(logo => {
-                        const opt = new Option(logo, logo);
-                        selectAsset.add(opt);
-                    });
-                    selectAsset.value = savedAsset;
-                    onChangeSubtitleAsset(savedAsset);
-                })
-                .catch(err => console.error("Failed to load job-specific assets:", err));
-        }
-        
-        if (opacityInputAsset) {
-            opacityInputAsset.value = subtitleAssetBoxState.opacity;
-            onChangeSubtitleAssetOpacity(subtitleAssetBoxState.opacity);
-        }
-        
-        if (assetEl) {
-            assetEl.style.left = `${subtitleAssetBoxState.x_percent * 100}%`;
-            assetEl.style.top = `${subtitleAssetBoxState.y_percent * 100}%`;
-            assetEl.style.width = `${subtitleAssetBoxState.width_percent * 100}%`;
-            assetEl.style.height = `${subtitleAssetBoxState.height_percent * 100}%`;
-        }
-        
         // Clear any existing blur boxes from previous jobs
         document.querySelectorAll('.subtitle-blur-box-instance').forEach(el => el.remove());
         subtitleBlurBoxes = [];
@@ -1608,6 +1663,9 @@ function setupSubtitleLayoutEditor(job) {
             const controls = document.getElementById('active-blur-controls');
             if (controls) controls.classList.add('hidden');
         }
+        
+        // Dynamically load and show logo preview
+        loadJobLogoPreview(job);
     }
     updateSubtitlePreviewText();
 
@@ -1676,92 +1734,114 @@ function setupSubtitleLayoutEditor(job) {
     // Setup draggable and resizable asset box in review screen
     const assetBox = document.getElementById('subtitle-asset-box');
     const assetResize = document.getElementById('subtitle-asset-resize');
-    if (assetBox && assetResize) {
-        let dragging = false;
-        let resizing = false;
+
+
+    // Setup draggable logo preview box & resizer
+    const logoBox = document.getElementById('subtitle-logo-preview');
+    const logoResize = document.getElementById('subtitle-logo-resize');
+    if (logoBox) {
+        let draggingLogo = false;
+        let resizingLogo = false;
         let startX = 0, startY = 0;
         let startLeft = 0, startTop = 0;
         let startWidth = 0, startHeight = 0;
         
-        assetBox.addEventListener('pointerdown', (e) => {
-            if (e.target === assetResize) return;
+        logoBox.addEventListener('pointerdown', (e) => {
+            if (e.target === logoResize || e.target.tagName.toLowerCase() === 'button') return;
             e.preventDefault();
             e.stopPropagation();
-            dragging = true;
+            draggingLogo = true;
             startX = e.clientX;
             startY = e.clientY;
-            startLeft = parseFloat(assetBox.style.left) || 0;
-            startTop = parseFloat(assetBox.style.top) || 0;
             
-            const onAssetMove = (moveEvent) => {
-                if (!dragging) return;
+            const rect = wrap.getBoundingClientRect();
+            const b = logoBox.getBoundingClientRect();
+            startLeft = b.left - rect.left;
+            startTop = b.top - rect.top;
+            
+            const onLogoMove = (moveEvent) => {
+                if (!draggingLogo) return;
                 const rect = wrap.getBoundingClientRect();
                 let deltaX = moveEvent.clientX - startX;
                 let deltaY = moveEvent.clientY - startY;
                 
-                let newLeftPx = (startLeft / 100) * rect.width + deltaX;
-                let newTopPx = (startTop / 100) * rect.height + deltaY;
+                let newLeftPx = startLeft + deltaX;
+                let newTopPx = startTop + deltaY;
                 
-                newLeftPx = Math.max(0, Math.min(rect.width - assetBox.offsetWidth, newLeftPx));
-                newTopPx = Math.max(0, Math.min(rect.height - assetBox.offsetHeight, newTopPx));
+                newLeftPx = Math.max(0, Math.min(rect.width - b.width, newLeftPx));
+                newTopPx = Math.max(0, Math.min(rect.height - b.height, newTopPx));
                 
-                subtitleAssetBoxState.x_percent = newLeftPx / rect.width;
-                subtitleAssetBoxState.y_percent = newTopPx / rect.height;
+                const xPct = newLeftPx / rect.width;
+                const yPct = newTopPx / rect.height;
                 
-                assetBox.style.left = `${subtitleAssetBoxState.x_percent * 100}%`;
-                assetBox.style.top = `${subtitleAssetBoxState.y_percent * 100}%`;
+                window.logoLayout = {
+                    ...window.logoLayout,
+                    x_percent: xPct,
+                    y_percent: yPct
+                };
+                
+                logoBox.style.transform = '';
+                logoBox.style.left = `${xPct * 100}%`;
+                logoBox.style.top = `${yPct * 100}%`;
             };
             
-            const onAssetUp = () => {
-                dragging = false;
-                document.removeEventListener('pointermove', onAssetMove);
-                document.removeEventListener('pointerup', onAssetUp);
+            const onLogoUp = () => {
+                draggingLogo = false;
+                document.removeEventListener('pointermove', onLogoMove);
+                document.removeEventListener('pointerup', onLogoUp);
             };
             
-            document.addEventListener('pointermove', onAssetMove);
-            document.addEventListener('pointerup', onAssetUp);
+            document.addEventListener('pointermove', onLogoMove);
+            document.addEventListener('pointerup', onLogoUp);
         });
-        
-        assetResize.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            resizing = true;
-            startX = e.clientX;
-            startY = e.clientY;
-            startWidth = parseFloat(assetBox.style.width) || 20;
-            startHeight = parseFloat(assetBox.style.height) || 8;
-            
-            const onAssetResizeMove = (moveEvent) => {
-                if (!resizing) return;
+
+        if (logoResize) {
+            logoResize.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                resizingLogo = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                
                 const rect = wrap.getBoundingClientRect();
-                let deltaX = moveEvent.clientX - startX;
-                let deltaY = moveEvent.clientY - startY;
+                const b = logoBox.getBoundingClientRect();
+                startWidth = b.width;
+                startHeight = b.height;
                 
-                let newWidthPx = (startWidth / 100) * rect.width + deltaX;
-                let newHeightPx = (startHeight / 100) * rect.height + deltaY;
+                const onLogoResizeMove = (moveEvent) => {
+                    if (!resizingLogo) return;
+                    let deltaX = moveEvent.clientX - startX;
+                    let deltaY = moveEvent.clientY - startY;
+                    
+                    let newWidthPx = startWidth + deltaX;
+                    let newHeightPx = startHeight + deltaY;
+                    
+                    newWidthPx = Math.max(20, Math.min(rect.width - (b.left - rect.left), newWidthPx));
+                    newHeightPx = Math.max(10, Math.min(rect.height - (b.top - rect.top), newHeightPx));
+                    
+                    const wPct = newWidthPx / rect.width;
+                    const hPct = newHeightPx / rect.height;
+                    
+                    window.logoLayout = {
+                        ...window.logoLayout,
+                        width_percent: wPct,
+                        height_percent: hPct
+                    };
+                    
+                    logoBox.style.width = `${wPct * 100}%`;
+                    logoBox.style.height = `${hPct * 100}%`;
+                };
                 
-                let leftPx = parseFloat(assetBox.style.left) / 100 * rect.width;
-                let topPx = parseFloat(assetBox.style.top) / 100 * rect.height;
+                const onLogoResizeUp = () => {
+                    resizingLogo = false;
+                    document.removeEventListener('pointermove', onLogoResizeMove);
+                    document.removeEventListener('pointerup', onLogoResizeUp);
+                };
                 
-                newWidthPx = Math.max(rect.width * 0.05, Math.min(rect.width - leftPx, newWidthPx));
-                newHeightPx = Math.max(rect.height * 0.02, Math.min(rect.height - topPx, newHeightPx));
-                
-                subtitleAssetBoxState.width_percent = newWidthPx / rect.width;
-                subtitleAssetBoxState.height_percent = newHeightPx / rect.height;
-                
-                assetBox.style.width = `${subtitleAssetBoxState.width_percent * 100}%`;
-                assetBox.style.height = `${subtitleAssetBoxState.height_percent * 100}%`;
-            };
-            
-            const onAssetResizeUp = () => {
-                resizing = false;
-                document.removeEventListener('pointermove', onAssetResizeMove);
-                document.removeEventListener('pointerup', onAssetResizeUp);
-            };
-            
-            document.addEventListener('pointermove', onAssetResizeMove);
-            document.addEventListener('pointerup', onAssetResizeUp);
-        });
+                document.addEventListener('pointermove', onLogoResizeMove);
+                document.addEventListener('pointerup', onLogoResizeUp);
+            });
+        }
     }
 }
 
@@ -1775,26 +1855,7 @@ async function continueRenderWithSubtitleLayout() {
         btn.innerText = 'Đang render...';
     }
     try {
-        // 1. Save Crops if horizontal input
-        if (currentSubtitleJob && currentSubtitleJob.input_aspect_type === 'horizontal') {
-            for (const fmt of ['fb_reels', 'yt_shorts']) {
-                if (formatCrops[fmt]) {
-                    const c = formatCrops[fmt];
-                    await fetch(`/api/jobs/${selectedJobId}/crop`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            output_type: fmt,
-                            reframe_mode: 'manual_crop',
-                            crop_x_percent: c.crop_x_percent,
-                            crop_y_percent: 0.0,
-                            crop_width_percent: 0.31625,
-                            crop_height_percent: 1.0
-                        })
-                    });
-                }
-            }
-        }
+        // Crops are no longer saved, default is always blur background
 
         const opacity = subtitleLayoutState.background_opacity;
         const layout = { ...subtitleLayoutState };
@@ -1802,8 +1863,7 @@ async function continueRenderWithSubtitleLayout() {
         const endpoint = subtitleLayoutSubmitMode === 'rerender'
             ? `/api/jobs/${selectedJobId}/rerender-subtitle-layout`
             : `/api/jobs/${selectedJobId}/subtitle-layout`;
-        const assetName = document.getElementById('subtitle-asset-select')?.value || '';
-        
+
         const payload = {
             subtitle_x_percent: layout.x,
             subtitle_y_percent: layout.y,
@@ -1813,6 +1873,16 @@ async function continueRenderWithSubtitleLayout() {
             background_opacity: opacity,
             preset: layout.preset || 'custom'
         };
+
+        if (logoRemovedForThisJob) {
+            payload.logo_x_percent = -1;
+            payload.logo_y_percent = -1;
+        } else if (window.logoLayout) {
+            payload.logo_x_percent = window.logoLayout.x_percent;
+            payload.logo_y_percent = window.logoLayout.y_percent;
+            payload.logo_width_percent = window.logoLayout.width_percent || 0.085;
+            payload.logo_height_percent = window.logoLayout.height_percent || 0.05;
+        }
         
         const mapLayout = (l) => {
             if (!l) return null;
@@ -1829,17 +1899,7 @@ async function continueRenderWithSubtitleLayout() {
         payload.yt_shorts_subtitle_layout = mapLayout(formatSubtitleLayouts.yt_shorts);
         payload.yt_video_subtitle_layout = mapLayout(formatSubtitleLayouts.yt_video);
         
-        if (assetName) {
-            payload.asset = assetName;
-            payload.asset_x_percent = subtitleAssetBoxState.x_percent;
-            payload.asset_y_percent = subtitleAssetBoxState.y_percent;
-            payload.asset_width_percent = subtitleAssetBoxState.width_percent;
-            payload.asset_height_percent = subtitleAssetBoxState.height_percent;
-            payload.asset_opacity = subtitleAssetBoxState.opacity;
-        } else {
-            payload.asset = "";
-        }
-        
+        payload.asset = "";
         payload.blur_masks = subtitleBlurBoxes;
         
         const resp = await fetch(endpoint, {
@@ -1880,6 +1940,23 @@ async function continueRenderWithSubtitleLayout() {
                 : 'Tiếp tục render video';
         }
     }
+}
+
+function setSubtitlePreviewSize(width) {
+    const wrap = document.getElementById('subtitle-preview-wrap');
+    if (!wrap) return;
+    wrap.style.maxWidth = `${width}px`;
+    
+    [200, 260, 340].forEach(w => {
+        const btn = document.getElementById(`btn-zoom-${w}`);
+        if (btn) {
+            if (w === width) {
+                btn.className = "px-2.5 py-0.5 text-[9px] rounded font-bold bg-purple-600/30 text-purple-200 border border-purple-500/20 transition-all";
+            } else {
+                btn.className = "px-2.5 py-0.5 text-[9px] rounded font-bold text-slate-400 hover:text-white transition-all";
+            }
+        }
+    });
 }
 
 async function openCompletedSubtitleLayoutEditor() {
@@ -2008,17 +2085,43 @@ async function openDetailPanel(jobId) {
             }
         }
 
-        if (freshJob.status === 'completed') {
+        const isFinished = !activeStatuses.has(freshJob.status) && freshJob.status !== 'created';
+        if (isFinished) {
             clearInterval(refreshInterval);
+            
+            // Show config override & transcript editing controls
             document.getElementById('detail-completed-section')?.classList.remove('hidden');
             updateSubtitleLayoutSummary(freshJob);
-            const player = document.getElementById('detail-video-player');
-            if (player) player.src = `/api/jobs/${selectedJobId}/video`;
+            
+            // Prefill configuration values from job config snapshot
+            const snapshot = freshJob.config_snapshot || {};
+            const detVoice = document.getElementById('detail-voice');
+            if (detVoice && snapshot.voice) detVoice.value = snapshot.voice;
+            const detRate = document.getElementById('detail-rate');
+            if (detRate && snapshot.rate) detRate.value = snapshot.rate;
+            const detPitch = document.getElementById('detail-pitch');
+            if (detPitch && snapshot.pitch) detPitch.value = snapshot.pitch;
+            const detBgm = document.getElementById('detail-bgm');
+            if (detBgm) detBgm.value = snapshot.bgm || '';
+            
+            // Show outputs list and set player source only if completed
+            const outputsWrap = document.getElementById('detail-outputs-list-wrap');
+            if (outputsWrap) {
+                if (freshJob.status === 'completed') {
+                    outputsWrap.classList.remove('hidden');
+                    const player = document.getElementById('detail-video-player');
+                    if (player) player.src = `/api/jobs/${selectedJobId}/video`;
+                    loadAIcaption(selectedJobId);
+                } else {
+                    outputsWrap.classList.add('hidden');
+                }
+            }
+            
             loadTranscript(selectedJobId);
-            loadAIcaption(selectedJobId);
-        } else if (freshJob.status === 'failed') {
-            clearInterval(refreshInterval);
-            showToast('Công việc đã kết thúc thất bại hoặc bị ngắt.', 'error');
+            
+            if (freshJob.status === 'failed') {
+                showToast('Công việc đã kết thúc thất bại hoặc bị ngắt.', 'error');
+            }
         }
     };
 
@@ -2441,16 +2544,7 @@ function renderOutputsList(job) {
             `;
         }
         
-        // Show Crop/Reframe button if target is 9:16 and input is horizontal
-        const isHorizontal = job.input_aspect_type === 'horizontal';
-        const isVerticalOutput = outType === 'fb_reels' || outType === 'yt_shorts';
-        if (isHorizontal && isVerticalOutput) {
-            buttonsHtml += `
-                <button onclick="openCropEditor('${job.job_id}', '${outType}')" class="bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 text-[10px] px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 transition-all active:scale-[0.98]">
-                    ✂️ Cắt 9:16
-                </button>
-            `;
-        }
+        // Manual crop is removed in favor of default blur background reframe
         
         buttonsHtml += `
             <button onclick="renderSpecificOutput('${job.job_id}', '${outType}')" class="bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 text-[10px] px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 transition-all active:scale-[0.98] ml-auto">
@@ -2462,45 +2556,51 @@ function renderOutputsList(job) {
         let metadataHtml = '';
         if (job.steps.metadata === 'completed') {
             if (outType === 'yt_shorts') {
+                const title = snapshot.youtube_shorts_title || "Video dịch tự động #shorts";
+                const desc = snapshot.youtube_shorts_description || "Video dịch & lồng tiếng bởi AutoTool Studio #shorts";
                 metadataHtml = `
                     <div class="mt-2 flex flex-col gap-2 border-t border-white/5 pt-2.5">
                         <div class="flex items-center justify-between">
                             <span class="text-[10px] text-slate-400 font-semibold uppercase">Tiêu đề YouTube Shorts</span>
-                            <button onclick="copyText(this, '${escapeHtml(snapshot.youtube_shorts_title || '')}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
+                            <button onclick="copyText(this, '${escapeHtml(title)}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
                         </div>
-                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300">${escapeHtml(snapshot.youtube_shorts_title || '')}</div>
+                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300">${escapeHtml(title)}</div>
                         
                         <div class="flex items-center justify-between">
                             <span class="text-[10px] text-slate-400 font-semibold uppercase">Mô tả Shorts</span>
-                            <button onclick="copyText(this, '${escapeHtml(snapshot.youtube_shorts_description || '')}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
+                            <button onclick="copyText(this, '${escapeHtml(desc)}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
                         </div>
-                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300 whitespace-pre-wrap">${escapeHtml(snapshot.youtube_shorts_description || '')}</div>
+                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300 whitespace-pre-wrap">${escapeHtml(desc)}</div>
                     </div>
                 `;
             } else if (outType === 'yt_video') {
+                const title = snapshot.youtube_video_title || "Video dịch & lồng tiếng tự động bởi AutoTool Studio";
+                const desc = snapshot.youtube_video_description || "Video dịch & lồng tiếng tự động từ tiếng Trung sang tiếng Việt bằng AutoTool.";
                 metadataHtml = `
                     <div class="mt-2 flex flex-col gap-2 border-t border-white/5 pt-2.5">
                         <div class="flex items-center justify-between">
                             <span class="text-[10px] text-slate-400 font-semibold uppercase">Tiêu đề YouTube Video</span>
-                            <button onclick="copyText(this, '${escapeHtml(snapshot.youtube_video_title || '')}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
+                            <button onclick="copyText(this, '${escapeHtml(title)}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
                         </div>
-                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300">${escapeHtml(snapshot.youtube_video_title || '')}</div>
+                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300">${escapeHtml(title)}</div>
                         
                         <div class="flex items-center justify-between">
                             <span class="text-[10px] text-slate-400 font-semibold uppercase">Mô tả YouTube Video</span>
-                            <button onclick="copyText(this, '${escapeHtml(snapshot.youtube_video_description || '')}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
+                            <button onclick="copyText(this, '${escapeHtml(desc)}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
                         </div>
-                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300 whitespace-pre-wrap">${escapeHtml(snapshot.youtube_video_description || '')}</div>
+                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300 whitespace-pre-wrap">${escapeHtml(desc)}</div>
                     </div>
                 `;
             } else if (outType === 'fb_reels') {
+                const caption = snapshot.facebook_caption || "Video Việt hóa & lồng tiếng tự động bởi AutoTool";
+                const hashtags = snapshot.facebook_hashtags || "#autotool #dichphim #reviewphim";
                 metadataHtml = `
                     <div class="mt-2 flex flex-col gap-2 border-t border-white/5 pt-2.5">
                         <div class="flex items-center justify-between">
                             <span class="text-[10px] text-slate-400 font-semibold uppercase">Caption Reels</span>
-                            <button onclick="copyText(this, '${escapeHtml(snapshot.facebook_caption || '')} ${escapeHtml(snapshot.facebook_hashtags || '')}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
+                            <button onclick="copyText(this, '${escapeHtml(caption)} ${escapeHtml(hashtags)}')" class="text-[9px] text-purple-400 font-bold hover:underline">Copy</button>
                         </div>
-                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300 whitespace-pre-wrap">${escapeHtml(snapshot.facebook_caption || '')} ${escapeHtml(snapshot.facebook_hashtags || '')}</div>
+                        <div class="bg-slate-950 border border-slate-900 rounded p-1.5 font-mono text-[10px] text-slate-300 whitespace-pre-wrap">${escapeHtml(caption)} ${escapeHtml(hashtags)}</div>
                     </div>
                 `;
             }
@@ -2562,7 +2662,7 @@ function openCropEditor(jobId, outputType) {
     if (!job) return;
     
     const snapshot = job.config_snapshot || {};
-    const reframeMode = snapshot[`${outputType}_reframe_mode`] || 'manual_crop';
+    const reframeMode = snapshot[`${outputType}_reframe_mode`] || 'blur_background';
     document.getElementById('crop-reframe-mode').value = reframeMode;
     toggleReframeMode(reframeMode);
     
@@ -2687,18 +2787,21 @@ async function checkApiKeysOnStartup() {
             const data = await response.json();
             if (!data.configured) {
                 // Main key is empty: highlight config button and alert
-                const btn = document.getElementById('btn-sidebar-keys');
+                const btn = document.getElementById('btn-tab-config');
                 if (btn) {
                     btn.classList.add('animate-pulse', 'border', 'border-purple-500', 'text-purple-300');
                 }
                 showToast("Cảnh báo: Chưa cấu hình Gemini API Key chính!", "error");
             }
             
-            // Prefill inputs
-            document.getElementById('gemini-key-1').value = data.gemini_api_key || '';
-            for (let i = 2; i <= 10; i++) {
-                const el = document.getElementById(`gemini-key-${i}`);
-                if (el) el.value = data[`gemini_api_key_${i}`] || '';
+            // Prefill inputs if they exist in DOM
+            const key1 = document.getElementById('gemini-key-1');
+            if (key1) {
+                key1.value = data.gemini_api_key || '';
+                for (let i = 2; i <= 10; i++) {
+                    const el = document.getElementById(`gemini-key-${i}`);
+                    if (el) el.value = data[`gemini_api_key_${i}`] || '';
+                }
             }
             const exportPathEl = document.getElementById('system-export-path');
             if (exportPathEl) exportPathEl.value = data.default_export_path || '';
@@ -2708,15 +2811,31 @@ async function checkApiKeysOnStartup() {
     }
 }
 
-function openKeysModal() {
-    console.log("openKeysModal called");
-    const modal = document.getElementById('keys-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-    } else {
-        console.error("Error: Element keys-modal not found!");
+async function loadConfigTab() {
+    try {
+        const response = await fetch('/api/config/key-check');
+        if (response.ok) {
+            const data = await response.json();
+            const key1 = document.getElementById('gemini-key-1');
+            if (key1) {
+                key1.value = data.gemini_api_key || '';
+                for (let i = 2; i <= 10; i++) {
+                    const el = document.getElementById(`gemini-key-${i}`);
+                    if (el) el.value = data[`gemini_api_key_${i}`] || '';
+                }
+            }
+            const exportPathEl = document.getElementById('system-export-path');
+            if (exportPathEl) exportPathEl.value = data.default_export_path || '';
+            
+            checkKeysStatus();
+        }
+    } catch (e) {
+        console.error("Failed to load config tab keys:", e);
     }
-    checkKeysStatus();
+}
+
+function openKeysModal() {
+    switchTab('config');
 }
 
 async function checkKeysStatus() {
@@ -2770,7 +2889,7 @@ async function checkKeysStatus() {
 }
 
 function closeKeysModal() {
-    document.getElementById('keys-modal').classList.add('hidden');
+    // No-op for compatibility
 }
 
 async function saveGeminiKeys() {
@@ -2806,12 +2925,12 @@ async function saveGeminiKeys() {
             showToast("Đã lưu cấu hình xoay tua API Keys thành công!", "success");
             
             // Remove pulse highlight from button if fixed
-            const btn = document.getElementById('btn-sidebar-keys');
+            const btn = document.getElementById('btn-tab-config');
             if (btn) {
                 btn.classList.remove('animate-pulse', 'border', 'border-purple-500', 'text-purple-300');
             }
             
-            closeKeysModal();
+            checkKeysStatus();
         } else {
             const err = await res.json();
             showToast(err.detail || "Không thể lưu API Keys", "error");
@@ -2955,30 +3074,7 @@ function saveLogoPosition() {
     closeLogoPositionModal();
 }
 
-let subtitleAssetBoxState = { x_percent: 0.40, y_percent: 0.08, width_percent: 0.20, height_percent: 0.08, opacity: 1.0 };
 
-function onChangeSubtitleAsset(assetName) {
-    const box = document.getElementById('subtitle-asset-box');
-    const opacityContainer = document.getElementById('subtitle-asset-opacity-container');
-    if (!box) return;
-    const span = box.querySelector('span');
-    if (assetName) {
-        box.classList.remove('hidden');
-        if (opacityContainer) opacityContainer.classList.add('hidden');
-        box.style.backgroundImage = `url('/api/assets/file?name=${encodeURIComponent(assetName)}&job_id=${selectedJobId || ''}')`;
-        box.style.backgroundSize = 'contain';
-        box.style.backgroundRepeat = 'no-repeat';
-        box.style.backgroundPosition = 'center';
-        if (span) span.style.display = 'none';
-        subtitleAssetBoxState.opacity = 1.0;
-        box.style.opacity = 1.0;
-    } else {
-        box.classList.add('hidden');
-        if (opacityContainer) opacityContainer.classList.add('hidden');
-        box.style.backgroundImage = '';
-        if (span) span.style.display = 'block';
-    }
-}
 
 function onChangeSubtitleAssetOpacity(opacity) {
     const box = document.getElementById('subtitle-asset-box');

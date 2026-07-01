@@ -82,6 +82,36 @@ class PipelineRunner:
             preview = preview[:87] + "..."
         logger.info(f"{action} [{index}/{total}] segment #{segment.id}: {preview}")
 
+    def _resolve_export_dir(self, job: Job) -> Path:
+        job_id = job.job_id
+        snapshot = job.config_snapshot or {}
+        channel_id = snapshot.get("channel_id") or job.channel_id
+        
+        if channel_id and channel_id != "default":
+            channels_file = self.projects_dir / "channels.json"
+            if channels_file.exists():
+                try:
+                    with open(channels_file, "r", encoding="utf-8") as f:
+                        channels = json.load(f)
+                    chan = next((c for c in channels if c.get("id") == channel_id), None)
+                    if chan:
+                        chan_name = chan.get("name", "UnknownChannel")
+                        chan_path = chan.get("path", "").strip()
+                        if chan_path:
+                            p = Path(chan_path)
+                            if not p.is_absolute():
+                                p = PROJECT_ROOT / p
+                            return p / job_id
+                        else:
+                            return PROJECT_ROOT / "outputs" / chan_name / job_id
+                except Exception as e:
+                    logger.error(f"Failed to resolve channel export path: {e}")
+                    
+        # Fallback to default completed path
+        if settings.default_export_path:
+            return Path(settings.default_export_path) / job_id
+        return PROJECT_ROOT / "outputs" / "Completed" / job_id
+
     def _get_dest_video(self, work_dir: Path) -> Path:
         """Safely resolves the input video path in the work directory."""
         matches = list(work_dir.glob("input.*"))
@@ -887,8 +917,8 @@ class PipelineRunner:
                         w_out, h_out = 1080, 1920
                         filename = "fb_reels_9x16.mp4"
                         
-                    reframe_mode = snapshot.get(f"{out}_reframe_mode", "keep_original")
-                    crop_layout = snapshot.get(f"{out}_crop")
+                    reframe_mode = "blur_background"
+                    crop_layout = None
                     
                     asset_path = None
                     asset = snapshot.get("asset")
@@ -919,31 +949,43 @@ class PipelineRunner:
                             h_out=h_out,
                             reframe_mode=reframe_mode,
                             crop_layout=crop_layout,
-                            logo_position=snapshot.get("logo_position", "top_center"),
+                            logo_position=snapshot.get("logo_position", "top_left"),
                             logo_layout=snapshot.get("logo_layout"),
                             asset_path=asset_path,
                             asset_layout=snapshot.get("asset_layout"),
                             blur_masks=snapshot.get("blur_masks", [])
                         )
                         
-                        # Copy completed render to the centralized Completed directory
-                        if settings.default_export_path:
-                            completed_dir = Path(settings.default_export_path)
-                        else:
-                            completed_dir = PROJECT_ROOT / "outputs" / "Completed"
-                        completed_dir = completed_dir / job_id
+                        # 1. Resolve output export folder (e.g. outputs/page_name/job_id/ or outputs/Completed/job_id/)
+                        completed_dir = self._resolve_export_dir(job)
                         completed_dir.mkdir(parents=True, exist_ok=True)
+                        
+                        # 2. Copy the final video to the export folder
                         dest_completed = completed_dir / filename
                         shutil.copy2(final_video, dest_completed)
                         
-                        job.outputs[out]["file_path"] = str(final_video)
+                        # 3. Reference the exported video path in job outputs
+                        job.outputs[out]["file_path"] = str(dest_completed.resolve())
                         job.outputs[out]["render_status"] = "completed"
                         
-                        # Set default job.output_path to the first rendered output for safety
+                        # Set default job.output_path to the first rendered output
                         if not job.output_path:
-                            job.output_path = str(final_video)
+                            job.output_path = str(dest_completed.resolve())
                             
-                        logger.info(f"Successfully rendered and centralized format: {out}")
+                        # 4. Copy srt files if they exist in work dir
+                        input_srt = work_dir / "input.srt"
+                        if input_srt.exists():
+                            shutil.copy2(input_srt, completed_dir / "input.srt")
+                        if output_srt.exists():
+                            shutil.copy2(output_srt, completed_dir / "output.srt")
+                            
+                        # 5. Delete duplicate final video from projects dir to save space
+                        try:
+                            final_video.unlink(missing_ok=True)
+                        except Exception as e:
+                            logger.warning(f"Failed to delete temp video in projects: {e}")
+                            
+                        logger.info(f"Successfully rendered format: {out}, exported to {dest_completed}")
                         
                     except Exception as render_err:
                         logger.error(f"Render failed for format {out}: {render_err}")
@@ -971,6 +1013,18 @@ class PipelineRunner:
                 youtube_video_title = "Video dịch & lồng tiếng tự động bởi AutoTool Studio"
                 youtube_video_description = "Video dịch & lồng tiếng tự động từ tiếng Trung sang tiếng Việt bằng AutoTool."
                 youtube_video_tags = "autotool, dịch phim, review phim"
+                
+                # Pre-populate snapshot with default values
+                snapshot = job.config_snapshot or {}
+                snapshot["facebook_caption"] = facebook_caption
+                snapshot["facebook_hashtags"] = facebook_hashtags
+                snapshot["youtube_shorts_title"] = youtube_shorts_title
+                snapshot["youtube_shorts_description"] = youtube_shorts_description
+                snapshot["youtube_shorts_tags"] = youtube_shorts_tags
+                snapshot["youtube_video_title"] = youtube_video_title
+                snapshot["youtube_video_description"] = youtube_video_description
+                snapshot["youtube_video_tags"] = youtube_video_tags
+                job.config_snapshot = snapshot
                 
                 # Try calling Gemini to generate highly catchy titles and hashtags contextually
                 if self.translator.client is not None:
@@ -1037,15 +1091,13 @@ class PipelineRunner:
                     f.write(f"=== YOUTUBE SHORTS ===\nTitle:\n{youtube_shorts_title}\nDescription:\n{youtube_shorts_description}\n\n")
                     f.write(f"=== YOUTUBE VIDEO ===\nTitle:\n{youtube_video_title}\nDescription:\n{youtube_video_description}\nTags:\n{youtube_video_tags}\n")
                     
-                if settings.default_export_path:
-                    completed_dir = Path(settings.default_export_path)
-                else:
-                    completed_dir = PROJECT_ROOT / "outputs" / "Completed"
-                completed_dir = completed_dir / job_id
+                completed_dir = self._resolve_export_dir(job)
                 completed_dir.mkdir(parents=True, exist_ok=True)
                 dest_completed_caption = completed_dir / "caption.txt"
                 try:
                     shutil.copy2(caption_file, dest_completed_caption)
+                    # Delete duplicate caption file in projects
+                    caption_file.unlink(missing_ok=True)
                 except Exception as copy_err:
                     logger.warning(f"Failed to copy caption to Completed folder: {copy_err}")
                     
@@ -1094,10 +1146,9 @@ class PipelineRunner:
         output_dir = job_dir / "output"
         
         if success:
-            # Delete specific intermediate files in work
+            # Delete specific non-rendering intermediate files in work
             intermediate_names = [
-                "audio.wav", "mixed_audio.wav", "transcript.json", "translated.json",
-                "metadata.json", "origin_metadata.json", "output.ass"
+                "output.ass"
             ]
             for name in intermediate_names:
                 p = work_dir / name
@@ -1107,13 +1158,12 @@ class PipelineRunner:
                     except Exception:
                         pass
                         
-            # Delete any input video files (like input.mp4, input.avi, etc.) in work
-            for p in work_dir.glob("input.*"):
-                if p.suffix.lower() != ".srt":
-                    try:
-                        p.unlink()
-                    except Exception:
-                        pass
+            # Delete output folder in projects since final videos are saved only in outputs folder
+            if output_dir.exists():
+                try:
+                    shutil.rmtree(output_dir, ignore_errors=True)
+                except Exception:
+                    pass
                         
             # Delete tts/ folder in work_dir
             tts_dir = work_dir / "tts"
