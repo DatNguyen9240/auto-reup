@@ -63,10 +63,6 @@
                 class="px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all">
                 Quản lý Page
             </button>
-            <button onclick="openKeysModal()" id="btn-tab-keys"
-                class="px-4 py-2 text-sm font-semibold rounded-lg hover:bg-white/5 text-slate-300 hover:text-white transition-all flex items-center gap-1">
-                ⚙️ Cấu hình Hệ thống
-            </button>
         </nav>
     </header>
 
@@ -316,6 +312,12 @@
                 <h3 class="font-outfit font-bold text-lg text-white mt-1" id="detail-job-title">Chi tiết công việc</h3>
             </div>
             <div class="flex items-center gap-2">
+                <button onclick="openKeysModal()" id="btn-detail-keys" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-[11px] rounded-lg transition-all flex items-center gap-1 shadow-sm border border-white/5">
+                    ⚙️ Cấu hình
+                </button>
+                <button onclick="deleteJob(selectedJobId)" id="btn-detail-delete" class="hidden px-3 py-1.5 bg-rose-600/25 hover:bg-rose-600 text-rose-300 font-semibold text-[11px] rounded-lg transition-all flex items-center gap-1 shadow-sm border border-rose-500/20">
+                    🗑️ Xóa Job
+                </button>
                 <button onclick="rerunDetailJob()" id="btn-detail-rerun" class="hidden px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-[11px] rounded-lg transition-all flex items-center gap-1 shadow-sm">
                     🔄 Chạy lại
                 </button>

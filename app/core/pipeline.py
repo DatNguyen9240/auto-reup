@@ -931,8 +931,9 @@ class PipelineRunner:
                             completed_dir = Path(settings.default_export_path)
                         else:
                             completed_dir = PROJECT_ROOT / "outputs" / "Completed"
+                        completed_dir = completed_dir / job_id
                         completed_dir.mkdir(parents=True, exist_ok=True)
-                        dest_completed = completed_dir / f"{job_id}_{filename}"
+                        dest_completed = completed_dir / filename
                         shutil.copy2(final_video, dest_completed)
                         
                         job.outputs[out]["file_path"] = str(final_video)
@@ -1040,8 +1041,9 @@ class PipelineRunner:
                     completed_dir = Path(settings.default_export_path)
                 else:
                     completed_dir = PROJECT_ROOT / "outputs" / "Completed"
+                completed_dir = completed_dir / job_id
                 completed_dir.mkdir(parents=True, exist_ok=True)
-                dest_completed_caption = completed_dir / f"{job_id}_caption.txt"
+                dest_completed_caption = completed_dir / "caption.txt"
                 try:
                     shutil.copy2(caption_file, dest_completed_caption)
                 except Exception as copy_err:

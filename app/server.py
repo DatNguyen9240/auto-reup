@@ -444,6 +444,7 @@ def run_pipeline_in_thread(
                         output_dir = Path(settings.default_export_path)
                     else:
                         output_dir = PROJECT_ROOT / "outputs" / "Completed"
+                    output_dir = output_dir / job_id
                     output_dir.mkdir(parents=True, exist_ok=True)
                     
                     src_video = Path(job.output_path)
@@ -456,7 +457,7 @@ def run_pipeline_in_thread(
                         
                     src_caption = src_video.parent / "caption.txt"
                     if src_caption.exists():
-                        dest_caption = output_dir / f"{safe_stem}_caption.txt"
+                        dest_caption = output_dir / "caption.txt"
                         shutil.copy2(src_caption, dest_caption)
                         logger.info(f"Automatically saved caption to outputs: {dest_caption}")
             finally:
@@ -866,14 +867,42 @@ def open_outputs_folder(req: Optional[OpenExplorerRequest] = None):
             if job and job.output_path:
                 src_video = Path(job.output_path)
                 safe_stem = re.sub(r'[^a-zA-Z0-9_ -]', '_', src_video.parent.name.replace("job_", "").replace("job_url_", ""))
-                dest_video = path / f"{safe_stem}_vietnam.mp4"
-                if dest_video.exists():
+                
+                # Check target output folder: either channel folder or Completed
+                out_dir = PROJECT_ROOT / "outputs" / "Completed"
+                if settings.default_export_path:
+                    out_dir = Path(settings.default_export_path)
+                    
+                if job.channel_id:
+                    channels = load_channels_data()
+                    current_chan = next((c for c in channels if c["id"] == job.channel_id), None)
+                    if current_chan:
+                        out_dir = resolve_channel_path(current_chan.get("name", "UnknownChannel"), current_chan.get("path"))
+                
+                # Check job subfolder first
+                job_dir = out_dir / req.job_id
+                dest_video = None
+                for filename in [f"{safe_stem}_vietnam.mp4", "fb_reels_9x16.mp4", "yt_shorts_9x16.mp4", "yt_video_16x9.mp4"]:
+                    test_path = job_dir / filename
+                    if test_path.exists():
+                        dest_video = test_path
+                        break
+                        
+                # Fallback to parent dir for old jobs
+                if not dest_video:
+                    dest_video = out_dir / f"{safe_stem}_vietnam.mp4"
+                    if not dest_video.exists():
+                        dest_video = None
+                        
+                if dest_video and dest_video.exists():
                     target_path = dest_video.resolve()
                     if sys.platform == "win32":
                         import subprocess
                         # Highlights the file inside Windows Explorer
                         subprocess.run(["explorer.exe", "/select,", str(target_path)])
                         return {"status": "success", "message": f"Đã mở và chọn file: {target_path.name}"}
+                elif job_dir.exists():
+                    target_path = job_dir.resolve()
         
         if sys.platform == "win32":
             os.startfile(str(target_path))
@@ -1092,29 +1121,30 @@ def publish_job_to_channel(job_id: str, req: PublishRequest):
     safe_stem = re.sub(r'[^a-zA-Z0-9_ -]', '_', src_video_path.parent.name.replace("job_", "").replace("job_url_", ""))
 
     default_dir = PROJECT_ROOT / "outputs" / "Completed"
-    current_dir = default_dir
+    current_dir = default_dir / job_id
     channels = load_channels_data()
 
     if job.channel_id:
         current_chan = next((c for c in channels if c["id"] == job.channel_id), None)
         if current_chan:
-            current_dir = resolve_channel_path(current_chan.get("name", "UnknownChannel"), current_chan.get("path"))
+            current_dir = resolve_channel_path(current_chan.get("name", "UnknownChannel"), current_chan.get("path")) / job_id
 
     target_channel_id = req.channel_id
     if target_channel_id == "default":
-        target_dir = default_dir
+        target_dir = default_dir / job_id
     else:
         target_chan = next((c for c in channels if c["id"] == target_channel_id), None)
         if not target_chan:
             raise HTTPException(status_code=404, detail="Target channel not found")
-        target_dir = resolve_channel_path(target_chan.get("name", "UnknownChannel"), target_chan.get("path"))
+        target_dir = resolve_channel_path(target_chan.get("name", "UnknownChannel"), target_chan.get("path")) / job_id
 
     target_dir.mkdir(parents=True, exist_ok=True)
     moved_files = []
 
-    if current_dir.exists():
+    # 1. New style: Job subfolder exists
+    if current_dir.exists() and current_dir.is_dir():
         for item in current_dir.iterdir():
-            if item.is_file() and (item.name.startswith(safe_stem) or item.name.startswith(f"job_{safe_stem}")):
+            if item.is_file():
                 dest_file = target_dir / item.name
                 if dest_file.exists():
                     try:
@@ -1127,6 +1157,32 @@ def publish_job_to_channel(job_id: str, req: PublishRequest):
                     moved_files.append(item.name)
                 except Exception as ex:
                     logger.error(f"Failed to move file {item.name}: {ex}")
+        # Clean up old empty subfolder
+        if current_dir != target_dir:
+            try:
+                current_dir.rmdir()
+            except Exception:
+                pass
+    else:
+        # 2. Fallback: Old style files in the parent directory
+        parent_current = current_dir.parent
+        parent_target = target_dir.parent
+        parent_target.mkdir(parents=True, exist_ok=True)
+        if parent_current.exists():
+            for item in parent_current.iterdir():
+                if item.is_file() and (item.name.startswith(safe_stem) or item.name.startswith(f"job_{safe_stem}") or item.name.startswith(job_id)):
+                    dest_file = parent_target / item.name
+                    if dest_file.exists():
+                        try:
+                            dest_file.unlink()
+                        except Exception as ex:
+                            logger.error(f"Failed to delete existing file: {ex}")
+                    import shutil
+                    try:
+                        shutil.move(str(item), str(dest_file))
+                        moved_files.append(item.name)
+                    except Exception as ex:
+                        logger.error(f"Failed to move file {item.name}: {ex}")
 
     job.channel_id = None if target_channel_id == "default" else target_channel_id
     store.save_job(job)
@@ -1149,17 +1205,34 @@ def get_job_file_path(job_id: str, type: str = "video"):
     safe_stem = re.sub(r'[^a-zA-Z0-9_ -]', '_', src_video_path.parent.name.replace("job_", "").replace("job_url_", ""))
     
     default_dir = PROJECT_ROOT / "outputs" / "Completed"
-    current_dir = default_dir
+    current_dir = default_dir / job_id
     
     if job.channel_id:
         channels = load_channels_data()
         current_chan = next((c for c in channels if c["id"] == job.channel_id), None)
         if current_chan:
-            current_dir = Path(current_chan["path"])
+            current_dir = resolve_channel_path(current_chan.get("name", "UnknownChannel"), current_chan.get("path")) / job_id
             
     if type == "folder":
-        return {"path": str(current_dir.resolve())}
+        # Return subfolder if it exists, otherwise parent folder
+        if current_dir.exists():
+            return {"path": str(current_dir.resolve())}
+        return {"path": str(current_dir.parent.resolve())}
     else:
+        # Check subfolder first
+        for name in [f"{safe_stem}_vietnam.mp4", "fb_reels_9x16.mp4", "yt_shorts_9x16.mp4", "yt_video_16x9.mp4"]:
+            test_path = current_dir / name
+            if test_path.exists():
+                return {"path": str(test_path.resolve())}
+                
+        # Fallback to parent dir for old jobs
+        parent_dir = current_dir.parent
+        for name in [f"{safe_stem}_vietnam.mp4", f"{job_id}_fb_reels_9x16.mp4", f"{job_id}_yt_shorts_9x16.mp4", f"{job_id}_yt_video_16x9.mp4"]:
+            test_path = parent_dir / name
+            if test_path.exists():
+                return {"path": str(test_path.resolve())}
+                
+        # Ultimate fallback
         video_file = current_dir / f"{safe_stem}_vietnam.mp4"
         return {"path": str(video_file.resolve())}
 
@@ -1293,14 +1366,78 @@ def delete_job(job_id: str):
     job_dir = store.get_job_dir(job_id)
     state_file = job_dir / "job_state.json"
     
-    # 1. Delete state file first to make it disappear from UI instantly
+    # 1. Delete exported files in outputs/ if they exist
+    try:
+        job = store.load_job(job_id)
+        if job:
+            # Determine potential export dirs
+            export_dirs = []
+            
+            # Default export dir
+            default_dir = PROJECT_ROOT / "outputs" / "Completed"
+            if settings.default_export_path:
+                default_dir = Path(settings.default_export_path)
+            export_dirs.append(default_dir / job_id)
+            
+            # Channel export dirs (published / config)
+            channels = load_channels_data()
+            if job.channel_id:
+                chan = next((c for c in channels if c["id"] == job.channel_id), None)
+                if chan:
+                    chan_dir = resolve_channel_path(chan.get("name", "UnknownChannel"), chan.get("path"))
+                    export_dirs.append(chan_dir / job_id)
+                    
+            # Check all channels to be sure
+            for chan in channels:
+                chan_dir = resolve_channel_path(chan.get("name", "UnknownChannel"), chan.get("path"))
+                export_dirs.append(chan_dir / job_id)
+                
+            # Clean up resolved directories
+            for out_dir in export_dirs:
+                if out_dir.exists() and out_dir.is_dir():
+                    logger.info(f"Deleting exported job directory: {out_dir}")
+                    import shutil
+                    try:
+                        shutil.rmtree(out_dir)
+                    except Exception as ex:
+                        logger.error(f"Failed to delete exported job folder {out_dir}: {ex}")
+                        
+            # Clean up old-style flat files in parent folders
+            src_video_path = Path(job.output_path) if job.output_path else None
+            if src_video_path:
+                safe_stem = re.sub(r'[^a-zA-Z0-9_ -]', '_', src_video_path.parent.name.replace("job_", "").replace("job_url_", ""))
+                
+                # Check Completed root
+                parent_completed = default_dir
+                if parent_completed.exists():
+                    for item in parent_completed.iterdir():
+                        if item.is_file() and (item.name.startswith(safe_stem) or item.name.startswith(f"job_{safe_stem}") or item.name.startswith(job_id)):
+                            try:
+                                item.unlink()
+                            except Exception:
+                                pass
+                                
+                # Check channel roots
+                for chan in channels:
+                    chan_dir = resolve_channel_path(chan.get("name", "UnknownChannel"), chan.get("path"))
+                    if chan_dir.exists():
+                        for item in chan_dir.iterdir():
+                            if item.is_file() and (item.name.startswith(safe_stem) or item.name.startswith(f"job_{safe_stem}") or item.name.startswith(job_id)):
+                                try:
+                                    item.unlink()
+                                except Exception:
+                                    pass
+    except Exception as e:
+        logger.error(f"Error during exported files deletion: {e}")
+
+    # 2. Delete state file first to make it disappear from UI instantly
     if state_file.exists():
         try:
             state_file.unlink()
         except Exception:
             pass
             
-    # 2. Try to clean up the directory (fails silently if locked on Windows, which is safe)
+    # 3. Try to clean up the directory (fails silently if locked on Windows, which is safe)
     if job_dir.exists():
         import shutil
         try:

@@ -186,11 +186,6 @@ function renderJobsList() {
         let deleteButton = '';
         let resumeButton = '';
         if (job.status !== 'running') {
-            deleteButton = `
-                <button onclick="deleteJob('${job.job_id}')" class="hover:bg-rose-500/10 text-rose-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-500/20 hover:border-rose-500/40 transition-all">
-                    Xóa
-                </button>
-            `;
             if (job.status === 'failed' || job.status === 'cancelled') {
                 resumeButton = `
                     <button onclick="resumeJob('${job.job_id}')" class="bg-purple-600/20 hover:bg-purple-600/80 text-purple-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg border border-purple-500/30 transition-all">
@@ -2004,6 +1999,15 @@ async function openDetailPanel(jobId) {
             }
         }
 
+        const deleteBtn = document.getElementById('btn-detail-delete');
+        if (deleteBtn) {
+            if (!activeStatuses.has(freshJob.status) && freshJob.status !== 'created') {
+                deleteBtn.classList.remove('hidden');
+            } else {
+                deleteBtn.classList.add('hidden');
+            }
+        }
+
         if (freshJob.status === 'completed') {
             clearInterval(refreshInterval);
             document.getElementById('detail-completed-section')?.classList.remove('hidden');
@@ -2175,8 +2179,7 @@ function renderJobsList() {
                     ? `<button onclick="resumeJob('${job.job_id}')" class="hover:bg-emerald-500/10 text-emerald-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 transition-all">Bắt đầu xử lý</button>`
                     : activeStatuses.has(job.status)
                         ? `<button onclick="cancelJob('${job.job_id}')" class="hover:bg-amber-500/10 text-amber-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-500/20 hover:border-amber-500/40 transition-all">Ngắt</button>`
-                        : `<button onclick="rerunJob('${job.job_id}')" class="hover:bg-purple-500/10 text-purple-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all">Chạy lại</button>
-                           <button onclick="deleteJob('${job.job_id}')" class="hover:bg-rose-500/10 text-rose-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-500/20 hover:border-rose-500/40 transition-all">Xóa</button>`;
+                        : `<button onclick="rerunJob('${job.job_id}')" class="hover:bg-purple-500/10 text-purple-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all">Chạy lại</button>`;
                 
                 const channelLabel = job.channel_name || (globalChannels.find(c => c.id === job.channel_id) || {}).name || '';
                 const channelDropdown = job.status === 'completed'
@@ -2227,8 +2230,7 @@ function renderJobsList() {
             ? `<button onclick="resumeJob('${job.job_id}')" class="hover:bg-emerald-500/10 text-emerald-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-emerald-500/20 hover:border-emerald-500/40 transition-all">Bắt đầu xử lý</button>`
             : activeStatuses.has(job.status)
                 ? `<button onclick="cancelJob('${job.job_id}')" class="hover:bg-amber-500/10 text-amber-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-500/20 hover:border-amber-500/40 transition-all">Ngắt</button>`
-                : `<button onclick="rerunJob('${job.job_id}')" class="hover:bg-purple-500/10 text-purple-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all">Chạy lại</button>
-                   <button onclick="deleteJob('${job.job_id}')" class="hover:bg-rose-500/10 text-rose-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-500/20 hover:border-rose-500/40 transition-all">Xóa</button>`;
+                : `<button onclick="rerunJob('${job.job_id}')" class="hover:bg-purple-500/10 text-purple-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all">Chạy lại</button>`;
         const channelDropdown = job.status === 'completed'
             ? `<select onchange="publishJob('${job.job_id}', this.value); this.selectedIndex = 0;" class="appearance-none bg-slate-900 hover:bg-slate-800 text-slate-200 text-[10px] font-semibold py-1.5 pl-3 pr-8 rounded-lg cursor-pointer transition-all focus:outline-none border border-slate-700/60 hover:border-purple-500/50">
                     <option value="" disabled selected>${channelLabel ? 'Page: ' + channelLabel : 'Chuyển vào Page'}</option>
