@@ -98,6 +98,7 @@ class JobCreateRequest(BaseModel):
     target_language: str = "vi-VN"
     target_locale: Optional[str] = None
     translation_mode: str = "natural"
+    subtitle_style: str = "default"
 
 class SegmentUpdateRequest(BaseModel):
     segments: List[Segment]
@@ -144,6 +145,7 @@ class SubtitleLayoutRequest(BaseModel):
     fb_reels_subtitle_layout: Optional[Dict[str, Any]] = None
     yt_shorts_subtitle_layout: Optional[Dict[str, Any]] = None
     yt_video_subtitle_layout: Optional[Dict[str, Any]] = None
+    subtitle_style: str = "default"
 
 def _normalize_subtitle_layout(req: SubtitleLayoutRequest) -> Dict[str, Any]:
     layout = {
@@ -168,6 +170,7 @@ def _save_subtitle_layout_snapshot(job: Job, req: SubtitleLayoutRequest) -> Dict
     snapshot["subtitle_bg_opacity"] = normalized["opacity"]
     snapshot["subtitle_preset"] = normalized["preset"]
     snapshot["subtitle_cover_mode"] = "text_box_only"
+    snapshot["subtitle_style"] = req.subtitle_style
     
     if req.asset is not None:
         snapshot["asset"] = req.asset
@@ -751,6 +754,7 @@ def rerender_subtitle_layout(job_id: str, req: SubtitleLayoutRequest):
                 mask_subtitle=bool(snapshot.get("mask", True)),
                 render_subtitles=bool(snapshot.get("subtitles_enabled", True)),
                 subtitle_layout=snapshot.get(f"{out}_subtitle_layout") or normalized["layout"],
+                subtitle_style=snapshot.get("subtitle_style", "default"),
                 subtitle_cover_mode="text_box_only",
                 subtitle_bg_opacity=normalized["opacity"],
                 w_out=w_out,

@@ -149,7 +149,7 @@ class AudioMixer:
                     ducked_chunk = ducked_bg_track[start:end]
                     
                     # Crossfade into ducked segment (300ms transition)
-                    if len(final_bg) > 0 and len(ducked_chunk) > 300:
+                    if len(final_bg) > 300 and len(ducked_chunk) > 300:
                         final_bg = final_bg.append(ducked_chunk, crossfade=300)
                     else:
                         final_bg += ducked_chunk
@@ -161,7 +161,7 @@ class AudioMixer:
                     if next_start > end:
                         unducked_chunk = bg_track[end:next_start]
                         # Crossfade back to normal volume (500ms transition)
-                        if len(final_bg) > 0 and len(unducked_chunk) > 500:
+                        if len(final_bg) > 500 and len(unducked_chunk) > 500:
                             final_bg = final_bg.append(unducked_chunk, crossfade=500)
                         else:
                             final_bg += unducked_chunk

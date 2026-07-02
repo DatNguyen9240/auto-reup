@@ -92,6 +92,7 @@ async function submitJob(e) {
     const logo = document.getElementById('logo').value.trim() || null;
     const maskInput = document.getElementById('mask');
     const mask = maskInput ? maskInput.checked : true;
+    const subtitle_style = document.getElementById('subtitle_style')?.value || 'default';
     const subtitleCoverConfig = readSubtitleCoverConfig();
 
     const channel_folder = null;
@@ -113,7 +114,7 @@ async function submitJob(e) {
             const response = await fetch('/api/jobs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ input_video, tone, voice, rate, pitch, bgm, logo, mask, channel_folder, platform_folder, ...subtitleCoverConfig })
+                body: JSON.stringify({ input_video, tone, voice, rate, pitch, bgm, logo, mask, channel_folder, platform_folder, subtitle_style, ...subtitleCoverConfig })
             });
             
             if (!response.ok) {
@@ -596,6 +597,7 @@ async function submitJob(e) {
             target_language: cfg.target_language || 'vi-VN',
             target_locale: cfg.target_locale || null,
             translation_mode: cfg.translation_mode || 'natural',
+            subtitle_style: cfg.subtitle_style || 'default',
             subtitle_cover_mode: cfg.subtitles_enabled ? cfg.subtitle_cover_mode : 'none',
             subtitle_bg_opacity: cfg.subtitle_bg_opacity,
             subtitle_mask_padding_x: cfg.subtitle_mask_padding_x,

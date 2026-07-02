@@ -8,6 +8,53 @@ from app.utils.logger import get_logger
 logger = get_logger("RenderService")
 
 class RenderService:
+    _cached_encoder = None
+
+    def _test_encoder_works(self, encoder: str) -> bool:
+        """Runs a short test command to verify if the encoder can actually initialize and encode."""
+        try:
+            cmd = [
+                "ffmpeg", "-y", "-nostdin",
+                "-f", "lavfi", "-i", "color=c=black:s=16x16:d=0.1",
+                "-c:v", encoder,
+                "-f", "null", "-"
+            ]
+            subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=5)
+            return True
+        except Exception:
+            return False
+
+    def _detect_best_encoder(self) -> str:
+        """Detects and caches the fastest H.264 encoder available in FFmpeg."""
+        if RenderService._cached_encoder is not None:
+            return RenderService._cached_encoder
+            
+        try:
+            cmd = ["ffmpeg", "-encoders"]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            encoders = result.stdout
+            
+            if "h264_nvenc" in encoders and self._test_encoder_works("h264_nvenc"):
+                logger.info("Hardware acceleration detected: Using NVIDIA h264_nvenc encoder.")
+                RenderService._cached_encoder = "h264_nvenc"
+            elif "h264_qsv" in encoders and self._test_encoder_works("h264_qsv"):
+                logger.info("Hardware acceleration detected: Using Intel h264_qsv encoder.")
+                RenderService._cached_encoder = "h264_qsv"
+            elif "h264_amf" in encoders and self._test_encoder_works("h264_amf"):
+                logger.info("Hardware acceleration detected: Using AMD h264_amf encoder.")
+                RenderService._cached_encoder = "h264_amf"
+            elif "h264_mf" in encoders and self._test_encoder_works("h264_mf"):
+                logger.info("Hardware acceleration detected: Using h264_mf encoder.")
+                RenderService._cached_encoder = "h264_mf"
+            else:
+                logger.info("No hardware acceleration encoder working. Using default CPU libx264.")
+                RenderService._cached_encoder = "libx264"
+        except Exception as e:
+            logger.warning(f"Failed to detect hardware encoders: {e}. Falling back to libx264.")
+            RenderService._cached_encoder = "libx264"
+            
+        return RenderService._cached_encoder
+
     def _escape_windows_path(self, path: Path) -> str:
         """Escapes Windows paths for use within FFmpeg filter arguments (like subtitles)."""
         try:
@@ -47,6 +94,23 @@ class RenderService:
         alpha = int(round((1.0 - opacity) * 255))
         return f"&H{alpha:02X}000000"
 
+    def _normalize_layout_keys(self, layout: dict) -> dict:
+        if not layout:
+            return {}
+        normalized = {}
+        for k, v in layout.items():
+            if k in ["x", "subtitle_x_percent"]:
+                normalized["x"] = v
+            elif k in ["y", "subtitle_y_percent"]:
+                normalized["y"] = v
+            elif k in ["width", "subtitle_width_percent"]:
+                normalized["width"] = v
+            elif k in ["height", "subtitle_height_percent"]:
+                normalized["height"] = v
+            else:
+                normalized[k] = v
+        return normalized
+
     def _convert_srt_to_ass(
         self,
         srt_path: Path,
@@ -56,8 +120,10 @@ class RenderService:
         stroke_size: int = 3,
         play_w: int = 1080,
         play_h: int = 1920,
+        subtitle_style: str = "default",
     ):
-        """Converts SRT to ASS using a user-selected normalized subtitle box."""
+        """Converts SRT to ASS using a user-selected normalized subtitle box and style."""
+        layout = self._normalize_layout_keys(subtitle_layout)
         subs = pysrt.open(str(srt_path), encoding="utf-8")
         
         def ms_to_ass_time(ms: int) -> str:
@@ -95,17 +161,69 @@ class RenderService:
             "",
             "[V4+ Styles]",
             "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-            f"Style: Default,Arial,{font_size},&H00FFFFFF,&H000000FF,&H00000000,{back_colour},-1,0,0,0,100,100,0,0,3,{max(1, int(stroke_size))},2,5,20,20,0,1",
+            f"Style: Default,Arial,{font_size},&H00FFFFFF,&H0000FFFF,&H00000000,{back_colour},-1,0,0,0,100,100,0,0,3,{max(1, int(stroke_size))},2,5,20,20,0,1",
             "",
             "[Events]",
             "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"
         ]
         
         for sub in subs:
-            start_str = ms_to_ass_time(sub.start.ordinal)
-            end_str = ms_to_ass_time(sub.end.ordinal)
-            text = self._wrap_subtitle_text(sub.text, max_chars)
-            ass_lines.append(f"Dialogue: 0,{start_str},{end_str},Default,,0,0,0,,{{\\an5\\pos({center_x},{center_y})}}{text}")
+            start_ms = sub.start.ordinal
+            end_ms = sub.end.ordinal
+            duration_ms = end_ms - start_ms
+            
+            if subtitle_style == "karaoke":
+                words = sub.text.strip().split()
+                if not words:
+                    continue
+                lengths = [len(w) for w in words]
+                total_len = sum(lengths)
+                total_cs = max(1, duration_ms // 10)
+                
+                ass_parts = []
+                accumulated_cs = 0
+                for i, word in enumerate(words):
+                    if i < len(words) - 1:
+                        cs = int(round(total_cs * (lengths[i] / total_len)))
+                        accumulated_cs += cs
+                    else:
+                        cs = max(0, total_cs - accumulated_cs)
+                    ass_parts.append(f"{{\\kf{cs}}}{word}")
+                
+                text = " ".join(ass_parts)
+                start_str = ms_to_ass_time(start_ms)
+                end_str = ms_to_ass_time(end_ms)
+                ass_lines.append(f"Dialogue: 0,{start_str},{end_str},Default,,0,0,0,,{{\\an5\\pos({center_x},{center_y})}}{text}")
+                
+            elif subtitle_style == "word_highlight":
+                words = sub.text.strip().split()
+                if not words:
+                    continue
+                lengths = [len(w) for w in words]
+                total_len = sum(lengths)
+                
+                accumulated_ms = 0
+                for i, word in enumerate(words):
+                    if i < len(words) - 1:
+                        word_dur = int(round(duration_ms * (lengths[i] / total_len)))
+                    else:
+                        word_dur = max(0, duration_ms - accumulated_ms)
+                        
+                    w_start = start_ms + accumulated_ms
+                    w_end = w_start + word_dur
+                    accumulated_ms += word_dur
+                    
+                    # Show ONLY the active word, with yellow color, bold and 15% zoom (Viral TikTok/Reels style)
+                    line_text = f"{{\\c&H0000FFFF\\fscx115\\fscy115\\b1}}{words[i]}{{\\r}}"
+                    
+                    start_str = ms_to_ass_time(w_start)
+                    end_str = ms_to_ass_time(w_end)
+                    ass_lines.append(f"Dialogue: 0,{start_str},{end_str},Default,,0,0,0,,{{\\an5\\pos({center_x},{center_y})}}{line_text}")
+            else:
+                start_str = ms_to_ass_time(start_ms)
+                end_str = ms_to_ass_time(end_ms)
+                text = self._wrap_subtitle_text(sub.text, max_chars)
+                ass_lines.append(f"Dialogue: 0,{start_str},{end_str},Default,,0,0,0,,{{\\an5\\pos({center_x},{center_y})}}{text}")
             
         with open(ass_path, "w", encoding="utf-8") as f:
             f.write("\n".join(ass_lines))
@@ -121,6 +239,7 @@ class RenderService:
         mask_subtitle: bool = True,
         render_subtitles: bool = True,
         subtitle_layout: dict = None,
+        subtitle_style: str = "default",
         subtitle_cover_mode: str = "text_box_only",
         subtitle_bg_opacity: float = 0.42,
         subtitle_mask_padding_x: int = 20,
@@ -188,7 +307,7 @@ class RenderService:
         
         # 2. Subtitle placement is user-selected. OCR/old-text detection is intentionally disabled.
         default_layout = {"x": 0.08, "y": 0.72, "width": 0.84, "height": 0.11}
-        subtitle_layout = {**default_layout, **(subtitle_layout or {})}
+        subtitle_layout = {**default_layout, **self._normalize_layout_keys(subtitle_layout)}
         if not render_subtitles:
             mask_subtitle = False
             subtitle_cover_mode = "none"
@@ -370,6 +489,7 @@ class RenderService:
                 stroke_size=3,
                 play_w=w_out,
                 play_h=h_out,
+                subtitle_style=subtitle_style,
             )
             
             escaped_ass = self._escape_windows_path(ass_path)
@@ -395,13 +515,26 @@ class RenderService:
         if has_asset:
             cmd.extend(["-i", str(asset_path)])
             
+        best_encoder = self._detect_best_encoder()
+        encoder_args = ["-c:v", best_encoder]
+        if best_encoder == "libx264":
+            encoder_args.extend(["-preset", "ultrafast", "-crf", "21"])
+        elif best_encoder == "h264_nvenc":
+            encoder_args.extend(["-preset", "fast"])
+        elif best_encoder == "h264_qsv":
+            encoder_args.extend(["-preset", "fast"])
+        elif best_encoder == "h264_amf":
+            encoder_args.extend(["-quality", "speed"])
+        elif best_encoder == "h264_mf":
+            pass
+
         cmd.extend([
             "-filter_complex", filter_complex,
             "-map", "[outv]",
-            "-map", "1:a",
-            "-c:v", "libx264",
-            "-preset", "veryfast",
-            "-crf", "21",
+            "-map", "1:a"
+        ])
+        cmd.extend(encoder_args)
+        cmd.extend([
             "-pix_fmt", "yuv420p",
             "-colorspace", "bt709",
             "-color_trc", "bt709",

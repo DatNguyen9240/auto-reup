@@ -33,9 +33,29 @@ def _get_whisper_model():
     global _whisper_model
     with _whisper_model_lock:
         if _whisper_model is None:
+            import os
+            # Disable HF symlinks on Windows to avoid privilege error (WinError 1314)
+            os.environ["HF_HUB_DISABLE_SYMLINKS"] = "1"
+            
             from faster_whisper import WhisperModel
-            logger.info("Initializing shared WhisperModel ('base') on CPU...")
-            _whisper_model = WhisperModel("base", device="cpu", compute_type="float32")
+            from app.config import settings
+            model_size = settings.whisper_model_size or "base"
+            try:
+                logger.info(f"Attempting to initialize WhisperModel ('{model_size}') on GPU (CUDA)...")
+                _whisper_model = WhisperModel(model_size, device="cuda", compute_type="float16")
+                logger.info(f"Successfully initialized WhisperModel ('{model_size}') on GPU (CUDA).")
+            except Exception as e:
+                logger.info(f"Failed to initialize WhisperModel ('{model_size}') on GPU (CUDA): {e}. Falling back to CPU...")
+                import multiprocessing
+                # Use half of physical CPU cores (cap at 4 to prevent thrashing but keep fast)
+                cpu_cores = max(1, min(4, multiprocessing.cpu_count() // 2))
+                logger.info(f"Initializing WhisperModel on CPU with {cpu_cores} threads...")
+                _whisper_model = WhisperModel(
+                    model_size, 
+                    device="cpu", 
+                    compute_type="int8" if model_size != "large-v3" else "float32", # Use int8 quantization on CPU for 3x speedup!
+                    cpu_threads=cpu_cores
+                )
         return _whisper_model
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -681,6 +701,12 @@ class PipelineRunner:
                                 str(audio_path),
                                 beam_size=5,
                                 vad_filter=True,
+                                vad_parameters=dict(
+                                    threshold=0.35,              # Lower threshold to detect quieter speech (default 0.5)
+                                    min_speech_duration_ms=250,  # Detect shorter speech segments (default 250)
+                                    min_silence_duration_ms=500, # Treat gaps under 500ms as same sentence (default 2000)
+                                    speech_pad_ms=400            # Pad start/end to prevent chopping (default 400)
+                                ),
                                 condition_on_previous_text=False
                             )
                             # Materialize generator to list under lock to ensure execution is safe
@@ -796,24 +822,33 @@ class PipelineRunner:
                 # Resolve BGM path
                 bgm_path = None
                 if bgm_name:
+                    original_bgm_name = bgm_name
                     # Map abstract BGM names to actual files in examples/music
                     bgm_mapping = {
                         "dramatic_loop": "leberch-soft-piano-501446",
                         "funny_loop": "lightbeatsmusic-joyful-rhythm-walk-funk-513936",
                         "sad_loop": "leberch-soft-piano-501446"
                     }
-                    if bgm_name in bgm_mapping:
-                        logger.info(f"Mapping BGM name '{bgm_name}' to existing file: '{bgm_mapping[bgm_name]}'")
-                        bgm_name = bgm_mapping[bgm_name]
-
+                    mapped_name = bgm_mapping.get(bgm_name, bgm_name)
                     music_dir = Path(settings.default_music_folder)
+                    
+                    # Try mapped name first
                     for ext in [".mp3", ".wav", ".m4a"]:
-                        test_path = music_dir / f"{bgm_name}{ext}"
+                        test_path = music_dir / f"{mapped_name}{ext}"
                         if test_path.exists():
                             bgm_path = test_path
                             break
+                            
+                    # Fallback to original name if mapped name doesn't exist
+                    if not bgm_path and mapped_name != original_bgm_name:
+                        for ext in [".mp3", ".wav", ".m4a"]:
+                            test_path = music_dir / f"{original_bgm_name}{ext}"
+                            if test_path.exists():
+                                bgm_path = test_path
+                                break
+                                
                     if not bgm_path:
-                        test_path = Path(bgm_name)
+                        test_path = Path(original_bgm_name)
                         if test_path.exists():
                             bgm_path = test_path
                             
@@ -938,6 +973,7 @@ class PipelineRunner:
                             mask_subtitle=mask_subtitle,
                             render_subtitles=subtitles_enabled,
                             subtitle_layout=snapshot.get(f"{out}_subtitle_layout") or snapshot.get("subtitle_layout"),
+                            subtitle_style=snapshot.get("subtitle_style", "default"),
                             subtitle_cover_mode=subtitle_cover_mode,
                             subtitle_bg_opacity=subtitle_bg_opacity,
                             subtitle_mask_padding_x=subtitle_mask_padding_x,

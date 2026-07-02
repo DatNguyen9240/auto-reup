@@ -53,43 +53,43 @@ class TTSService:
             logger.error(f"Speed adjustment failed: {e}")
             raise TTSError(f"Speed adjustment failed: {e}")
 
-    async def generate_voiceovers(
-        self, 
-        segments: List[Segment], 
-        work_dir: Path, 
-        voice: str, 
-        rate: str = "+0%", 
-        pitch: str = "+0Hz"
-    ) -> List[Segment]:
-        """Generates speech audio for all segments, auto-scaling speed if it exceeds the original segment duration."""
-        logger.info(f"Generating voiceovers for {len(segments)} segments in {work_dir}")
-        tts_dir = work_dir / "tts"
-        tts_dir.mkdir(parents=True, exist_ok=True)
+    async def _process_single_segment(
+        self,
+        idx: int,
+        total: int,
+        segment: Segment,
+        tts_dir: Path,
+        voice: str,
+        rate: str,
+        pitch: str,
+        available_time_ms: int,
+        sem: asyncio.Semaphore
+    ):
+        if not segment.tts_text.strip():
+            segment.status = "tts_generated"
+            logger.info(f"[{idx+1}/{total}] Skipping empty TTS segment {segment.id}.")
+            return
+            
+        import hashlib
+        param_str = f"{segment.tts_text}|{voice}|{rate}|{pitch}"
+        param_hash = hashlib.md5(param_str.encode('utf-8')).hexdigest()[:12]
         
-        for idx, segment in enumerate(segments):
-            if not segment.tts_text.strip():
-                segment.status = "tts_generated"
-                logger.info(f"[{idx+1}/{len(segments)}] Skipping empty TTS segment {segment.id}.")
-                continue
-                
-            logger.info(f"[{idx+1}/{len(segments)}] Generating voiceover for segment {segment.id}: '{segment.tts_text[:30]}...'")
-            import hashlib
-            param_str = f"{segment.tts_text}|{voice}|{rate}|{pitch}"
-            param_hash = hashlib.md5(param_str.encode('utf-8')).hexdigest()[:12]
-            
-            raw_path = tts_dir / f"seg_{segment.id}_{param_hash}_raw.mp3"
-            final_path = tts_dir / f"seg_{segment.id}_{param_hash}.wav"
-            
-            # Clean up old/stale files for this segment id if they exist to prevent disk bloat
-            for old_file in tts_dir.glob(f"seg_{segment.id}_*"):
-                if old_file.name not in [raw_path.name, final_path.name]:
-                    try:
-                        old_file.unlink()
-                    except Exception:
-                        pass
-            
-            # Step 1: Generate Raw Speech (Skip if raw file already exists to save time and API calls)
-            if not raw_path.exists() or raw_path.stat().st_size == 0:
+        raw_path = tts_dir / f"seg_{segment.id}_{param_hash}_raw.mp3"
+        final_path = tts_dir / f"seg_{segment.id}_{param_hash}.wav"
+        
+        # Clean up old/stale files for this segment id
+        for old_file in tts_dir.glob(f"seg_{segment.id}_*"):
+            if old_file.name not in [raw_path.name, final_path.name]:
+                try:
+                    old_file.unlink()
+                except Exception:
+                    pass
+        
+        # Step 1: Generate Raw Speech (controlled by semaphore)
+        did_generate = False
+        if not raw_path.exists() or raw_path.stat().st_size == 0:
+            async with sem:
+                logger.info(f"[{idx+1}/{total}] Downloading voiceover for segment {segment.id}: '{segment.tts_text[:30]}...'")
                 await self.tts_provider.generate_tts(
                     text=segment.tts_text,
                     output_path=raw_path,
@@ -97,19 +97,16 @@ class TTSService:
                     rate=rate,
                     pitch=pitch
                 )
-                import asyncio
-                await asyncio.sleep(0.25)
-            
-            # Step 2: Probe raw TTS duration
+                did_generate = True
+                await asyncio.sleep(0.3)  # Rate limiting between downloads
+        else:
+            logger.info(f"[{idx+1}/{total}] Using cached voiceover for segment {segment.id}.")
+
+        # Step 2 & 3: Run audio duration probe and speed adjustment (run in executor to keep loop unblocked)
+        loop = asyncio.get_event_loop()
+        
+        def run_audio_processing():
             raw_duration_ms = self.get_audio_duration_ms(raw_path)
-            
-            # Calculate available time to next segment to prevent overlapping voiceover
-            if idx < len(segments) - 1:
-                available_time_ms = max(segments[idx+1].start_ms - segment.start_ms, 100)
-            else:
-                available_time_ms = max(segment.duration_ms, 100)
-            
-            # Step 3: Speed adjust (baseline speed is 1.1x, and up to 1.8x to prevent overlap)
             ratio = raw_duration_ms / available_time_ms
             ratio = max(1.1, min(ratio, 1.8))
             
@@ -120,28 +117,61 @@ class TTSService:
             try:
                 self.adjust_audio_speed(raw_path, final_path, ratio)
             except Exception as e:
-                logger.warning(f"Speed adjustment failed for segment {segment.id}, fallback to speed-adjusted copy: {e}")
+                logger.warning(f"Speed adjustment failed for segment {segment.id}, fallback: {e}")
+                import ffmpeg
                 try:
                     ffmpeg.run(
                         ffmpeg.output(ffmpeg.input(str(raw_path)), str(final_path), af=f"atempo={ratio:.4f}"),
                         overwrite_output=True, capture_stdout=True, capture_stderr=True
                     )
-                except Exception as copy_err:
-                    # Final fallback: convert raw directly to wav (1.0x)
-                    try:
-                        ffmpeg.run(
-                            ffmpeg.output(ffmpeg.input(str(raw_path)), str(final_path)),
-                            overwrite_output=True, capture_stdout=True, capture_stderr=True
-                        )
-                    except Exception as final_err:
-                        raise TTSError(f"Failed to process fallback audio for segment {segment.id}: {final_err}")
+                except Exception:
+                    ffmpeg.run(
+                        ffmpeg.output(ffmpeg.input(str(raw_path)), str(final_path)),
+                        overwrite_output=True, capture_stdout=True, capture_stderr=True
+                    )
                     
-            segment.tts_path = str(final_path)
-            segment.status = "tts_generated"
-            logger.info(f"[{idx+1}/{len(segments)}] Completed voiceover for segment {segment.id}: {final_path.name}")
+        await loop.run_in_executor(None, run_audio_processing)
+        
+        segment.tts_path = str(final_path)
+        segment.status = "tts_generated"
+        logger.info(f"[{idx+1}/{total}] Completed processing voiceover for segment {segment.id}: {final_path.name}")
+
+    async def generate_voiceovers(
+        self, 
+        segments: List[Segment], 
+        work_dir: Path, 
+        voice: str, 
+        rate: str = "+0%", 
+        pitch: str = "+0Hz"
+    ) -> List[Segment]:
+        """Generates speech audio for all segments concurrently, auto-scaling speed if it exceeds the original segment duration."""
+        logger.info(f"Concurrently generating voiceovers for {len(segments)} segments in {work_dir}")
+        tts_dir = work_dir / "tts"
+        tts_dir.mkdir(parents=True, exist_ok=True)
+        
+        sem = asyncio.Semaphore(3)  # Maximum 3 concurrent downloads from Edge-TTS to be safe
+        tasks = []
+        
+        for idx, segment in enumerate(segments):
+            # Calculate available time to next segment to prevent overlapping voiceover
+            if idx < len(segments) - 1:
+                available_time_ms = max(segments[idx+1].start_ms - segment.start_ms, 100)
+            else:
+                available_time_ms = max(segment.duration_ms, 100)
+                
+            task = self._process_single_segment(
+                idx=idx,
+                total=len(segments),
+                segment=segment,
+                tts_dir=tts_dir,
+                voice=voice,
+                rate=rate,
+                pitch=pitch,
+                available_time_ms=available_time_ms,
+                sem=sem
+            )
+            tasks.append(task)
             
-            # Rate-limiting guard: Add a short sleep between consecutive synthesis requests
-            await asyncio.sleep(0.5)
-            
-        logger.info("All segment voiceovers generated and processed successfully.")
+        await asyncio.gather(*tasks)
+        logger.info("All segment voiceovers generated and processed concurrently successfully.")
         return segments

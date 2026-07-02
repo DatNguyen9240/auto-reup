@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     ocr_sample_interval_sec: float = 0.75
     ocr_crop_bottom_ratio: float = 0.45
     max_concurrent_jobs: int = Field(default=3, validation_alias="MAX_CONCURRENT_JOBS")
+    whisper_model_size: str = Field(default="base", validation_alias="WHISPER_MODEL_SIZE")
     
     # App root folder
     auto_tool_root: Path = Path(__file__).resolve().parent.parent

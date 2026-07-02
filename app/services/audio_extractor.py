@@ -16,12 +16,20 @@ class AudioExtractor:
         
         try:
             # -acodec pcm_s16le -ac 1 -ar 16000
+            # Apply FFT-based noise reduction (afftdn) and voice bandpass filtering (200Hz - 3200Hz) to improve Whisper transcription
             stream = ffmpeg.input(str(video_path))
             audio = stream.audio
-            out = ffmpeg.output(audio, str(output_wav_path), acodec="pcm_s16le", ac=1, ar=16000)
+            out = ffmpeg.output(
+                audio, 
+                str(output_wav_path), 
+                acodec="pcm_s16le", 
+                ac=1, 
+                ar=16000,
+                af="afftdn,highpass=f=200,lowpass=f=3200"
+            )
             # Run FFmpeg synchronously and overwrite existing output
             ffmpeg.run(out, overwrite_output=True, capture_stdout=True, capture_stderr=True)
-            logger.info("Audio extraction completed successfully.")
+            logger.info("Audio extraction and noise-reduction completed successfully.")
             return output_wav_path
         except ffmpeg.Error as e:
             stderr = e.stderr.decode("utf-8") if e.stderr else str(e)

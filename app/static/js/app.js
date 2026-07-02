@@ -1042,6 +1042,7 @@ function defaultPendingConfig() {
         target_language: getVal('target_language', base.target_language || 'vi-VN'),
         target_locale: getVal('target_locale', base.target_locale || ''),
         translation_mode: getVal('translation_mode', base.translation_mode || 'natural'),
+        subtitle_style: getVal('subtitle_style', base.subtitle_style || 'default'),
     };
 }
 
@@ -1175,6 +1176,12 @@ function renderQueueList() {
                     <option value="natural" ${cfg.translation_mode === 'natural' ? 'selected' : ''}>Dịch tự nhiên</option>
                     <option value="localized" ${cfg.translation_mode === 'localized' ? 'selected' : ''}>Bản địa hóa</option>
                     <option value="literal" ${cfg.translation_mode === 'literal' ? 'selected' : ''}>Dịch sát nghĩa</option>
+                </select>
+                
+                <select onchange="updatePendingConfig('${entry.id}','subtitle_style',this.value)" class="bg-slate-900 border border-slate-800 rounded-lg p-2" title="Kiểu phụ đề">
+                    <option value="default" ${cfg.subtitle_style === 'default' ? 'selected' : ''}>Hiện cả câu (Mặc định)</option>
+                    <option value="karaoke" ${cfg.subtitle_style === 'karaoke' ? 'selected' : ''}>Chạy chữ Karaoke</option>
+                    <option value="word_highlight" ${cfg.subtitle_style === 'word_highlight' ? 'selected' : ''}>Hiện từng chữ đơn lẻ</option>
                 </select>
 
                 ${(cfg.target_language && (cfg.target_language.startsWith('es') || cfg.target_language.startsWith('pt'))) ? `
@@ -1609,6 +1616,10 @@ function setupSubtitleLayoutEditor(job) {
         }
         
         const snapshot = job.config_snapshot || {};
+        const styleSelect = document.getElementById('subtitle-layout-style');
+        if (styleSelect) {
+            styleSelect.value = snapshot.subtitle_style || 'default';
+        }
         formatSubtitleLayouts = {};
         formatCrops = {};
         
@@ -1878,7 +1889,8 @@ async function continueRenderWithSubtitleLayout() {
             subtitle_height_percent: layout.height,
             subtitle_bg_opacity: opacity,
             background_opacity: opacity,
-            preset: layout.preset || 'custom'
+            preset: layout.preset || 'custom',
+            subtitle_style: document.getElementById('subtitle-layout-style')?.value || 'default'
         };
 
         if (logoRemovedForThisJob) {
