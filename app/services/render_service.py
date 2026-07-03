@@ -121,11 +121,78 @@ class RenderService:
         play_w: int = 1080,
         play_h: int = 1920,
         subtitle_style: str = "default",
+        mask_subtitle: bool = False,
     ):
         """Converts SRT to ASS using a user-selected normalized subtitle box and style."""
         layout = self._normalize_layout_keys(subtitle_layout)
         subs = pysrt.open(str(srt_path), encoding="utf-8")
         
+        # 1. Split long subtitle segments into shorter ones (max 35 chars) with proportional timestamps
+        import copy
+        new_subs = []
+        max_chars = 35
+        for sub in subs:
+            text = sub.text.strip()
+            if len(text) <= max_chars:
+                new_subs.append(sub)
+                continue
+                
+            words = text.split()
+            chunks = []
+            current_chunk = []
+            current_length = 0
+            for word in words:
+                if current_length + len(word) + 1 > max_chars and current_chunk:
+                    chunks.append(" ".join(current_chunk))
+                    current_chunk = [word]
+                    current_length = len(word)
+                else:
+                    current_chunk.append(word)
+                    current_length += len(word) + 1
+            if current_chunk:
+                chunks.append(" ".join(current_chunk))
+                
+            start_ms = sub.start.ordinal
+            end_ms = sub.end.ordinal
+            duration_ms = end_ms - start_ms
+            
+            current_time_ms = start_ms
+            total_chunk_len = sum(len(c) for c in chunks)
+            if total_chunk_len == 0:
+                total_chunk_len = 1
+                
+            for i, chunk in enumerate(chunks):
+                chunk_ratio = len(chunk) / total_chunk_len
+                chunk_duration_ms = duration_ms * chunk_ratio
+                
+                chunk_start_ms = int(current_time_ms)
+                chunk_end_ms = int(current_time_ms + chunk_duration_ms)
+                if i == len(chunks) - 1:
+                    chunk_end_ms = end_ms
+                    
+                new_sub = copy.deepcopy(sub)
+                new_sub.text = chunk
+                new_sub.start.ordinal = chunk_start_ms
+                new_sub.end.ordinal = chunk_end_ms
+                new_subs.append(new_sub)
+                
+                current_time_ms = chunk_end_ms
+
+        # 2. Extend end times to fill small gaps (timeline optimization)
+        for i in range(len(new_subs)):
+            start = new_subs[i].start.ordinal
+            end = new_subs[i].end.ordinal
+            if i < len(new_subs) - 1:
+                next_start = new_subs[i+1].start.ordinal
+                gap = next_start - end
+                if gap > 0:
+                    if gap < 2000:  # gap < 2s
+                        new_subs[i].end.ordinal = next_start - 1
+                    else:
+                        new_subs[i].end.ordinal = end + 1500
+            else:
+                new_subs[i].end.ordinal = end + 1500
+
         def ms_to_ass_time(ms: int) -> str:
             hours = ms // 3600000
             minutes = (ms % 3600000) // 60000
@@ -133,7 +200,6 @@ class RenderService:
             centiseconds = (ms % 1000) // 10
             return f"{hours}:{minutes:02d}:{seconds:02d}.{centiseconds:02d}"
             
-        layout = subtitle_layout or {}
         x_pct = float(layout.get("x", 0.08))
         y_pct = float(layout.get("y", 0.56))
         w_pct = float(layout.get("width", 0.84))
@@ -148,9 +214,27 @@ class RenderService:
         box_h = int(play_h * h_pct)
         center_x = int(play_w * (x_pct + w_pct / 2))
         center_y = int(play_h * (y_pct + h_pct / 2))
-        font_size = int(min(max(34, box_h * 0.34), max(42, box_w / 12), 72))
+        
+        # Calculate responsive font size based on video dimensions
+        if play_h > play_w:
+            font_size = int(play_w * 0.055)
+        else:
+            font_size = int(play_h * 0.069)
+            
         max_chars = max(16, min(42, int(box_w / (font_size * 0.46))))
-        back_colour = self._ass_alpha_black(bg_opacity)
+
+        # Define border style and background colour based on mask_subtitle option
+        if mask_subtitle:
+            # Clean outline border style without ASS opaque box because we have the frosted glass band!
+            border_style = 1
+            outline_size = 3
+            shadow_size = 0
+            back_colour = "&H00000000"
+        else:
+            border_style = 3
+            outline_size = max(1, int(stroke_size))
+            shadow_size = 2
+            back_colour = self._ass_alpha_black(bg_opacity)
 
         ass_lines = [
             "[Script Info]",
@@ -161,13 +245,13 @@ class RenderService:
             "",
             "[V4+ Styles]",
             "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-            f"Style: Default,Arial,{font_size},&H00FFFFFF,&H0000FFFF,&H00000000,{back_colour},-1,0,0,0,100,100,0,0,3,{max(1, int(stroke_size))},2,5,20,20,0,1",
+            f"Style: Default,Arial,{font_size},&H00FFFFFF,&H0000FFFF,&H00000000,{back_colour},-1,0,0,0,100,100,0,0,{border_style},{outline_size},{shadow_size},5,20,20,0,1",
             "",
             "[Events]",
             "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"
         ]
         
-        for sub in subs:
+        for sub in new_subs:
             start_ms = sub.start.ordinal
             end_ms = sub.end.ordinal
             duration_ms = end_ms - start_ms
@@ -490,7 +574,38 @@ class RenderService:
                 play_w=w_out,
                 play_h=h_out,
                 subtitle_style=subtitle_style,
+                mask_subtitle=mask_subtitle,
             )
+            
+            # Apply frosted glass blur band filter if mask_subtitle is enabled
+            if mask_subtitle:
+                layout = self._normalize_layout_keys(subtitle_layout)
+                y_pct = float(layout.get("y", 0.72))
+                h_pct = float(layout.get("height", 0.11))
+                
+                band_y = (int(h_out * y_pct) // 2) * 2
+                band_height = (int(h_out * h_pct) // 2) * 2
+                
+                fade_px = int(band_height * 0.3)
+                if fade_px < 1:
+                    fade_px = 1
+                    
+                alpha_expr = f"255*min(1,Y/{fade_px})*min(1,({band_height}-Y)/{fade_px})"
+                
+                next_grid = "[v_bg]"
+                filters.append(
+                    f"{current_grid}split=2[main_bg][fg_band]"
+                )
+                filters.append(
+                    f"[fg_band]crop=iw:{band_height}:0:{band_y},boxblur=15:5,colorchannelmixer=rr=0.5:gg=0.5:bb=0.5[blurred_band]"
+                )
+                filters.append(
+                    f"[blurred_band]format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='{alpha_expr}'[feathered_blur]"
+                )
+                filters.append(
+                    f"[main_bg][feathered_blur]overlay=0:{band_y}:shortest=1{next_grid}"
+                )
+                current_grid = next_grid
             
             escaped_ass = self._escape_windows_path(ass_path)
             filters.append(
