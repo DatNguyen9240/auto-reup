@@ -29,9 +29,12 @@ _whisper_model = None
 _whisper_model_lock = threading.Lock()
 _whisper_transcribe_lock = threading.Lock()
 
-def _get_whisper_model():
+def _get_whisper_model(force_cpu: bool = False):
     global _whisper_model
     with _whisper_model_lock:
+        if force_cpu:
+            _whisper_model = None  # Force recreation on CPU
+            
         if _whisper_model is None:
             import os
             # Disable HF symlinks on Windows to avoid privilege error (WinError 1314)
@@ -40,12 +43,18 @@ def _get_whisper_model():
             from faster_whisper import WhisperModel
             from app.config import settings
             model_size = settings.whisper_model_size or "base"
-            try:
-                logger.info(f"Attempting to initialize WhisperModel ('{model_size}') on GPU (CUDA)...")
-                _whisper_model = WhisperModel(model_size, device="cuda", compute_type="float16")
-                logger.info(f"Successfully initialized WhisperModel ('{model_size}') on GPU (CUDA).")
-            except Exception as e:
-                logger.info(f"Failed to initialize WhisperModel ('{model_size}') on GPU (CUDA): {e}. Falling back to CPU...")
+            
+            use_cuda = not force_cpu
+            if use_cuda:
+                try:
+                    logger.info(f"Attempting to initialize WhisperModel ('{model_size}') on GPU (CUDA)...")
+                    _whisper_model = WhisperModel(model_size, device="cuda", compute_type="float16")
+                    logger.info(f"Successfully initialized WhisperModel ('{model_size}') on GPU (CUDA).")
+                except Exception as e:
+                    logger.info(f"Failed to initialize WhisperModel ('{model_size}') on GPU (CUDA): {e}. Falling back to CPU...")
+                    use_cuda = False
+                    
+            if not use_cuda:
                 import multiprocessing
                 # Use half of physical CPU cores (cap at 4 to prevent thrashing but keep fast)
                 cpu_cores = max(1, min(4, multiprocessing.cpu_count() // 2))
@@ -696,21 +705,44 @@ class PipelineRunner:
                         audio_path = work_dir / "audio.wav"
                         # Use cached Whisper model and synchronize transcribe execution
                         model = _get_whisper_model()
-                        with _whisper_transcribe_lock:
-                            segments_iter, info = model.transcribe(
-                                str(audio_path),
-                                beam_size=5,
-                                vad_filter=True,
-                                vad_parameters=dict(
-                                    threshold=0.35,              # Lower threshold to detect quieter speech (default 0.5)
-                                    min_speech_duration_ms=250,  # Detect shorter speech segments (default 250)
-                                    min_silence_duration_ms=500, # Treat gaps under 500ms as same sentence (default 2000)
-                                    speech_pad_ms=400            # Pad start/end to prevent chopping (default 400)
-                                ),
-                                condition_on_previous_text=False
-                            )
-                            # Materialize generator to list under lock to ensure execution is safe
-                            segments_list = list(segments_iter)
+                        try:
+                            with _whisper_transcribe_lock:
+                                segments_iter, info = model.transcribe(
+                                    str(audio_path),
+                                    beam_size=5,
+                                    vad_filter=True,
+                                    vad_parameters=dict(
+                                        threshold=0.35,              # Lower threshold to detect quieter speech (default 0.5)
+                                        min_speech_duration_ms=250,  # Detect shorter speech segments (default 250)
+                                        min_silence_duration_ms=500, # Treat gaps under 500ms as same sentence (default 2000)
+                                        speech_pad_ms=400            # Pad start/end to prevent chopping (default 400)
+                                    ),
+                                    condition_on_previous_text=False
+                                )
+                                # Materialize generator to list under lock to ensure execution is safe
+                                segments_list = list(segments_iter)
+                        except Exception as transcribe_err:
+                            err_str = str(transcribe_err).lower()
+                            if "cublas" in err_str or "cuda" in err_str or "cudnn" in err_str or "dll" in err_str:
+                                logger.warning(f"Whisper GPU execution failed: {transcribe_err}. Retrying with CPU fallback...")
+                                model = _get_whisper_model(force_cpu=True)
+                                with _whisper_transcribe_lock:
+                                    segments_iter, info = model.transcribe(
+                                        str(audio_path),
+                                        beam_size=5,
+                                        vad_filter=True,
+                                        vad_parameters=dict(
+                                            threshold=0.35,
+                                            min_speech_duration_ms=250,
+                                            min_silence_duration_ms=500,
+                                            speech_pad_ms=400
+                                        ),
+                                        condition_on_previous_text=False
+                                    )
+                                    segments_list = list(segments_iter)
+                            else:
+                                raise transcribe_err
+
                         segments = []
                         for idx, s in enumerate(segments_list):
                             segment = Segment(
