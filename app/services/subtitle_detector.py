@@ -120,26 +120,27 @@ class SubtitleDetector:
         try:
             from paddleocr import PaddleOCR
             import cv2
-        except Exception:
-            return []
 
-        image = cv2.imread(str(frame_path))
-        if image is None:
+            image = cv2.imread(str(frame_path))
+            if image is None:
+                return []
+            crop = image[crop_y:, :]
+            ocr = PaddleOCR(use_angle_cls=False, lang="ch", show_log=False, use_gpu=False)
+            result = ocr.ocr(crop, cls=False)
+            boxes = []
+            for line in result or []:
+                for item in line or []:
+                    points = item[0]
+                    score = float(item[1][1]) if len(item) > 1 and len(item[1]) > 1 else 0.0
+                    if score < 0.35:
+                        continue
+                    xs = [int(p[0]) for p in points]
+                    ys = [int(p[1]) + crop_y for p in points]
+                    boxes.append((min(xs), min(ys), max(xs), max(ys)))
+            return boxes
+        except Exception as e:
+            logger.warning(f"PaddleOCR detection failed or not available: {e}")
             return []
-        crop = image[crop_y:, :]
-        ocr = PaddleOCR(use_angle_cls=False, lang="ch", show_log=False)
-        result = ocr.ocr(crop, cls=False)
-        boxes = []
-        for line in result or []:
-            for item in line or []:
-                points = item[0]
-                score = float(item[1][1]) if len(item) > 1 and len(item[1]) > 1 else 0.0
-                if score < 0.35:
-                    continue
-                xs = [int(p[0]) for p in points]
-                ys = [int(p[1]) + crop_y for p in points]
-                boxes.append((min(xs), min(ys), max(xs), max(ys)))
-        return boxes
 
     def _detect_with_easyocr(self, frame_path: Path, crop_y: int) -> list[tuple[int, int, int, int]]:
         try:
