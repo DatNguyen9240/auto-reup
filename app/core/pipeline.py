@@ -933,10 +933,19 @@ class PipelineRunner:
                 output_srt = work_dir / "output.srt"
                 subs = pysrt.SubRipFile()
                 for s in segments:
+                    # Sync subtitle end time with actual TTS audio duration if TTS is enabled
+                    end_ms = s.end_ms
+                    if tts_enabled and s.tts_path and os.path.exists(s.tts_path):
+                        try:
+                            audio_dur = self.tts_service.get_audio_duration_ms(Path(s.tts_path))
+                            end_ms = s.start_ms + audio_dur
+                        except Exception as e:
+                            logger.warning(f"Failed to get audio duration for segment {s.id}: {e}")
+                            
                     sub = pysrt.SubRipItem(
                         index=s.id,
                         start=pysrt.SubRipTime(milliseconds=s.start_ms),
-                        end=pysrt.SubRipTime(milliseconds=s.end_ms),
+                        end=pysrt.SubRipTime(milliseconds=end_ms),
                         text=s.translated_text
                     )
                     subs.append(sub)

@@ -179,19 +179,21 @@ class RenderService:
                 current_time_ms = chunk_end_ms
 
         # 2. Extend end times to fill small gaps (timeline optimization)
-        for i in range(len(new_subs)):
-            start = new_subs[i].start.ordinal
-            end = new_subs[i].end.ordinal
-            if i < len(new_subs) - 1:
-                next_start = new_subs[i+1].start.ordinal
-                gap = next_start - end
-                if gap > 0:
-                    if gap < 2000:  # gap < 2s
-                        new_subs[i].end.ordinal = next_start - 1
-                    else:
-                        new_subs[i].end.ordinal = end + 1500
-            else:
-                new_subs[i].end.ordinal = end + 1500
+        # Skip this for karaoke and word_highlight styles to prevent subtitle lagging behind voiceover
+        if subtitle_style not in ("karaoke", "word_highlight"):
+            for i in range(len(new_subs)):
+                start = new_subs[i].start.ordinal
+                end = new_subs[i].end.ordinal
+                if i < len(new_subs) - 1:
+                    next_start = new_subs[i+1].start.ordinal
+                    gap = next_start - end
+                    if gap > 0:
+                        if gap < 2000:  # gap < 2s
+                            new_subs[i].end.ordinal = next_start - 1
+                        else:
+                            new_subs[i].end.ordinal = end + 1500
+                else:
+                    new_subs[i].end.ordinal = end + 1500
 
         def ms_to_ass_time(ms: int) -> str:
             hours = ms // 3600000
