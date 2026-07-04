@@ -178,6 +178,13 @@ class RenderService:
                 
                 current_time_ms = chunk_end_ms
 
+        # Resolve overlaps first for all styles to prevent subtitles from displaying at the same time
+        for i in range(len(new_subs) - 1):
+            end = new_subs[i].end.ordinal
+            next_start = new_subs[i+1].start.ordinal
+            if next_start <= end:
+                new_subs[i].end.ordinal = max(new_subs[i].start.ordinal + 100, next_start - 1)
+
         # 2. Extend end times to fill small gaps (timeline optimization)
         # Skip this for karaoke and word_highlight styles to prevent subtitle lagging behind voiceover
         if subtitle_style not in ("karaoke", "word_highlight"):
