@@ -80,221 +80,250 @@
                     <p class="text-[11px] text-slate-400">Tải và Việt hóa video tự động hàng loạt</p>
                 </div>
 
-            <!-- Sidebar Tab Switcher -->
-            <div class="hidden flex bg-slate-950/60 p-1 rounded-xl border border-white/5 flex-shrink-0">
-                <button type="button" onclick="switchSidebarTab('config')" id="btn-sidebar-config"
-                    class="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-white/10 text-white transition-all text-center">
-                    ⚙️ Cấu Hàng
-                </button>
-                <button type="button" onclick="switchSidebarTab('queue')" id="btn-sidebar-queue"
-                    class="flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all text-center">
-                    🎥 Video Sắp Làm
-                </button>
-            </div>
-
-            <form id="job-form" onsubmit="submitJob(event)" class="flex flex-col gap-4">
-                <div class="flex flex-col gap-2">
-                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Link video</label>
-                    <textarea id="input_video_url" rows="5" placeholder="Dán 1 hoặc nhiều link, mỗi dòng 1 link..."
-                        class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500 resize-none"></textarea>
-                    <div class="flex gap-2">
-                        <button type="button" onclick="addUrlToQueue()"
-                            class="flex-1 bg-purple-600/25 text-purple-300 border border-purple-500/20 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-purple-600 hover:text-white transition-all active:scale-[0.98]">Thêm vào hàng chờ</button>
-                    </div>
+                <!-- Sidebar Tab Switcher -->
+                <div class="hidden flex bg-slate-950/60 p-1 rounded-xl border border-white/5 flex-shrink-0">
+                    <button type="button" onclick="switchSidebarTab('config')" id="btn-sidebar-config"
+                        class="flex-1 py-1.5 text-xs font-semibold rounded-lg bg-white/10 text-white transition-all text-center">
+                        ⚙️ Cấu Hàng
+                    </button>
+                    <button type="button" onclick="switchSidebarTab('queue')" id="btn-sidebar-queue"
+                        class="flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all text-center">
+                        🎥 Video Sắp Làm
+                    </button>
                 </div>
 
-                <div id="queue-drop-zone"
-                    class="border border-dashed border-slate-700/60 rounded-xl p-3 bg-slate-900/40 flex flex-col gap-3 transition-all min-h-[150px]">
-                    <div id="queue-empty-placeholder" class="flex flex-col items-center justify-center gap-2 py-8 text-slate-500 text-center">
-                        <svg class="w-8 h-8 opacity-40 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                        </svg>
-                        <span class="text-[10px] font-medium leading-relaxed">Video chuẩn bị thêm vào hàng chờ sẽ nằm ở đây</span>
-                    </div>
-                    <div id="queue-list" class="w-full flex flex-col gap-3 hidden"></div>
-                </div>
-
-                <button type="submit"
-                    class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-semibold text-sm py-2.5 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all shadow-md pulse-glow">
-                    Bắt đầu Việt hóa
-                </button>
-            </form>
-
-            <!-- Legacy form kept hidden for reference while the unified per-video flow is active. -->
-            <form id="legacy-job-form" class="hidden flex flex-col gap-5">
-
-                <!-- Tab 1: Config Fields -->
-                <div id="sidebar-tab-config" class="flex flex-col gap-5">
-                    <!-- Split Tone/Voice Row -->
-                    <div class="grid grid-cols-1 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tone
-                                Dịch</label>
-                            <select id="tone"
-                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                                <!-- Dynamically populated -->
-                            </select>
-                        </div>
-                        <div>
-                            <label
-                                class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Giọng
-                                (TTS)</label>
-                            <select id="voice"
-                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                                <!-- Dynamically populated -->
-                            </select>
+                <form id="job-form" onsubmit="submitJob(event)" class="flex flex-col gap-4">
+                    <div class="flex flex-col gap-2">
+                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Link
+                            video</label>
+                        <textarea id="input_video_url" rows="5" placeholder="Dán 1 hoặc nhiều link, mỗi dòng 1 link..."
+                            class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 px-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500 resize-none"></textarea>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="addUrlToQueue()"
+                                class="flex-1 bg-purple-600/25 text-purple-300 border border-purple-500/20 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-purple-600 hover:text-white transition-all active:scale-[0.98]">Thêm
+                                vào hàng chờ</button>
                         </div>
                     </div>
 
-                    <!-- Split Speed/Pitch Row -->
-                    <div class="grid grid-cols-1 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tốc
-                                Độ</label>
-                            <select id="rate"
-                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                                <!-- Dynamically populated -->
-                            </select>
+                    <div id="queue-drop-zone"
+                        class="border border-dashed border-slate-700/60 rounded-xl p-3 bg-slate-900/40 flex flex-col gap-3 transition-all min-h-[150px]">
+                        <div id="queue-empty-placeholder"
+                            class="flex flex-col items-center justify-center gap-2 py-8 text-slate-500 text-center">
+                            <svg class="w-8 h-8 opacity-40 text-purple-400" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                                </path>
+                            </svg>
+                            <span class="text-[10px] font-medium leading-relaxed">Video chuẩn bị thêm vào hàng chờ sẽ
+                                nằm ở đây</span>
                         </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Cao
-                                Độ (Pitch)</label>
-                            <select id="pitch"
-                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                                <!-- Dynamically populated -->
-                            </select>
-                        </div>
+                        <div id="queue-list" class="w-full flex flex-col gap-3 hidden"></div>
                     </div>
 
-                    <!-- BGM and Logo Row -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <div class="flex justify-between items-center mb-2">
-                                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Nhạc
-                                    Nền BGM</label>
-                                <button type="button" onclick="openBgmManager()"
-                                    class="text-[9px] text-purple-400 hover:text-purple-300 font-semibold transition-colors">📥
-                                    Tải nhạc</button>
+                    <button type="submit"
+                        class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-semibold text-sm py-2.5 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all shadow-md pulse-glow">
+                        Bắt đầu Việt hóa
+                    </button>
+                </form>
+
+                <!-- Legacy form kept hidden for reference while the unified per-video flow is active. -->
+                <form id="legacy-job-form" class="hidden flex flex-col gap-5">
+
+                    <!-- Tab 1: Config Fields -->
+                    <div id="sidebar-tab-config" class="flex flex-col gap-5">
+                        <!-- Split Tone/Voice Row -->
+                        <div class="grid grid-cols-1 gap-4">
+                            <div>
+                                <label
+                                    class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tone
+                                    Dịch</label>
+                                <select id="tone"
+                                    class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                                    <!-- Dynamically populated -->
+                                </select>
                             </div>
-                            <select id="bgm" onfocus="loadBgmList()"
-                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                                <option value="">Không sử dụng</option>
-                            </select>
+                            <div>
+                                <label
+                                    class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Giọng
+                                    (TTS)</label>
+                                <select id="voice"
+                                    class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                                    <!-- Dynamically populated -->
+                                </select>
+                            </div>
                         </div>
-                        <div>
-                            <div class="flex justify-between items-center mb-2">
-                                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Watermark Logo</label>
-                                <div class="flex gap-2">
-                                    <button type="button" onclick="openLogoPositionEditor()" class="text-[9px] text-amber-400 hover:text-amber-300 font-semibold transition-colors">📐 Căn vị trí</button>
-                                    <label class="text-[9px] text-purple-400 hover:text-purple-300 font-semibold cursor-pointer transition-colors flex items-center gap-0.5">
-                                        📥 Tải logo
-                                        <input type="file" id="logo-file-input" onchange="uploadLogo(this)" class="hidden" accept=".png,.jpg,.jpeg">
-                                    </label>
+
+                        <!-- Split Speed/Pitch Row -->
+                        <div class="grid grid-cols-1 gap-4">
+                            <div>
+                                <label
+                                    class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Tốc
+                                    Độ</label>
+                                <select id="rate"
+                                    class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                                    <!-- Dynamically populated -->
+                                </select>
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Cao
+                                    Độ (Pitch)</label>
+                                <select id="pitch"
+                                    class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                                    <!-- Dynamically populated -->
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- BGM and Logo Row -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <label
+                                        class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Nhạc
+                                        Nền BGM</label>
+                                    <button type="button" onclick="openBgmManager()"
+                                        class="text-[9px] text-purple-400 hover:text-purple-300 font-semibold transition-colors">📥
+                                        Tải nhạc</button>
+                                </div>
+                                <select id="bgm" onfocus="loadBgmList()"
+                                    class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                                    <option value="">Không sử dụng</option>
+                                </select>
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <label
+                                        class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Watermark
+                                        Logo</label>
+                                    <div class="flex gap-2">
+                                        <button type="button" onclick="openLogoPositionEditor()"
+                                            class="text-[9px] text-amber-400 hover:text-amber-300 font-semibold transition-colors">📐
+                                            Căn vị trí</button>
+                                        <label
+                                            class="text-[9px] text-purple-400 hover:text-purple-300 font-semibold cursor-pointer transition-colors flex items-center gap-0.5">
+                                            📥 Tải logo
+                                            <input type="file" id="logo-file-input" onchange="uploadLogo(this)"
+                                                class="hidden" accept=".png,.jpg,.jpeg">
+                                        </label>
+                                    </div>
+                                </div>
+                                <select id="logo"
+                                    class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                                    <option value="">Không sử dụng Logo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Logo Position Block -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label
+                                    class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Vị
+                                    trí Logo/Hình ảnh</label>
+                                <select id="logo_position"
+                                    class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                                    <option value="top_center">Góc trên - Ở giữa</option>
+                                    <option value="top_left" selected>Góc trên - Bên trái</option>
+                                    <option value="top_right">Góc trên - Bên phải</option>
+                                    <option value="bottom_left">Góc dưới - Bên trái</option>
+                                    <option value="bottom_right">Góc dưới - Bên phải</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Output Channels Manager Block -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label
+                                    class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Chia
+                                    Nền Tảng</label>
+                                <select id="dest_platform"
+                                    class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
+                                    <option value="">Không chia</option>
+                                    <option value="TikTok">TikTok</option>
+                                    <option value="YouTube">YouTube</option>
+                                    <option value="Facebook">Facebook</option>
+                                    <option value="Douyin">Douyin</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Output Formats Selection Checkboxes -->
+                        <div class="flex flex-col gap-2">
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Định
+                                Dạng Output Cần Tạo</label>
+                            <div class="flex flex-col gap-2 bg-slate-900/60 border border-white/5 rounded-xl p-3">
+                                <label
+                                    class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                                    <input type="checkbox" id="out-fb-reels" value="fb_reels" checked
+                                        class="rounded border-slate-700 bg-slate-900 text-purple-600 focus:ring-purple-500/50">
+                                    <span>Facebook Reels (9:16)</span>
+                                </label>
+                                <label
+                                    class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                                    <input type="checkbox" id="out-yt-shorts" value="yt_shorts"
+                                        class="rounded border-slate-700 bg-slate-900 text-purple-600 focus:ring-purple-500/50">
+                                    <span>YouTube Shorts (9:16)</span>
+                                </label>
+                                <label
+                                    class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                                    <input type="checkbox" id="out-yt-video" value="yt_video"
+                                        class="rounded border-slate-700 bg-slate-900 text-purple-600 focus:ring-purple-500/50">
+                                    <span>YouTube Video thường (16:9)</span>
+                                </label>
+                            </div>
+                        </div>
+
+
+                    </div>
+
+                    <!-- Tab 2: Queue List & URL Input -->
+                    <div id="sidebar-tab-queue" class="flex flex-col gap-4 hidden">
+                        <!-- Video Queue Box -->
+                        <div class="flex flex-col gap-2">
+                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Hàng Chờ
+                                Việt
+                                Hóa (Kéo thả)</label>
+
+                            <!-- Drop zone and queue list container -->
+                            <div id="queue-drop-zone"
+                                class="border-2 border-dashed border-slate-700/60 rounded-xl p-3 bg-slate-900/50 flex flex-col gap-2 transition-all min-h-[140px] justify-center items-center text-center">
+                                <!-- Placeholder when empty -->
+                                <div id="queue-empty-placeholder"
+                                    class="flex flex-col items-center gap-1.5 py-4 text-slate-500">
+                                    <svg class="w-8 h-8 opacity-40 text-purple-400" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
+                                        </path>
+                                    </svg>
+                                    <span class="text-[10px] font-medium leading-relaxed">Kéo thả link video từ<br>Trang
+                                        Tìm
+                                        Kiếm vào đây</span>
+                                </div>
+
+                                <!-- Dynamic list items container -->
+                                <div id="queue-list" class="w-full flex flex-col gap-1.5 hidden">
+                                    <!-- Populated dynamically -->
                                 </div>
                             </div>
-                            <select id="logo"
-                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                                <option value="">Không sử dụng Logo</option>
-                            </select>
-                        </div>
-                    </div>
-                    <!-- Logo Position Block -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Vị trí Logo/Hình ảnh</label>
-                            <select id="logo_position"
-                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                                <option value="top_center">Góc trên - Ở giữa</option>
-                                <option value="top_left" selected>Góc trên - Bên trái</option>
-                                <option value="top_right">Góc trên - Bên phải</option>
-                                <option value="bottom_left">Góc dưới - Bên trái</option>
-                                <option value="bottom_right">Góc dưới - Bên phải</option>
-                            </select>
-                        </div>
-                    </div>
 
-                    <!-- Output Channels Manager Block -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Chia
-                                Nền Tảng</label>
-                            <select id="dest_platform"
-                                class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-2 text-sm focus:outline-none focus:border-purple-500 text-slate-100 transition-colors">
-                                <option value="">Không chia</option>
-                                <option value="TikTok">TikTok</option>
-                                <option value="YouTube">YouTube</option>
-                                <option value="Facebook">Facebook</option>
-                                <option value="Douyin">Douyin</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Output Formats Selection Checkboxes -->
-                    <div class="flex flex-col gap-2">
-                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Định Dạng Output Cần Tạo</label>
-                        <div class="flex flex-col gap-2 bg-slate-900/60 border border-white/5 rounded-xl p-3">
-                            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
-                                <input type="checkbox" id="out-fb-reels" value="fb_reels" checked class="rounded border-slate-700 bg-slate-900 text-purple-600 focus:ring-purple-500/50">
-                                <span>Facebook Reels (9:16)</span>
-                            </label>
-                            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
-                                <input type="checkbox" id="out-yt-shorts" value="yt_shorts" class="rounded border-slate-700 bg-slate-900 text-purple-600 focus:ring-purple-500/50">
-                                <span>YouTube Shorts (9:16)</span>
-                            </label>
-                            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
-                                <input type="checkbox" id="out-yt-video" value="yt_video" class="rounded border-slate-700 bg-slate-900 text-purple-600 focus:ring-purple-500/50">
-                                <span>YouTube Video thường (16:9)</span>
-                            </label>
-                        </div>
-                    </div>
-
-
-                </div>
-
-                <!-- Tab 2: Queue List & URL Input -->
-                <div id="sidebar-tab-queue" class="flex flex-col gap-4 hidden">
-                    <!-- Video Queue Box -->
-                    <div class="flex flex-col gap-2">
-                        <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Hàng Chờ Việt
-                            Hóa (Kéo thả)</label>
-
-                        <!-- Drop zone and queue list container -->
-                        <div id="queue-drop-zone"
-                            class="border-2 border-dashed border-slate-700/60 rounded-xl p-3 bg-slate-900/50 flex flex-col gap-2 transition-all min-h-[140px] justify-center items-center text-center">
-                            <!-- Placeholder when empty -->
-                            <div id="queue-empty-placeholder"
-                                class="flex flex-col items-center gap-1.5 py-4 text-slate-500">
-                                <svg class="w-8 h-8 opacity-40 text-purple-400" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12">
-                                    </path>
-                                </svg>
-                                <span class="text-[10px] font-medium leading-relaxed">Kéo thả link video từ<br>Trang Tìm
-                                    Kiếm vào đây</span>
-                            </div>
-
-                            <!-- Dynamic list items container -->
-                            <div id="queue-list" class="w-full flex flex-col gap-1.5 hidden">
-                                <!-- Populated dynamically -->
+                            <!-- Optional URL input row -->
+                            <div class="flex gap-1.5 mt-1">
+                                <input type="text" id="input_video_url" placeholder="Nhập Douyin/YouTube URL..."
+                                    class="flex-1 bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                                <button type="button" onclick="addUrlToQueue()"
+                                    class="bg-purple-600/30 text-purple-300 border border-purple-500/20 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-purple-600 hover:text-white transition-all active:scale-[0.98]">Thêm</button>
                             </div>
                         </div>
-
-                        <!-- Optional URL input row -->
-                        <div class="flex gap-1.5 mt-1">
-                            <input type="text" id="input_video_url" placeholder="Nhập Douyin/YouTube URL..."
-                                class="flex-1 bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-2.5 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
-                            <button type="button" onclick="addUrlToQueue()"
-                                class="bg-purple-600/30 text-purple-300 border border-purple-500/20 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-purple-600 hover:text-white transition-all active:scale-[0.98]">Thêm</button>
-                        </div>
                     </div>
-                </div>
 
-                <button type="submit"
-                    class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-semibold text-sm py-2.5 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all shadow-md pulse-glow mt-2">
-                    Bắt Đầu Việt Hóa Hàng Loạt
-                </button>
-            </form>
+                    <button type="submit"
+                        class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-semibold text-sm py-2.5 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all shadow-md pulse-glow mt-2">
+                        Bắt Đầu Việt Hóa Hàng Loạt
+                    </button>
+                </form>
             </div>
 
             <!-- Sidebar Footer (Config Button) -->
@@ -324,10 +353,12 @@
                 <h3 class="font-outfit font-bold text-lg text-white mt-1" id="detail-job-title">Chi tiết công việc</h3>
             </div>
             <div class="flex items-center gap-2">
-                <button onclick="deleteJob(selectedJobId)" id="btn-detail-delete" class="hidden px-3 py-1.5 bg-rose-600/25 hover:bg-rose-600 text-rose-300 font-semibold text-[11px] rounded-lg transition-all flex items-center gap-1 shadow-sm border border-rose-500/20">
+                <button onclick="deleteJob(selectedJobId)" id="btn-detail-delete"
+                    class="hidden px-3 py-1.5 bg-rose-600/25 hover:bg-rose-600 text-rose-300 font-semibold text-[11px] rounded-lg transition-all flex items-center gap-1 shadow-sm border border-rose-500/20">
                     🗑️ Xóa Job
                 </button>
-                <button onclick="rerunDetailJob()" id="btn-detail-rerun" class="hidden px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-[11px] rounded-lg transition-all flex items-center gap-1 shadow-sm">
+                <button onclick="rerunDetailJob()" id="btn-detail-rerun"
+                    class="hidden px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold text-[11px] rounded-lg transition-all flex items-center gap-1 shadow-sm">
                     🔄 Chạy lại
                 </button>
                 <button onclick="closeDetailPanel()"
@@ -359,12 +390,19 @@
                     class="bg-black/50 border border-white/5 rounded-xl p-4 font-mono text-[11px] text-slate-300 h-64 overflow-y-auto whitespace-pre-wrap">Đang tải nhật ký...</pre>
             </div>
 
-            <div id="subtitle-layout-section" class="hidden flex flex-col gap-4 bg-white/5 border border-purple-500/20 rounded-xl p-4">
+            <div id="subtitle-layout-section"
+                class="hidden flex flex-col gap-4 bg-white/5 border border-purple-500/20 rounded-xl p-4">
                 <div class="flex items-center gap-2 bg-slate-900 p-1.5 rounded-lg border border-white/5">
                     <span class="text-[10px] font-bold text-slate-400 uppercase px-2">Định dạng:</span>
-                    <button type="button" id="layout-switch-fb_reels" onclick="switchSubtitleFormat('fb_reels')" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition-all">FB Reels (9:16)</button>
-                    <button type="button" id="layout-switch-yt_shorts" onclick="switchSubtitleFormat('yt_shorts')" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition-all">YT Shorts (9:16)</button>
-                    <button type="button" id="layout-switch-yt_video" onclick="switchSubtitleFormat('yt_video')" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition-all">YT Video (16:9)</button>
+                    <button type="button" id="layout-switch-fb_reels" onclick="switchSubtitleFormat('fb_reels')"
+                        class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition-all">FB
+                        Reels (9:16)</button>
+                    <button type="button" id="layout-switch-yt_shorts" onclick="switchSubtitleFormat('yt_shorts')"
+                        class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition-all">YT
+                        Shorts (9:16)</button>
+                    <button type="button" id="layout-switch-yt_video" onclick="switchSubtitleFormat('yt_video')"
+                        class="px-3 py-1.5 text-xs font-semibold rounded-lg text-slate-300 hover:text-white transition-all">YT
+                        Video (16:9)</button>
                 </div>
 
                 <div class="flex items-center justify-between gap-3">
@@ -373,90 +411,110 @@
                         <p class="text-[10px] text-slate-400 mt-1">Kéo/thả và resize box phụ đề, sau đó bấm render.</p>
                     </div>
                     <button type="button" onclick="resetSubtitleLayoutBox()"
-                        class="bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold px-2.5 py-1.5 rounded text-slate-300">Đặt lại</button>
+                        class="bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-bold px-2.5 py-1.5 rounded text-slate-300">Đặt
+                        lại</button>
                 </div>
 
-                <div id="subtitle-preview-wrap" class="relative mx-auto w-full max-w-[260px] aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 select-none transition-all duration-200">
-                    <video id="subtitle-preview-video" class="absolute inset-0 w-full h-full object-contain" controls muted playsinline preload="metadata"></video>
-                    
+                <div id="subtitle-preview-wrap"
+                    class="relative mx-auto w-full max-w-[260px] aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 select-none transition-all duration-200">
+                    <video id="subtitle-preview-video" class="absolute inset-0 w-full h-full object-contain" controls
+                        muted playsinline preload="metadata"></video>
+
                     <!-- Draggable Resizable Logo Preview Box -->
-                    <div id="subtitle-logo-preview" class="hidden absolute cursor-move border border-dashed border-amber-500/40 bg-amber-500/10 shadow-lg flex items-center justify-center text-center select-none" style="z-index: 8; width: 40px; height: 25px;">
-                        <img id="subtitle-logo-preview-img" class="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]" src="" alt="logo">
-                        <div id="subtitle-logo-resize" class="absolute right-0 bottom-0 w-3.5 h-3.5 cursor-se-resize rounded-tl bg-amber-400/80"></div>
+                    <div id="subtitle-logo-preview"
+                        class="hidden absolute cursor-move border border-dashed border-amber-500/40 bg-amber-500/10 shadow-lg flex items-center justify-center text-center select-none"
+                        style="z-index: 8; width: 40px; height: 25px;">
+                        <img id="subtitle-logo-preview-img"
+                            class="w-full h-full object-contain filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]" src=""
+                            alt="logo">
+                        <div id="subtitle-logo-resize"
+                            class="absolute right-0 bottom-0 w-3.5 h-3.5 cursor-se-resize rounded-tl bg-amber-400/80">
+                        </div>
                     </div>
-                    
+
                     <!-- Draggable crop box overlay for landscape-to-portrait manual crop -->
-                    <div id="preview-crop-overlay" class="hidden absolute inset-0 pointer-events-none" style="z-index: 5;">
+                    <div id="preview-crop-overlay" class="hidden absolute inset-0 pointer-events-none"
+                        style="z-index: 5;">
                         <div id="preview-crop-shade-left" class="absolute left-0 top-0 bottom-0 bg-black/60"></div>
-                        <div id="preview-crop-window" class="absolute top-0 bottom-0 border-2 border-dashed border-amber-400 cursor-ew-resize pointer-events-auto" style="width: 31.625%; left: 34.18%;">
-                            <div class="absolute top-1 left-1 bg-amber-400/80 text-black text-[8px] font-bold px-1.5 py-0.5 rounded shadow pointer-events-none select-none">CẮT KHUNG HÌNH (9:16)</div>
+                        <div id="preview-crop-window"
+                            class="absolute top-0 bottom-0 border-2 border-dashed border-amber-400 cursor-ew-resize pointer-events-auto"
+                            style="width: 31.625%; left: 34.18%;">
+                            <div
+                                class="absolute top-1 left-1 bg-amber-400/80 text-black text-[8px] font-bold px-1.5 py-0.5 rounded shadow pointer-events-none select-none">
+                                CẮT KHUNG HÌNH (9:16)</div>
                         </div>
                         <div id="preview-crop-shade-right" class="absolute right-0 top-0 bottom-0 bg-black/60"></div>
                     </div>
                     <div id="subtitle-layout-box"
                         class="absolute cursor-move border border-dashed border-purple-500/40 bg-transparent flex items-center justify-center text-center select-none"
-                        style="left:8%; top:57%; width:84%; height:8%;">
-                        <div class="subtitle-plate-bg pointer-events-none text-white font-extrabold leading-tight text-[13px] bg-black/40 rounded-lg shadow-lg px-2.5 py-1" style="backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-shadow: 0 1px 2px #000;">
+                        style="left:10%; top:57%; width:80%; height:8%;">
+                        <div class="subtitle-plate-bg pointer-events-none text-white font-extrabold leading-tight text-[13px] bg-black/40 rounded-lg shadow-lg px-2.5 py-1"
+                            style="backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-shadow: 0 1px 2px #000;">
                             Ba nam truoc, khoi nghiep that bai, no<br>
                             <span class="text-[9px] font-semibold text-white/70">[Kéo thả để chỉnh vị trí phụ đề]</span>
                         </div>
                         <div id="subtitle-layout-resize"
-                            class="absolute right-0 bottom-0 w-4 h-4 cursor-se-resize rounded-tl bg-purple-400/80"></div>
-                    </div>
-                </div>
-                
-                <!-- Subtitle Preview Size Controller -->
-                <div class="flex items-center justify-between gap-3 mt-1 bg-slate-900/40 p-2 rounded-xl border border-white/5">
-                    <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Kích thước khung:</span>
-                    <div class="flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-white/5">
-                        <button type="button" onclick="setSubtitlePreviewSize(200)" id="btn-zoom-200" class="px-2.5 py-0.5 text-[9px] rounded font-bold text-slate-400 hover:text-white transition-all">Nhỏ</button>
-                        <button type="button" onclick="setSubtitlePreviewSize(260)" id="btn-zoom-260" class="px-2.5 py-0.5 text-[9px] rounded font-bold bg-purple-600/30 text-purple-200 border border-purple-500/20 transition-all">Vừa</button>
-                        <button type="button" onclick="setSubtitlePreviewSize(340)" id="btn-zoom-340" class="px-2.5 py-0.5 text-[9px] rounded font-bold text-slate-400 hover:text-white transition-all">Lớn</button>
+                            class="hidden absolute right-0 bottom-0 w-4 h-4 cursor-se-resize rounded-tl bg-purple-400/80">
+                        </div>
                     </div>
                 </div>
 
+
+
                 <div class="hidden">
-                    <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Độ đậm nhạt nền phụ đề (Opacity)</label>
+                    <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Độ đậm nhạt nền phụ đề
+                        (Opacity)</label>
                     <input id="subtitle-layout-opacity" type="range" min="0.0" max="1.0" step="0.05" value="0.20"
                         oninput="previewSubtitleBackplateOpacity(this.value)" class="w-full">
                 </div>
 
                 <div class="mt-4 pt-3 border-t border-slate-800/80">
                     <div class="flex items-center justify-between mb-2">
-                        <h4 class="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Hộp làm mờ nhòe (Blur Masks)</h4>
-                        <button type="button" onclick="addNewBlurMask()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow transition">
+                        <h4 class="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Hộp làm mờ nhòe (Blur
+                            Masks)</h4>
+                        <button type="button" onclick="addNewBlurMask()"
+                            class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow transition">
                             ➕ Thêm hộp làm mờ
                         </button>
                     </div>
-                    
-                    <div id="active-blur-controls" class="hidden bg-slate-900/60 border border-slate-800 rounded p-2 mb-2">
+
+                    <div id="active-blur-controls"
+                        class="hidden bg-slate-900/60 border border-slate-800 rounded p-2 mb-2">
                         <div class="flex items-center justify-between mb-1.5">
-                            <span id="active-blur-title" class="text-[10px] font-bold text-indigo-400">Chỉnh sửa Hộp #1</span>
-                            <button type="button" onclick="deleteActiveBlurMask()" class="text-rose-400 hover:text-rose-300 text-[10px] underline">Xóa</button>
+                            <span id="active-blur-title" class="text-[10px] font-bold text-indigo-400">Chỉnh sửa Hộp
+                                #1</span>
+                            <button type="button" onclick="deleteActiveBlurMask()"
+                                class="text-rose-400 hover:text-rose-300 text-[10px] underline">Xóa</button>
                         </div>
                         <div class="mt-1">
-                            <label class="block text-[9px] font-semibold text-slate-400 uppercase mb-0.5">Độ mờ nhòe (Blur)</label>
-                            <input id="active-blur-opacity-slider" type="range" min="0.1" max="1.0" step="0.05" value="0.6"
-                                oninput="onActiveBlurOpacityChange(this.value)" class="w-full">
+                            <label class="block text-[9px] font-semibold text-slate-400 uppercase mb-0.5">Độ mờ nhòe
+                                (Blur)</label>
+                            <input id="active-blur-opacity-slider" type="range" min="0.1" max="1.0" step="0.05"
+                                value="0.6" oninput="onActiveBlurOpacityChange(this.value)" class="w-full">
                         </div>
                     </div>
-                    
+
                     <div id="blur-masks-list" class="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto pr-1">
                         <span class="italic text-[10px] text-slate-500">Chưa có hộp làm mờ nào được thêm.</span>
                     </div>
                 </div>
                 <div class="mt-4 pt-3 border-t border-slate-800/80 mb-4 flex flex-col gap-3">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1.5">Kiểu hiển thị chữ (Subtitle Style)</label>
-                        <select id="subtitle-layout-style" class="w-full bg-slate-900 border border-slate-850 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500 cursor-pointer">
+                        <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1.5">Kiểu
+                            hiển thị chữ (Subtitle Style)</label>
+                        <select id="subtitle-layout-style"
+                            class="w-full bg-slate-900 border border-slate-850 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500 cursor-pointer">
                             <option value="default" selected>Hiện cả câu (Mặc định)</option>
                             <option value="karaoke">Chạy chữ Karaoke (Màu vàng quét dần)</option>
                             <option value="word_highlight">Hiện từng chữ đơn lẻ (Word-by-Word Pop)</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1.5">Kênh/Page đầu ra</label>
-                        <select id="editor-channel-select" onchange="onChangeEditorChannel(this.value)" class="w-full bg-slate-900 border border-slate-850 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500 cursor-pointer">
+                        <label
+                            class="block text-[10px] font-bold text-slate-300 uppercase tracking-wide mb-1.5">Kênh/Page
+                            đầu ra</label>
+                        <select id="editor-channel-select" onchange="onChangeEditorChannel(this.value)"
+                            class="w-full bg-slate-900 border border-slate-850 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-purple-500 cursor-pointer">
                             <!-- Populated dynamically -->
                         </select>
                     </div>
@@ -542,7 +600,8 @@
                     <div class="flex items-center justify-between gap-3">
                         <div>
                             <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Vị trí phụ đề</h4>
-                            <p id="subtitle-layout-summary" class="text-[10px] text-slate-400 mt-1">Preset: Giữa | Độ mờ: 42%</p>
+                            <p id="subtitle-layout-summary" class="text-[10px] text-slate-400 mt-1">Preset: Giữa | Độ
+                                mờ: 42%</p>
                         </div>
                         <button type="button" onclick="openCompletedSubtitleLayoutEditor()"
                             class="bg-purple-600/25 text-purple-300 border border-purple-500/20 px-3 py-1.5 rounded-lg text-[11px] font-bold hover:bg-purple-600 hover:text-white transition-all">
@@ -554,9 +613,11 @@
                 <!-- 2.5 Outputs list -->
                 <div id="detail-outputs-list-wrap" class="flex flex-col gap-3">
                     <div class="flex items-center justify-between">
-                        <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Danh Sách Output Video</h4>
+                        <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Danh Sách Output Video
+                        </h4>
                     </div>
-                    <div id="outputs-list-container" class="flex flex-col gap-3 bg-black/20 rounded-xl p-3.5 border border-white/5">
+                    <div id="outputs-list-container"
+                        class="flex flex-col gap-3 bg-black/20 rounded-xl p-3.5 border border-white/5">
                         <!-- Dynamically populated output items -->
                     </div>
                 </div>
@@ -564,8 +625,10 @@
                 <!-- Video Player for Final Output (Placed directly under Outputs List) -->
                 <div class="flex flex-col gap-3 mt-2">
                     <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Xem Video Kết Quả</h4>
-                    <div class="relative mx-auto w-full aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 shadow-lg" style="max-width: 240px;">
-                        <video id="detail-video-player" class="w-full h-full object-contain" controls playsinline preload="metadata"></video>
+                    <div class="relative mx-auto w-full aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 shadow-lg"
+                        style="max-width: 240px;">
+                        <video id="detail-video-player" class="w-full h-full object-contain" controls playsinline
+                            preload="metadata"></video>
                     </div>
                 </div>
 
@@ -575,290 +638,358 @@
 
 
 
-        <!-- BGM Downloader Manager Modal -->
-            <div id="bgm-modal"
-                class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                <div
-                    class="glass-card rounded-2xl w-full max-w-lg overflow-hidden flex flex-col shadow-2xl border border-white/10">
-                    <!-- Header -->
-                    <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-                        <h3 class="font-outfit font-bold text-lg text-white">Quản Lý & Tải Nhạc Nền (BGM)</h3>
-                        <button onclick="closeBgmManager()"
-                            class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
+    <!-- BGM Downloader Manager Modal -->
+    <div id="bgm-modal"
+        class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div
+            class="glass-card rounded-2xl w-full max-w-lg overflow-hidden flex flex-col shadow-2xl border border-white/10">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                <h3 class="font-outfit font-bold text-lg text-white">Quản Lý & Tải Nhạc Nền (BGM)</h3>
+                <button onclick="closeBgmManager()"
+                    class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
 
-                    <!-- Body -->
-                    <div class="p-6 flex flex-col gap-5 overflow-y-auto max-h-[450px]">
-                        <!-- Preset Downloads -->
-                        <div class="flex flex-col gap-2.5">
-                            <h4 class="text-xs font-bold text-purple-400 uppercase tracking-wider">Tải Nhạc Nền Mẫu (Một
-                                Click)</h4>
-                            <div class="grid grid-cols-1 gap-2">
-                                <!-- Preset 1: Menu (Patrick Patrikios) -->
-                                <div
-                                    class="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between hover:bg-white/10 transition-colors">
-                                    <div class="flex flex-col">
-                                        <span class="text-xs font-bold text-slate-200">🎵 Menu - Patrick
-                                            Patrikios</span>
-                                        <span class="text-[10px] text-slate-400">Nhạc nền review phim quốc dân (Kịch
-                                            tính, lôi cuốn)</span>
-                                    </div>
-                                    <button
-                                        onclick="downloadPresetBgm('https://pub-8be06c11867c4b4a92d83da16db475fb.r2.dev/Menu.mp3', 'Menu.mp3', this)"
-                                        class="bg-purple-600/80 hover:bg-purple-600 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1">
-                                        Tải về
-                                    </button>
-                                </div>
-
-                                <!-- Preset 2: Joyful Rhythm Walk Funk -->
-                                <div
-                                    class="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between hover:bg-white/10 transition-colors">
-                                    <div class="flex flex-col">
-                                        <span class="text-xs font-bold text-slate-200">🎵 Joyful Rhythm Walk Funk</span>
-                                        <span class="text-[10px] text-slate-400">Nhạc nền vui nhộn, sôi động
-                                            (funny_loop)</span>
-                                    </div>
-                                    <button
-                                        onclick="downloadPresetBgm('https://pub-8be06c11867c4b4a92d83da16db475fb.r2.dev/funny_loop.mp3', 'funny_loop.mp3', this)"
-                                        class="bg-purple-600/80 hover:bg-purple-600 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1">
-                                        Tải về
-                                    </button>
-                                </div>
-
-                                <!-- Preset 3: Soft Piano -->
-                                <div
-                                    class="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between hover:bg-white/10 transition-colors">
-                                    <div class="flex flex-col">
-                                        <span class="text-xs font-bold text-slate-200">🎵 Soft Piano - Emotional</span>
-                                        <span class="text-[10px] text-slate-400">Nhạc piano nhẹ nhàng trầm buồn
-                                            (sad_loop)</span>
-                                    </div>
-                                    <button
-                                        onclick="downloadPresetBgm('https://pub-8be06c11867c4b4a92d83da16db475fb.r2.dev/sad_loop.mp3', 'sad_loop.mp3', this)"
-                                        class="bg-purple-600/80 hover:bg-purple-600 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1">
-                                        Tải về
-                                    </button>
-                                </div>
+            <!-- Body -->
+            <div class="p-6 flex flex-col gap-5 overflow-y-auto max-h-[450px]">
+                <!-- Preset Downloads -->
+                <div class="flex flex-col gap-2.5">
+                    <h4 class="text-xs font-bold text-purple-400 uppercase tracking-wider">Tải Nhạc Nền Mẫu (Một
+                        Click)</h4>
+                    <div class="grid grid-cols-1 gap-2">
+                        <!-- Preset 1: Menu (Patrick Patrikios) -->
+                        <div
+                            class="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between hover:bg-white/10 transition-colors">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold text-slate-200">🎵 Menu - Patrick
+                                    Patrikios</span>
+                                <span class="text-[10px] text-slate-400">Nhạc nền review phim quốc dân (Kịch
+                                    tính, lôi cuốn)</span>
                             </div>
+                            <button
+                                onclick="downloadPresetBgm('https://pub-8be06c11867c4b4a92d83da16db475fb.r2.dev/Menu.mp3', 'Menu.mp3', this)"
+                                class="bg-purple-600/80 hover:bg-purple-600 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1">
+                                Tải về
+                            </button>
                         </div>
 
-                        <hr class="border-white/5">
-
-                        <!-- Custom Download Form -->
-                        <div class="flex flex-col gap-3">
-                            <h4 class="text-xs font-bold text-purple-400 uppercase tracking-wider">Tải Nhạc Từ URL Tùy
-                                Chọn</h4>
-                            <div class="flex flex-col gap-2">
-                                <input type="text" id="custom-bgm-url"
-                                    placeholder="Nhập link trực tiếp tải nhạc (.mp3, .wav, .m4a)"
-                                    class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
-                                <div class="flex gap-2">
-                                    <input type="text" id="custom-bgm-name"
-                                        placeholder="Đặt tên tệp lưu (Ví dụ: nhac_review)"
-                                        class="flex-1 bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
-                                    <button onclick="downloadCustomBgm()"
-                                        class="bg-gradient-to-r from-purple-600 to-rose-500 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-all active:scale-[0.98]">
-                                        Bắt đầu tải
-                                    </button>
-                                </div>
+                        <!-- Preset 2: Joyful Rhythm Walk Funk -->
+                        <div
+                            class="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between hover:bg-white/10 transition-colors">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold text-slate-200">🎵 Joyful Rhythm Walk Funk</span>
+                                <span class="text-[10px] text-slate-400">Nhạc nền vui nhộn, sôi động
+                                    (funny_loop)</span>
                             </div>
+                            <button
+                                onclick="downloadPresetBgm('https://pub-8be06c11867c4b4a92d83da16db475fb.r2.dev/funny_loop.mp3', 'funny_loop.mp3', this)"
+                                class="bg-purple-600/80 hover:bg-purple-600 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1">
+                                Tải về
+                            </button>
                         </div>
 
-                        <hr class="border-white/5">
-
-                        <!-- Installed Tracks List -->
-                        <div class="flex flex-col gap-2.5">
-                            <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Danh Sách Nhạc Hiện Có
-                            </h4>
-                            <div id="installed-bgm-list"
-                                class="max-h-36 overflow-y-auto border border-white/5 rounded-xl bg-black/20 p-2 flex flex-col gap-2 text-xs text-slate-400">
-                                <!-- Populated dynamically -->
+                        <!-- Preset 3: Soft Piano -->
+                        <div
+                            class="bg-white/5 border border-white/5 rounded-xl p-3 flex items-center justify-between hover:bg-white/10 transition-colors">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold text-slate-200">🎵 Soft Piano - Emotional</span>
+                                <span class="text-[10px] text-slate-400">Nhạc piano nhẹ nhàng trầm buồn
+                                    (sad_loop)</span>
                             </div>
+                            <button
+                                onclick="downloadPresetBgm('https://pub-8be06c11867c4b4a92d83da16db475fb.r2.dev/sad_loop.mp3', 'sad_loop.mp3', this)"
+                                class="bg-purple-600/80 hover:bg-purple-600 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1">
+                                Tải về
+                            </button>
                         </div>
                     </div>
                 </div>
+
+                <hr class="border-white/5">
+
+                <!-- Custom Download Form -->
+                <div class="flex flex-col gap-3">
+                    <h4 class="text-xs font-bold text-purple-400 uppercase tracking-wider">Tải Nhạc Từ URL Tùy
+                        Chọn</h4>
+                    <div class="flex flex-col gap-2">
+                        <input type="text" id="custom-bgm-url"
+                            placeholder="Nhập link trực tiếp tải nhạc (.mp3, .wav, .m4a)"
+                            class="w-full bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                        <div class="flex gap-2">
+                            <input type="text" id="custom-bgm-name" placeholder="Đặt tên tệp lưu (Ví dụ: nhac_review)"
+                                class="flex-1 bg-slate-900 border border-slate-700/60 rounded-lg py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500">
+                            <button onclick="downloadCustomBgm()"
+                                class="bg-gradient-to-r from-purple-600 to-rose-500 text-white font-semibold text-xs px-4 py-2 rounded-lg transition-all active:scale-[0.98]">
+                                Bắt đầu tải
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-white/5">
+
+                <!-- Installed Tracks List -->
+                <div class="flex flex-col gap-2.5">
+                    <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Danh Sách Nhạc Hiện Có
+                    </h4>
+                    <div id="installed-bgm-list"
+                        class="max-h-36 overflow-y-auto border border-white/5 rounded-xl bg-black/20 p-2 flex flex-col gap-2 text-xs text-slate-400">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal"
+        class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all duration-300 opacity-0">
+        <div
+            class="glass-card w-full max-w-sm rounded-2xl border border-white/10 p-6 flex flex-col gap-4 shadow-2xl bg-slate-950/95 transform scale-95 transition-all duration-300">
+            <div class="flex items-center gap-3 text-purple-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                    </path>
+                </svg>
+                <h3 class="font-outfit font-bold text-base text-white">Xác nhận</h3>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed" id="confirm-message">Bạn có chắc chắn muốn thực hiện hành
+                động này?</p>
+            <div class="flex justify-end gap-2.5 mt-2">
+                <button id="confirm-btn-cancel"
+                    class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-white/5 rounded-xl text-xs font-semibold transition-all">Hủy</button>
+                <button id="confirm-btn-ok"
+                    class="px-4 py-2 bg-gradient-to-r from-purple-600 to-rose-500 hover:opacity-90 text-white rounded-xl text-xs font-semibold transition-all active:scale-[0.98]">Xác
+                    nhận</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Logo Position Editor Modal -->
+    <div id="logo-position-modal"
+        class="hidden fixed inset-0 z-[115] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div
+            class="glass-card max-w-4xl w-full rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-slate-950">
+            <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                <div>
+                    <h3 class="font-outfit font-bold text-base text-white">Căn Vị Trí Logo/Hình Ảnh</h3>
+                    <p class="text-[10px] text-slate-400 mt-0.5">Kéo thả khung logo màu vàng bên dưới đến vị trí mong
+                        muốn trên khung hình video.</p>
+                </div>
+                <button onclick="closeLogoPositionModal()"
+                    class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
             </div>
 
-            <!-- Custom Confirm Modal -->
-            <div id="confirm-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-all duration-300 opacity-0">
-                <div class="glass-card w-full max-w-sm rounded-2xl border border-white/10 p-6 flex flex-col gap-4 shadow-2xl bg-slate-950/95 transform scale-95 transition-all duration-300">
-                    <div class="flex items-center gap-3 text-purple-400">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            <div class="p-6 flex flex-col lg:flex-row gap-6 items-center justify-center bg-black/40">
+                <!-- Workspace -->
+                <div id="logo-workspace-container"
+                    class="relative bg-slate-900 border border-white/5 rounded-xl overflow-hidden max-w-full flex justify-center items-center"
+                    style="width: 640px; height: 360px;">
+                    <video id="logo-position-video-player"
+                        class="absolute w-full h-full object-contain pointer-events-none" muted loop></video>
+
+                    <!-- Draggable Logo Overlay Box -->
+                    <div id="logo-draggable-box"
+                        class="absolute border-2 border-dashed border-amber-500 bg-amber-500/20 shadow-2xl cursor-move flex items-center justify-center group"
+                        style="width: 80px; height: 45px; left: 280px; top: 20px;">
+                        <span
+                            class="text-[9px] text-amber-200 font-bold uppercase pointer-events-none select-none">LOGO</span>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="w-full lg:w-60 flex flex-col gap-4 flex-shrink-0">
+                    <div class="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col gap-3">
+                        <h4 class="text-xs font-bold text-slate-300 uppercase">Thông tin tọa độ</h4>
+                        <div class="text-[11px] text-slate-400 flex flex-col gap-1">
+                            <div>X: <span id="logo-pos-x-val" class="font-mono text-white">43.7%</span></div>
+                            <div>Y: <span id="logo-pos-y-val" class="font-mono text-white">5.5%</span></div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <button onclick="resetLogoPosition()"
+                            class="w-full bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-xs py-2 rounded-lg transition-all border border-white/5">Đặt
+                            Lại Trên Cùng - Giữa</button>
+                        <button onclick="saveLogoPosition()"
+                            class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-bold text-xs py-2.5 rounded-lg hover:opacity-90 transition-all shadow-md">Lưu
+                            Vị Trí Logo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Modal -->
+    <div id="config-modal" onclick="if(event.target === this) closeConfigModal()"
+        class="hidden fixed inset-0 z-[110] bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
+        <div
+            class="glass-card w-full max-w-2xl rounded-2xl border border-white/10 flex flex-col shadow-2xl bg-slate-950/95 overflow-hidden max-h-[85vh]">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between flex-shrink-0">
+                <h3 class="font-outfit font-bold text-base text-white flex items-center gap-2">⚙️ Cấu hình Hệ thống</h3>
+                <button onclick="closeConfigModal()"
+                    class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Body (Config fields scrollable) -->
+            <div class="p-6 overflow-y-auto flex flex-col gap-6 scrollbar-thin">
+                <p class="text-xs text-slate-400 -mt-2">Thiết lập các khóa API Gemini để dịch thuật & đường dẫn xuất
+                    video mặc định.</p>
+
+                <!-- Gemini API Keys Panel -->
+                <div class="bg-white/5 border border-white/5 rounded-xl p-5 flex flex-col gap-4">
+                    <div class="flex items-center gap-2.5 text-purple-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 7a2 2 0 012 2m-2 4a2 2 0 012 2m-2-4h.01M17 16h.01M3 21h18M3 10h18M3 7h18M3 14h18">
+                            </path>
                         </svg>
-                        <h3 class="font-outfit font-bold text-base text-white">Xác nhận</h3>
+                        <h4 class="font-outfit font-bold text-xs text-white uppercase tracking-wider">Xoay tua Gemini
+                            API Keys</h4>
                     </div>
-                    <p class="text-xs text-slate-300 leading-relaxed" id="confirm-message">Bạn có chắc chắn muốn thực hiện hành động này?</p>
-                    <div class="flex justify-end gap-2.5 mt-2">
-                        <button id="confirm-btn-cancel" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-white/5 rounded-xl text-xs font-semibold transition-all">Hủy</button>
-                        <button id="confirm-btn-ok" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-rose-500 hover:opacity-90 text-white rounded-xl text-xs font-semibold transition-all active:scale-[0.98]">Xác nhận</button>
-                    </div>
-                </div>
-            </div>
 
+                    <p class="text-[11px] text-slate-400 leading-relaxed">
+                        Nhập tối đa 10 API keys của Gemini. Hệ thống sẽ tự động xoay tua (rotate) lần lượt các key này
+                        để tránh giới hạn lượt gọi (Rate Limit).
+                    </p>
 
-
-            <!-- Logo Position Editor Modal -->
-            <div id="logo-position-modal" class="hidden fixed inset-0 z-[115] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-                <div class="glass-card max-w-4xl w-full rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-slate-950">
-                    <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                    <div class="flex flex-col gap-3 max-h-[220px] overflow-y-auto pr-1">
                         <div>
-                            <h3 class="font-outfit font-bold text-base text-white">Căn Vị Trí Logo/Hình Ảnh</h3>
-                            <p class="text-[10px] text-slate-400 mt-0.5">Kéo thả khung logo màu vàng bên dưới đến vị trí mong muốn trên khung hình video.</p>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key
+                                chính (Bắt buộc) <span id="key-status-1"
+                                    class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-1" placeholder="AIzaSy..."
+                                class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
                         </div>
-                        <button onclick="closeLogoPositionModal()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key
+                                dự phòng 2 <span id="key-status-2"
+                                    class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-2" placeholder="AIzaSy..."
+                                class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key
+                                dự phòng 3 <span id="key-status-3"
+                                    class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-3" placeholder="AIzaSy..."
+                                class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key
+                                dự phòng 4 <span id="key-status-4"
+                                    class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-4" placeholder="AIzaSy..."
+                                class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key
+                                dự phòng 5 <span id="key-status-5"
+                                    class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-5" placeholder="AIzaSy..."
+                                class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key
+                                dự phòng 6 <span id="key-status-6"
+                                    class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-6" placeholder="AIzaSy..."
+                                class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key
+                                dự phòng 7 <span id="key-status-7"
+                                    class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-7" placeholder="AIzaSy..."
+                                class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key
+                                dự phòng 8 <span id="key-status-8"
+                                    class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-8" placeholder="AIzaSy..."
+                                class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key
+                                dự phòng 9 <span id="key-status-9"
+                                    class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-9" placeholder="AIzaSy..."
+                                class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key
+                                dự phòng 10 <span id="key-status-10"
+                                    class="text-[9px] font-bold text-slate-500 float-right"></span></label>
+                            <input type="password" id="gemini-key-10" placeholder="AIzaSy..."
+                                class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        </div>
                     </div>
-                    
-                    <div class="p-6 flex flex-col lg:flex-row gap-6 items-center justify-center bg-black/40">
-                        <!-- Workspace -->
-                        <div id="logo-workspace-container" class="relative bg-slate-900 border border-white/5 rounded-xl overflow-hidden max-w-full flex justify-center items-center" style="width: 640px; height: 360px;">
-                            <video id="logo-position-video-player" class="absolute w-full h-full object-contain pointer-events-none" muted loop></video>
-                            
-                            <!-- Draggable Logo Overlay Box -->
-                            <div id="logo-draggable-box" class="absolute border-2 border-dashed border-amber-500 bg-amber-500/20 shadow-2xl cursor-move flex items-center justify-center group" style="width: 80px; height: 45px; left: 280px; top: 20px;">
-                                <span class="text-[9px] text-amber-200 font-bold uppercase pointer-events-none select-none">LOGO</span>
-                            </div>
-                        </div>
-                        
-                        <!-- Controls -->
-                        <div class="w-full lg:w-60 flex flex-col gap-4 flex-shrink-0">
-                            <div class="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col gap-3">
-                                <h4 class="text-xs font-bold text-slate-300 uppercase">Thông tin tọa độ</h4>
-                                <div class="text-[11px] text-slate-400 flex flex-col gap-1">
-                                    <div>X: <span id="logo-pos-x-val" class="font-mono text-white">43.7%</span></div>
-                                    <div>Y: <span id="logo-pos-y-val" class="font-mono text-white">5.5%</span></div>
-                                </div>
-                            </div>
-                            
-                            <div class="flex flex-col gap-2">
-                                <button onclick="resetLogoPosition()" class="w-full bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-xs py-2 rounded-lg transition-all border border-white/5">Đặt Lại Trên Cùng - Giữa</button>
-                                <button onclick="saveLogoPosition()" class="w-full bg-gradient-to-r from-purple-600 to-rose-500 text-white font-bold text-xs py-2.5 rounded-lg hover:opacity-90 transition-all shadow-md">Lưu Vị Trí Logo</button>
-                            </div>
-                        </div>
+                </div>
+
+                <!-- Export Folder Panel -->
+                <div class="bg-white/5 border border-white/5 rounded-xl p-5 flex flex-col gap-3">
+                    <div class="flex items-center gap-2.5 text-purple-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                        <h4 class="font-outfit font-bold text-xs text-white uppercase tracking-wider">Thư mục Export mặc
+                            định</h4>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Đường dẫn tuyệt
+                            đối</label>
+                        <input type="text" id="system-export-path" placeholder="Ví dụ: D:/FinishedVideos"
+                            class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
+                        <p class="text-[10px] text-slate-500 mt-1.5">Nếu cấu hình, video hoàn thành sẽ tự động được copy
+                            ra thư mục này để lưu trữ lâu dài.</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Configuration Modal -->
-            <div id="config-modal" onclick="if(event.target === this) closeConfigModal()" class="hidden fixed inset-0 z-[110] bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
-                <div class="glass-card w-full max-w-2xl rounded-2xl border border-white/10 flex flex-col shadow-2xl bg-slate-950/95 overflow-hidden max-h-[85vh]">
-                    <!-- Modal Header -->
-                    <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between flex-shrink-0">
-                        <h3 class="font-outfit font-bold text-base text-white flex items-center gap-2">⚙️ Cấu hình Hệ thống</h3>
-                        <button onclick="closeConfigModal()"
-                            class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <!-- Modal Body (Config fields scrollable) -->
-                    <div class="p-6 overflow-y-auto flex flex-col gap-6 scrollbar-thin">
-                        <p class="text-xs text-slate-400 -mt-2">Thiết lập các khóa API Gemini để dịch thuật & đường dẫn xuất video mặc định.</p>
-
-                        <!-- Gemini API Keys Panel -->
-                        <div class="bg-white/5 border border-white/5 rounded-xl p-5 flex flex-col gap-4">
-                            <div class="flex items-center gap-2.5 text-purple-400">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m-2 4a2 2 0 012 2m-2-4h.01M17 16h.01M3 21h18M3 10h18M3 7h18M3 14h18"></path>
-                                </svg>
-                                <h4 class="font-outfit font-bold text-xs text-white uppercase tracking-wider">Xoay tua Gemini API Keys</h4>
-                            </div>
-                            
-                            <p class="text-[11px] text-slate-400 leading-relaxed">
-                                Nhập tối đa 10 API keys của Gemini. Hệ thống sẽ tự động xoay tua (rotate) lần lượt các key này để tránh giới hạn lượt gọi (Rate Limit).
-                            </p>
-                            
-                            <div class="flex flex-col gap-3 max-h-[220px] overflow-y-auto pr-1">
-                                <div>
-                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key chính (Bắt buộc) <span id="key-status-1" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
-                                    <input type="password" id="gemini-key-1" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 2 <span id="key-status-2" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
-                                    <input type="password" id="gemini-key-2" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 3 <span id="key-status-3" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
-                                    <input type="password" id="gemini-key-3" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 4 <span id="key-status-4" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
-                                    <input type="password" id="gemini-key-4" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 5 <span id="key-status-5" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
-                                    <input type="password" id="gemini-key-5" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 6 <span id="key-status-6" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
-                                    <input type="password" id="gemini-key-6" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 7 <span id="key-status-7" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
-                                    <input type="password" id="gemini-key-7" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 8 <span id="key-status-8" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
-                                    <input type="password" id="gemini-key-8" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 9 <span id="key-status-9" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
-                                    <input type="password" id="gemini-key-9" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Gemini API Key dự phòng 10 <span id="key-status-10" class="text-[9px] font-bold text-slate-500 float-right"></span></label>
-                                    <input type="password" id="gemini-key-10" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Export Folder Panel -->
-                        <div class="bg-white/5 border border-white/5 rounded-xl p-5 flex flex-col gap-3">
-                            <div class="flex items-center gap-2.5 text-purple-400">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                                </svg>
-                                <h4 class="font-outfit font-bold text-xs text-white uppercase tracking-wider">Thư mục Export mặc định</h4>
-                            </div>
-                            
-                            <div>
-                                <label class="block text-[10px] text-slate-300 uppercase font-semibold mb-1">Đường dẫn tuyệt đối</label>
-                                <input type="text" id="system-export-path" placeholder="Ví dụ: D:/FinishedVideos" class="w-full bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-white focus:outline-none focus:border-purple-500">
-                                <p class="text-[10px] text-slate-500 mt-1.5">Nếu cấu hình, video hoàn thành sẽ tự động được copy ra thư mục này để lưu trữ lâu dài.</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Modal Footer -->
-                    <div class="px-6 py-4 border-t border-white/5 flex justify-end gap-3 bg-slate-950 flex-shrink-0">
-                        <button onclick="checkKeysStatus()" class="mr-auto px-4 py-2 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/20 text-purple-300 rounded-xl text-xs font-semibold transition-all">
-                            🔄 Check Keys
-                        </button>
-                        <button onclick="closeConfigModal()" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-white/5 rounded-xl text-xs font-semibold transition-all">
-                            Hủy
-                        </button>
-                        <button onclick="saveGeminiKeys()" class="px-5 py-2 bg-gradient-to-r from-purple-600 to-rose-500 text-white rounded-xl text-xs font-semibold transition-all active:scale-[0.98] shadow-md hover:opacity-90">
-                            Lưu thay đổi
-                        </button>
-                    </div>
-                </div>
+            <!-- Modal Footer -->
+            <div class="px-6 py-4 border-t border-white/5 flex justify-end gap-3 bg-slate-950 flex-shrink-0">
+                <button onclick="checkKeysStatus()"
+                    class="mr-auto px-4 py-2 bg-purple-600/10 hover:bg-purple-600/20 border border-purple-500/20 text-purple-300 rounded-xl text-xs font-semibold transition-all">
+                    🔄 Check Keys
+                </button>
+                <button onclick="closeConfigModal()"
+                    class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-white/5 rounded-xl text-xs font-semibold transition-all">
+                    Hủy
+                </button>
+                <button onclick="saveGeminiKeys()"
+                    class="px-5 py-2 bg-gradient-to-r from-purple-600 to-rose-500 text-white rounded-xl text-xs font-semibold transition-all active:scale-[0.98] shadow-md hover:opacity-90">
+                    Lưu thay đổi
+                </button>
             </div>
+        </div>
+    </div>
 
-            <!-- Modular Script Components -->
-            <script src="js/utils.js?v=3.6"></script>
-            <script src="js/api.js?v=3.6"></script>
-            <script src="js/app.js?v=3.6"></script>
+    <!-- Modular Script Components -->
+    <script src="js/utils.js?v=3.6"></script>
+    <script src="js/api.js?v=3.6"></script>
+    <script src="js/app.js?v=3.12"></script>
 </body>
 
 </html>

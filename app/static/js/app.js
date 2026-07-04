@@ -48,14 +48,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     await switchTab(initialTab);
     setupQueueDragNDrop();
     renderQueueList();
-    
+
     // Setup sidebar tab and header tab drag actions
     setupSidebarTabDragNDrop();
     setupHeaderTabDragNDrop();
-    
+
     // Run smart polling
     runSmartPolling();
-    
+
     // Refresh on focus
     window.addEventListener('focus', () => {
         if (currentTab === 'dashboard') runSmartPolling();
@@ -72,21 +72,21 @@ async function switchTab(tab) {
         window.location.hash = currentTab;
         return;
     }
-    
+
     currentTab = tab;
     window.location.hash = tab;
-    
+
     // Toggle menu highlight styles
     const btnDashboard = document.getElementById('btn-tab-dashboard');
     const btnSearch = document.getElementById('btn-tab-search');
     const btnChannels = document.getElementById('btn-tab-channels');
-    
+
     const tabs = {
         dashboard: btnDashboard,
         search: btnSearch,
         channels: btnChannels
     };
-    
+
     for (const [t, btn] of Object.entries(tabs)) {
         if (btn) {
             if (t === tab) {
@@ -122,7 +122,7 @@ async function switchTab(tab) {
         const response = await fetch(VIEWS[tab] + '?v=3.6');
         if (response.ok) {
             container.innerHTML = await response.text();
-            
+
             // Trigger tab initializers
             if (tab === 'dashboard') {
                 runSmartPolling();
@@ -134,7 +134,7 @@ async function switchTab(tab) {
             } else if (tab === 'config') {
                 await loadConfigTab();
             }
-            
+
             // Populate dynamic selects
             populateDestChannelSelects();
             populateAllLogoSelects();
@@ -150,14 +150,14 @@ async function switchTab(tab) {
 function renderJobsList() {
     const container = document.getElementById('jobs-container');
     container.innerHTML = '';
-    
+
     let filteredJobs = jobsData;
     if (currentFilterChannelId === 'default') {
         filteredJobs = jobsData.filter(job => !job.channel_id || job.channel_id === 'default');
     } else if (currentFilterChannelId) {
         filteredJobs = jobsData.filter(job => job.channel_id === currentFilterChannelId);
     }
-    
+
     if (filteredJobs.length === 0) {
         container.innerHTML = `
             <div class="col-span-full py-12 text-center text-slate-500 border border-dashed border-white/5 rounded-2xl">
@@ -170,7 +170,7 @@ function renderJobsList() {
     filteredJobs.forEach(job => {
         const card = document.createElement('div');
         card.className = "glass-card rounded-xl p-4 hover:border-white/15 transition-all flex flex-col gap-3.5 relative group";
-        
+
         let statusBadge = '';
         if (job.status === 'completed') {
             statusBadge = '<span class="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-300 font-bold rounded-md border border-emerald-500/20">Hoàn thành</span>';
@@ -217,7 +217,7 @@ function renderJobsList() {
         if (job.status === 'completed') {
             const curChannel = globalChannels.find(c => c.id === job.channel_id);
             const curChanName = curChannel ? curChannel.name : null;
-            
+
             completedActionsHtml = `
                 <div class="relative inline-block select-wrapper flex-shrink-0 w-full sm:w-auto">
                     <select onchange="publishJob('${job.job_id}', this.value); this.selectedIndex = 0;" class="w-full sm:w-auto appearance-none bg-slate-900 hover:bg-slate-800 text-slate-200 text-[10px] font-semibold py-1.5 pl-3 pr-8 rounded-lg cursor-pointer transition-all focus:outline-none border border-slate-700/60 hover:border-purple-500/50">
@@ -236,16 +236,16 @@ function renderJobsList() {
             <div class="flex gap-3 items-start min-w-0">
                 <!-- Thumbnail/Video Preview -->
                 <div class="w-12 h-12 rounded-lg bg-slate-900 border border-white/5 flex-shrink-0 overflow-hidden flex items-center justify-center relative">
-                    ${job.status === 'completed' 
-                        ? `<video src="/api/jobs/${job.job_id}/video" class="w-full h-full object-cover" preload="metadata" muted playsinline></video>`
-                        : job.status === 'running'
-                            ? `<div class="absolute inset-0 flex items-center justify-center bg-purple-500/10 text-purple-400">
+                    ${job.status === 'completed'
+                ? `<video src="/api/jobs/${job.job_id}/video" class="w-full h-full object-cover" preload="metadata" muted playsinline></video>`
+                : job.status === 'running'
+                    ? `<div class="absolute inset-0 flex items-center justify-center bg-purple-500/10 text-purple-400">
                                  <svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 12H16M4 8h5.183M12 4v4m0 0H8"></path></svg>
                                </div>`
-                            : `<div class="absolute inset-0 flex items-center justify-center bg-slate-950 text-slate-500">
+                    : `<div class="absolute inset-0 flex items-center justify-center bg-slate-950 text-slate-500">
                                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                </div>`
-                    }
+            }
                 </div>
 
                 <div class="flex-1 min-w-0 flex flex-col justify-between h-12">
@@ -302,7 +302,7 @@ async function openDetailPanel(jobId) {
     const detailBgm = document.getElementById('detail-bgm');
     const detailRate = document.getElementById('detail-rate');
     const detailPitch = document.getElementById('detail-pitch');
-    
+
     if (detailVoice) detailVoice.value = job.voice || 'vi-VN-HoaiMyNeural';
     if (detailBgm) detailBgm.value = job.bgm || '';
     if (detailRate) detailRate.value = job.rate || '+0%';
@@ -325,13 +325,13 @@ async function openDetailPanel(jobId) {
 
     const refreshDetailStatus = async () => {
         if (!selectedJobId) return;
-        
+
         // Refresh job details
         const response = await fetch(`/api/jobs/${selectedJobId}`);
         const freshJob = await response.json();
-        
+
         updatePipelineSteps(freshJob);
-        
+
         // Fetch logs
         const logResp = await fetch(`/api/jobs/${selectedJobId}/logs`);
         const logData = await logResp.json();
@@ -343,10 +343,10 @@ async function openDetailPanel(jobId) {
             clearInterval(refreshInterval);
             document.getElementById('detail-logs-section').classList.remove('hidden');
             document.getElementById('detail-completed-section').classList.remove('hidden');
-            
+
             // Set video player src path
             document.getElementById('detail-video-player').src = `/api/jobs/${selectedJobId}/video`;
-            
+
             loadTranscript(selectedJobId);
             loadAIcaption(selectedJobId);
         } else if (freshJob.status === 'failed') {
@@ -377,7 +377,7 @@ function closeDetailPanel() {
 function updatePipelineSteps(job) {
     const list = document.getElementById('pipeline-steps-list');
     list.innerHTML = '';
-    
+
     const friendlyNames = {
         "intake": "1. Tải / Nhập video",
         "analyze": "2. Phân tích khung hình",
@@ -433,11 +433,11 @@ async function loadTranscript(jobId) {
         const data = await response.json();
         selectedSegments = data;
         container.innerHTML = '';
-        
+
         data.forEach((seg, idx) => {
             const startSec = (seg.start_ms / 1000).toFixed(1);
             const endSec = (seg.end_ms / 1000).toFixed(1);
-            
+
             const row = document.createElement('div');
             row.className = "flex flex-col gap-1.5 p-3 rounded-lg bg-white/5 border border-white/5 text-xs";
             row.innerHTML = `
@@ -493,7 +493,7 @@ function copyCaption() {
 function renderLibrary() {
     const container = document.getElementById('library-container');
     container.innerHTML = '';
-    
+
     if (libraryVideos.length === 0) {
         container.innerHTML = `<div class="text-[10px] text-center text-slate-500 py-4">Không tìm thấy video nào.</div>`;
         return;
@@ -517,19 +517,19 @@ function renderLibrary() {
             <span>${folder}</span>
             <span class="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.2 rounded-full ml-auto">${groups[folder].length}</span>
         `;
-        
+
         const fileList = document.createElement('div');
         fileList.className = "flex flex-col gap-1 pl-4 border-l border-white/5 ml-1.5 mt-0.5";
 
         groups[folder].forEach(video => {
             const item = document.createElement('div');
             item.setAttribute('draggable', 'true');
-            
+
             const isQueued = videoQueue.includes(video.absolute_path);
-            const activeClasses = isQueued 
-                ? "bg-purple-500/20 text-purple-300 border border-purple-500/30" 
+            const activeClasses = isQueued
+                ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
                 : "text-slate-400";
-                
+
             item.className = `flex items-center justify-between text-[10px] hover:text-white hover:bg-white/5 px-2 py-1 rounded cursor-pointer transition-colors library-video-item active:scale-[0.98] select-none group ${activeClasses}`;
             item.dataset.name = video.name.toLowerCase();
             item.onclick = () => selectLibraryVideo(video.absolute_path, item);
@@ -584,7 +584,7 @@ function selectLibraryVideo(absPath, element) {
         element.classList.add('bg-purple-500/20', 'text-purple-300', 'border', 'border-purple-500/30');
         showToast("Đã thêm vào hàng chờ", "success");
     }
-    
+
     // Update queue list UI
     renderQueueList();
 }
@@ -627,21 +627,21 @@ function toggleNewChannelInput() {
 function populateDestChannelSelects() {
     const select = document.getElementById('dest_channel');
     if (!select) return;
-    
+
     // Keep current selected value if any
     const curVal = select.value;
     select.innerHTML = '<option value="">Output chính</option>';
-    
+
     if (Array.isArray(globalChannels)) {
         globalChannels.forEach(c => {
             const opt = new Option(c.name, c.id);
             select.add(opt);
         });
     }
-    
+
     const newOpt = new Option('[ + Tạo Page Mới ]', '__new__');
     select.add(newOpt);
-    
+
     if (curVal) select.value = curVal;
 }
 
@@ -667,18 +667,18 @@ function renderQueueList() {
     const list = document.getElementById('queue-list');
     const placeholder = document.getElementById('queue-empty-placeholder');
     if (!list || !placeholder) return;
-    
+
     if (videoQueue.length === 0) {
         list.innerHTML = '';
         list.classList.add('hidden');
         placeholder.classList.remove('hidden');
         return;
     }
-    
+
     placeholder.classList.add('hidden');
     list.classList.remove('hidden');
     list.innerHTML = '';
-    
+
     videoQueue.forEach((path, idx) => {
         const name = path.includes('/') ? path.split('/').pop() : (path.includes('\\') ? path.split('\\').pop() : path);
         const item = document.createElement('div');
@@ -708,12 +708,12 @@ function addUrlToQueue() {
         showToast("Vui lòng nhập URL hợp lệ!", "error");
         return;
     }
-    
+
     if (videoQueue.includes(url)) {
         showToast("URL này đã có trong hàng đợi!", "warning");
         return;
     }
-    
+
     videoQueue.push(url);
     input.value = '';
     renderQueueList();
@@ -724,7 +724,7 @@ function addUrlToQueue() {
 function setupQueueDragNDrop() {
     const zone = document.getElementById('queue-drop-zone');
     if (!zone) return;
-    
+
     ['dragenter', 'dragover'].forEach(eventName => {
         zone.addEventListener(eventName, (e) => {
             e.preventDefault();
@@ -732,7 +732,7 @@ function setupQueueDragNDrop() {
             zone.classList.add('border-purple-500', 'bg-purple-500/10');
         }, false);
     });
-    
+
     ['dragleave', 'drop'].forEach(eventName => {
         zone.addEventListener(eventName, (e) => {
             e.preventDefault();
@@ -740,7 +740,7 @@ function setupQueueDragNDrop() {
             zone.classList.remove('border-purple-500', 'bg-purple-500/10');
         }, false);
     });
-    
+
     zone.addEventListener('drop', (e) => {
         const dt = e.dataTransfer;
         const path = dt.getData('text/plain');
@@ -762,11 +762,11 @@ function switchSidebarTab(tab) {
     const queueTab = document.getElementById('sidebar-tab-queue');
     const btnConfig = document.getElementById('btn-sidebar-config');
     const btnQueue = document.getElementById('btn-sidebar-queue');
-    
+
     if (tab === 'config') {
         if (configTab) configTab.classList.remove('hidden');
         if (queueTab) queueTab.classList.add('hidden');
-        
+
         if (btnConfig) {
             btnConfig.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg bg-white/10 text-white transition-all text-center";
         }
@@ -776,7 +776,7 @@ function switchSidebarTab(tab) {
     } else if (tab === 'queue') {
         if (configTab) configTab.classList.add('hidden');
         if (queueTab) queueTab.classList.remove('hidden');
-        
+
         if (btnConfig) {
             btnConfig.className = "flex-1 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-white transition-all text-center";
         }
@@ -797,7 +797,7 @@ function setupSidebarTabDragNDrop() {
         e.preventDefault();
         e.stopPropagation();
         tabQueueBtn.classList.add('bg-purple-650/40', 'text-white');
-        
+
         // Auto switch sidebar tab to queue page after 600ms hovering while dragging
         if (!hoverTimer) {
             hoverTimer = setTimeout(() => {
@@ -805,7 +805,7 @@ function setupSidebarTabDragNDrop() {
             }, 600);
         }
     });
-    
+
     tabQueueBtn.addEventListener('dragleave', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -815,7 +815,7 @@ function setupSidebarTabDragNDrop() {
             hoverTimer = null;
         }
     });
-    
+
     tabQueueBtn.addEventListener('drop', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -824,7 +824,7 @@ function setupSidebarTabDragNDrop() {
             clearTimeout(hoverTimer);
             hoverTimer = null;
         }
-        
+
         const url = e.dataTransfer.getData('text/plain');
         if (url) {
             importSearchedVideo(url);
@@ -859,11 +859,11 @@ async function loadChannels() {
 // Move/Publish job files to a selected channel directory
 async function publishJob(jobId, channelId) {
     if (!channelId) return;
-    
+
     try {
         const res = await fetch(`/api/jobs/${jobId}/publish`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ channel_id: channelId })
         });
         if (res.ok) {
@@ -908,7 +908,7 @@ function setupHeaderTabDragNDrop() {
         e.preventDefault();
         e.stopPropagation();
         tabDashboardBtn.classList.add('bg-purple-650/40', 'text-white');
-        
+
         // Auto switch tab to dashboard and open queue tab after 600ms hovering while dragging
         if (!hoverTimer) {
             hoverTimer = setTimeout(() => {
@@ -917,7 +917,7 @@ function setupHeaderTabDragNDrop() {
             }, 600);
         }
     });
-    
+
     tabDashboardBtn.addEventListener('dragleave', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -927,7 +927,7 @@ function setupHeaderTabDragNDrop() {
             hoverTimer = null;
         }
     });
-    
+
     tabDashboardBtn.addEventListener('drop', (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -936,7 +936,7 @@ function setupHeaderTabDragNDrop() {
             clearTimeout(hoverTimer);
             hoverTimer = null;
         }
-        
+
         const url = e.dataTransfer.getData('text/plain');
         if (url) {
             importSearchedVideo(url);
@@ -947,19 +947,19 @@ function setupHeaderTabDragNDrop() {
 function populateDashboardFilterChannel() {
     const select = document.getElementById('dashboard-filter-channel');
     if (!select) return;
-    
+
     // Clear dynamic options (keeping index 0 "Tất cả kênh" and index 1 "Output mặc định")
     while (select.options.length > 2) {
         select.remove(2);
     }
-    
+
     globalChannels.forEach(c => {
         const opt = document.createElement('option');
         opt.value = c.id;
         opt.textContent = c.name;
         select.appendChild(opt);
     });
-    
+
     select.value = currentFilterChannelId;
 }
 
@@ -973,10 +973,10 @@ function onChangeTargetLanguage(lang) {
     const container = document.getElementById('target_locale_container');
     const select = document.getElementById('target_locale');
     if (!container || !select) return;
-    
+
     // Check lang prefix or exact matching
     const prefix = lang.split('-')[0].toLowerCase();
-    
+
     if (prefix === 'es') {
         container.classList.remove('hidden');
         select.innerHTML = `
@@ -1291,10 +1291,10 @@ function getSubtitleLayoutBoxPercent() {
 function applySubtitleLayoutBox(layout = DEFAULT_SUBTITLE_LAYOUT) {
     const box = document.getElementById('subtitle-layout-box');
     if (!box) return;
-    box.style.left = `${(layout.x ?? DEFAULT_SUBTITLE_LAYOUT.x) * 100}%`;
+    box.style.left = '10%';
     box.style.top = `${(layout.y ?? DEFAULT_SUBTITLE_LAYOUT.y) * 100}%`;
-    box.style.width = `${(layout.width ?? DEFAULT_SUBTITLE_LAYOUT.width) * 100}%`;
-    box.style.height = `${(layout.height ?? DEFAULT_SUBTITLE_LAYOUT.height) * 100}%`;
+    box.style.width = '80%';
+    box.style.height = '8%';
 }
 
 let currentSubtitleJob = null;
@@ -1308,27 +1308,27 @@ function loadJobLogoPreview(job) {
     const logoDiv = document.getElementById('subtitle-logo-preview');
     const logoImg = document.getElementById('subtitle-logo-preview-img');
     if (!logoDiv || !logoImg) return;
-    
+
     logoDiv.classList.add('hidden');
     logoImg.src = '';
-    
+
     logoImg.src = `/api/jobs/${job.job_id}/logo?t=${Date.now()}`;
-    
+
     logoImg.onload = () => {
         logoDiv.classList.remove('hidden');
-        
+
         const snapshot = job.config_snapshot || {};
         const logoLayout = snapshot.logo_layout || null;
-        
+
         // Initialize window.logoLayout so drag state is preserved
         window.logoLayout = logoLayout;
-        
+
         logoDiv.style.left = '';
         logoDiv.style.right = '';
         logoDiv.style.top = '';
         logoDiv.style.bottom = '';
         logoDiv.style.transform = '';
-        
+
         if (logoLayout && logoLayout.x_percent !== undefined) {
             logoDiv.style.left = `${logoLayout.x_percent * 100}%`;
             logoDiv.style.top = `${logoLayout.y_percent * 100}%`;
@@ -1346,7 +1346,7 @@ function loadJobLogoPreview(job) {
             // Reset to default dimensions
             logoDiv.style.width = '40px';
             logoDiv.style.height = '25px';
-            
+
             // If active layout format is vertical (9:16) where 16:9 landscape is centered,
             // place default logo at the top-left of the original video (left: 6%, top: 36%)
             if (activeLayoutFormat === 'yt_video') {
@@ -1360,7 +1360,7 @@ function loadJobLogoPreview(job) {
             }
         }
     };
-    
+
     logoImg.onerror = () => {
         logoDiv.classList.add('hidden');
         window.logoLayout = null;
@@ -1370,7 +1370,7 @@ function loadJobLogoPreview(job) {
 function switchSubtitleFormat(fmt) {
     if (!currentSubtitleJob) return;
     activeLayoutFormat = fmt;
-    
+
     // Update button styles
     ['fb_reels', 'yt_shorts', 'yt_video'].forEach(f => {
         const btn = document.getElementById(`layout-switch-${f}`);
@@ -1386,7 +1386,7 @@ function switchSubtitleFormat(fmt) {
     const wrap = document.getElementById('subtitle-preview-wrap');
     const cropOverlay = document.getElementById('preview-crop-overlay');
     const layoutBox = document.getElementById('subtitle-layout-box');
-    
+
     if (!wrap || !cropOverlay || !layoutBox) return;
 
     const isInputHorizontal = currentSubtitleJob.input_aspect_type === 'horizontal';
@@ -1397,28 +1397,28 @@ function switchSubtitleFormat(fmt) {
     if (showManualCrop) {
         wrap.className = "relative mx-auto w-full max-w-[450px] aspect-[16/9] bg-black rounded-xl overflow-hidden border border-white/10 select-none";
         cropOverlay.classList.remove('hidden');
-        
+
         const cropWindow = document.getElementById('preview-crop-window');
         if (layoutBox.parentNode !== cropWindow) {
             cropWindow.appendChild(layoutBox);
         }
-        
+
         const defaultCrop = { crop_x_percent: 0.342, crop_y_percent: 0, crop_width_percent: 0.316, crop_height_percent: 1.0 };
         const savedCrop = formatCrops[fmt] || currentSubtitleJob.config_snapshot?.[`${fmt}_crop`] || defaultCrop;
         formatCrops[fmt] = { ...savedCrop };
-        
+
         const leftPercent = formatCrops[fmt].crop_x_percent * 100;
         cropWindow.style.left = `${leftPercent}%`;
-        
+
         updateCropShades(leftPercent);
         setupCropDragging(cropWindow, wrap);
-        
+
     } else {
         cropOverlay.classList.add('hidden');
         if (layoutBox.parentNode !== wrap) {
             wrap.appendChild(layoutBox);
         }
-        
+
         if (isTargetVertical) {
             wrap.className = "relative mx-auto w-full max-w-[340px] aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 select-none";
         } else {
@@ -1429,11 +1429,11 @@ function switchSubtitleFormat(fmt) {
     const defaultLayout = (fmt === 'yt_video')
         ? { x: 0.08, y: 0.75, width: 0.84, height: 0.08 }
         : { x: 0.08, y: 0.57, width: 0.84, height: 0.08 };
-        
+
     const savedLayout = formatSubtitleLayouts[fmt] || currentSubtitleJob.config_snapshot?.[`${fmt}_subtitle_layout`] || currentSubtitleJob.config_snapshot?.subtitle_layout || defaultLayout;
     subtitleLayoutState = { ...savedLayout };
     applySubtitleLayoutBox(subtitleLayoutState);
-    
+
     // Also update logo preview coordinates based on layout format change
     loadJobLogoPreview(currentSubtitleJob);
 }
@@ -1442,7 +1442,7 @@ function updateCropShades(leftPercent) {
     const shadeLeft = document.getElementById('preview-crop-shade-left');
     const shadeRight = document.getElementById('preview-crop-shade-right');
     const widthPercent = 31.625;
-    
+
     if (shadeLeft) shadeLeft.style.width = `${leftPercent}%`;
     if (shadeRight) {
         shadeRight.style.left = `${leftPercent + widthPercent}%`;
@@ -1460,7 +1460,7 @@ function setupCropDragging(cropWindow, wrap) {
         e.preventDefault();
         isDragging = true;
         startX = e.clientX;
-        
+
         const wrapWidth = wrap.clientWidth;
         const currentLeftPx = parseFloat(cropWindow.style.left) * wrapWidth / 100 || 0;
         startLeft = currentLeftPx;
@@ -1469,18 +1469,18 @@ function setupCropDragging(cropWindow, wrap) {
             if (!isDragging) return;
             const deltaX = moveEvent.clientX - startX;
             let newLeftPx = startLeft + deltaX;
-            
+
             const maxLeftPx = wrapWidth - cropWindow.clientWidth;
             newLeftPx = Math.max(0, Math.min(maxLeftPx, newLeftPx));
-            
+
             const leftPercent = (newLeftPx / wrapWidth) * 100;
             cropWindow.style.left = `${leftPercent}%`;
-            
+
             if (!formatCrops[activeLayoutFormat]) {
                 formatCrops[activeLayoutFormat] = {};
             }
             formatCrops[activeLayoutFormat].crop_x_percent = newLeftPx / wrapWidth;
-            
+
             updateCropShades(leftPercent);
         };
 
@@ -1569,7 +1569,7 @@ async function onChangeEditorChannel(channelId) {
     try {
         const res = await fetch(`/api/jobs/${currentSubtitleJob.job_id}/publish`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ channel_id: channelId })
         });
         if (res.ok) {
@@ -1604,7 +1604,7 @@ function setupSubtitleLayoutEditor(job) {
         subtitleLayoutEditorJobId = job.job_id;
         currentSubtitleJob = job;
         logoRemovedForThisJob = false;
-        
+
         const editorChannelSelect = document.getElementById('editor-channel-select');
         if (editorChannelSelect) {
             editorChannelSelect.innerHTML = '<option value="default">Output mặc định</option>';
@@ -1614,7 +1614,7 @@ function setupSubtitleLayoutEditor(job) {
             });
             editorChannelSelect.value = job.channel_id || 'default';
         }
-        
+
         const snapshot = job.config_snapshot || {};
         const styleSelect = document.getElementById('subtitle-layout-style');
         if (styleSelect) {
@@ -1622,7 +1622,7 @@ function setupSubtitleLayoutEditor(job) {
         }
         formatSubtitleLayouts = {};
         formatCrops = {};
-        
+
         ['fb_reels', 'yt_shorts', 'yt_video'].forEach(fmt => {
             if (snapshot[`${fmt}_subtitle_layout`]) {
                 formatSubtitleLayouts[fmt] = snapshot[`${fmt}_subtitle_layout`];
@@ -1633,7 +1633,7 @@ function setupSubtitleLayoutEditor(job) {
         });
 
         const selectedOutputs = snapshot.selected_outputs || ['fb_reels'];
-        
+
         ['fb_reels', 'yt_shorts', 'yt_video'].forEach(fmt => {
             const btn = document.getElementById(`layout-switch-${fmt}`);
             if (btn) {
@@ -1644,21 +1644,21 @@ function setupSubtitleLayoutEditor(job) {
                 }
             }
         });
-        
+
         activeLayoutFormat = selectedOutputs[0] || 'fb_reels';
-        
+
         if (!video.src || !video.src.includes(job.job_id)) {
             video.src = `/api/jobs/${job.job_id}/preview-video`;
         }
-        
+
         switchSubtitleFormat(activeLayoutFormat);
-        
+
         // Clear any existing blur boxes from previous jobs
         document.querySelectorAll('.subtitle-blur-box-instance').forEach(el => el.remove());
         subtitleBlurBoxes = [];
         nextBlurBoxId = 1;
         activeBlurBoxId = null;
-        
+
         // Load multiple blur masks from snapshot
         const savedBlurMasks = job.config_snapshot?.blur_masks || [];
         savedBlurMasks.forEach(mask => {
@@ -1673,7 +1673,7 @@ function setupSubtitleLayoutEditor(job) {
             subtitleBlurBoxes.push(newBox);
             createBlurBoxElement(newBox);
         });
-        
+
         renderBlurMasksList();
         if (subtitleBlurBoxes.length > 0) {
             selectBlurMask(subtitleBlurBoxes[0].id);
@@ -1681,7 +1681,7 @@ function setupSubtitleLayoutEditor(job) {
             const controls = document.getElementById('active-blur-controls');
             if (controls) controls.classList.add('hidden');
         }
-        
+
         // Dynamically load and show logo preview
         loadJobLogoPreview(job);
     }
@@ -1724,9 +1724,9 @@ function setupSubtitleLayoutEditor(job) {
         const dx = e.clientX - start.mouseX;
         const dy = e.clientY - start.mouseY;
         if (mode === 'move') {
-            const nx = Math.max(0, Math.min(start.wrapW - start.w, start.x + dx));
             const ny = Math.max(0, Math.min(start.wrapH - start.h, start.y + dy));
-            box.style.left = `${(nx / start.wrapW) * 100}%`;
+            box.style.left = '10%';
+            box.style.width = '80%';
             box.style.top = `${(ny / start.wrapH) * 100}%`;
         } else {
             const nw = Math.max(start.wrapW * 0.20, Math.min(start.wrapW - start.x, start.w + dx));
@@ -1736,7 +1736,7 @@ function setupSubtitleLayoutEditor(job) {
         }
     });
 
-        document.addEventListener('pointerup', (e) => {
+    document.addEventListener('pointerup', (e) => {
         if (mode) {
             e.preventDefault();
             e.stopPropagation();
@@ -1763,7 +1763,7 @@ function setupSubtitleLayoutEditor(job) {
         let startX = 0, startY = 0;
         let startLeft = 0, startTop = 0;
         let startWidth = 0, startHeight = 0;
-        
+
         logoBox.addEventListener('pointerdown', (e) => {
             if (e.target === logoResize || e.target.tagName.toLowerCase() === 'button') return;
             e.preventDefault();
@@ -1771,44 +1771,44 @@ function setupSubtitleLayoutEditor(job) {
             draggingLogo = true;
             startX = e.clientX;
             startY = e.clientY;
-            
+
             const rect = wrap.getBoundingClientRect();
             const b = logoBox.getBoundingClientRect();
             startLeft = b.left - rect.left;
             startTop = b.top - rect.top;
-            
+
             const onLogoMove = (moveEvent) => {
                 if (!draggingLogo) return;
                 const rect = wrap.getBoundingClientRect();
                 let deltaX = moveEvent.clientX - startX;
                 let deltaY = moveEvent.clientY - startY;
-                
+
                 let newLeftPx = startLeft + deltaX;
                 let newTopPx = startTop + deltaY;
-                
+
                 newLeftPx = Math.max(0, Math.min(rect.width - b.width, newLeftPx));
                 newTopPx = Math.max(0, Math.min(rect.height - b.height, newTopPx));
-                
+
                 const xPct = newLeftPx / rect.width;
                 const yPct = newTopPx / rect.height;
-                
+
                 window.logoLayout = {
                     ...window.logoLayout,
                     x_percent: xPct,
                     y_percent: yPct
                 };
-                
+
                 logoBox.style.transform = '';
                 logoBox.style.left = `${xPct * 100}%`;
                 logoBox.style.top = `${yPct * 100}%`;
             };
-            
+
             const onLogoUp = () => {
                 draggingLogo = false;
                 document.removeEventListener('pointermove', onLogoMove);
                 document.removeEventListener('pointerup', onLogoUp);
             };
-            
+
             document.addEventListener('pointermove', onLogoMove);
             document.addEventListener('pointerup', onLogoUp);
         });
@@ -1820,42 +1820,42 @@ function setupSubtitleLayoutEditor(job) {
                 resizingLogo = true;
                 startX = e.clientX;
                 startY = e.clientY;
-                
+
                 const rect = wrap.getBoundingClientRect();
                 const b = logoBox.getBoundingClientRect();
                 startWidth = b.width;
                 startHeight = b.height;
-                
+
                 const onLogoResizeMove = (moveEvent) => {
                     if (!resizingLogo) return;
                     let deltaX = moveEvent.clientX - startX;
                     let deltaY = moveEvent.clientY - startY;
-                    
+
                     let newWidthPx = startWidth + deltaX;
                     let newHeightPx = startHeight + deltaY;
-                    
+
                     newWidthPx = Math.max(20, Math.min(rect.width - (b.left - rect.left), newWidthPx));
                     newHeightPx = Math.max(10, Math.min(rect.height - (b.top - rect.top), newHeightPx));
-                    
+
                     const wPct = newWidthPx / rect.width;
                     const hPct = newHeightPx / rect.height;
-                    
+
                     window.logoLayout = {
                         ...window.logoLayout,
                         width_percent: wPct,
                         height_percent: hPct
                     };
-                    
+
                     logoBox.style.width = `${wPct * 100}%`;
                     logoBox.style.height = `${hPct * 100}%`;
                 };
-                
+
                 const onLogoResizeUp = () => {
                     resizingLogo = false;
                     document.removeEventListener('pointermove', onLogoResizeMove);
                     document.removeEventListener('pointerup', onLogoResizeUp);
                 };
-                
+
                 document.addEventListener('pointermove', onLogoResizeMove);
                 document.addEventListener('pointerup', onLogoResizeUp);
             });
@@ -1867,7 +1867,7 @@ async function continueRenderWithSubtitleLayout() {
     if (!selectedJobId) return;
     const btn = document.getElementById('btn-continue-render');
     saveSubtitleLayoutLocalState();
-    
+
     if (btn) {
         btn.disabled = true;
         btn.innerText = 'Đang render...';
@@ -1902,7 +1902,7 @@ async function continueRenderWithSubtitleLayout() {
             payload.logo_width_percent = window.logoLayout.width_percent || 0.085;
             payload.logo_height_percent = window.logoLayout.height_percent || 0.05;
         }
-        
+
         const mapLayout = (l) => {
             if (!l) return null;
             return {
@@ -1917,10 +1917,10 @@ async function continueRenderWithSubtitleLayout() {
         payload.fb_reels_subtitle_layout = mapLayout(formatSubtitleLayouts.fb_reels);
         payload.yt_shorts_subtitle_layout = mapLayout(formatSubtitleLayouts.yt_shorts);
         payload.yt_video_subtitle_layout = mapLayout(formatSubtitleLayouts.yt_video);
-        
+
         payload.asset = "";
         payload.blur_masks = subtitleBlurBoxes;
-        
+
         const resp = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1933,7 +1933,6 @@ async function continueRenderWithSubtitleLayout() {
         document.getElementById('subtitle-layout-section')?.classList.add('hidden');
         const panel = document.getElementById('detail-panel');
         if (panel) {
-            panel.classList.remove('lg:w-[850px]');
             panel.classList.add('lg:w-[650px]');
         }
         subtitleLayoutEditorJobId = null;
@@ -1965,8 +1964,8 @@ function setSubtitlePreviewSize(width) {
     const wrap = document.getElementById('subtitle-preview-wrap');
     if (!wrap) return;
     wrap.style.maxWidth = `${width}px`;
-    
-    [200, 260, 340].forEach(w => {
+
+    [200, 260].forEach(w => {
         const btn = document.getElementById(`btn-zoom-${w}`);
         if (btn) {
             if (w === width) {
@@ -1987,8 +1986,7 @@ async function openCompletedSubtitleLayoutEditor() {
     setupSubtitleLayoutEditor(job);
     const panel = document.getElementById('detail-panel');
     if (panel) {
-        panel.classList.remove('lg:w-[650px]');
-        panel.classList.add('lg:w-[850px]');
+        panel.classList.add('lg:w-[650px]');
     }
     const section = document.getElementById('subtitle-layout-section');
     if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2069,18 +2067,15 @@ async function openDetailPanel(jobId) {
         }
 
         if (isWaitingForSubtitleLayout(freshJob)) {
-            panel.classList.remove('lg:w-[650px]');
-            panel.classList.add('lg:w-[850px]');
+            panel.classList.add('lg:w-[650px]');
             document.getElementById('subtitle-layout-section')?.classList.remove('hidden');
             setSubtitleEditorSubmitMode('initial');
             if (!isEditingSubtitleLayout) {
                 setupSubtitleLayoutEditor(freshJob);
             }
         } else if (document.getElementById('subtitle-layout-section') && !document.getElementById('subtitle-layout-section').classList.contains('hidden')) {
-            panel.classList.remove('lg:w-[650px]');
-            panel.classList.add('lg:w-[850px]');
+            panel.classList.add('lg:w-[650px]');
         } else {
-            panel.classList.remove('lg:w-[850px]');
             panel.classList.add('lg:w-[650px]');
             document.getElementById('subtitle-layout-section')?.classList.add('hidden');
         }
@@ -2107,11 +2102,11 @@ async function openDetailPanel(jobId) {
         const isFinished = !activeStatuses.has(freshJob.status) && freshJob.status !== 'created';
         if (isFinished) {
             clearInterval(refreshInterval);
-            
+
             // Show config override & transcript editing controls
             document.getElementById('detail-completed-section')?.classList.remove('hidden');
             updateSubtitleLayoutSummary(freshJob);
-            
+
             // Prefill configuration values from job config snapshot
             const snapshot = freshJob.config_snapshot || {};
             const detVoice = document.getElementById('detail-voice');
@@ -2122,7 +2117,7 @@ async function openDetailPanel(jobId) {
             if (detPitch && snapshot.pitch) detPitch.value = snapshot.pitch;
             const detBgm = document.getElementById('detail-bgm');
             if (detBgm) detBgm.value = snapshot.bgm || '';
-            
+
             // Show outputs list and set player source only if completed
             const outputsWrap = document.getElementById('detail-outputs-list-wrap');
             if (outputsWrap) {
@@ -2135,9 +2130,9 @@ async function openDetailPanel(jobId) {
                     outputsWrap.classList.add('hidden');
                 }
             }
-            
+
             loadTranscript(selectedJobId);
-            
+
             if (freshJob.status === 'failed') {
                 showToast('Công việc đã kết thúc thất bại hoặc bị ngắt.', 'error');
             }
@@ -2302,7 +2297,7 @@ function renderJobsList() {
                     : activeStatuses.has(job.status)
                         ? `<button onclick="cancelJob('${job.job_id}')" class="hover:bg-amber-500/10 text-amber-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-500/20 hover:border-amber-500/40 transition-all">Ngắt</button>`
                         : `<button onclick="rerunJob('${job.job_id}')" class="hover:bg-purple-500/10 text-purple-400 text-xs font-semibold px-3 py-1.5 rounded-lg border border-purple-500/20 hover:border-purple-500/40 transition-all">Chạy lại</button>`;
-                
+
                 const channelLabel = job.channel_name || (globalChannels.find(c => c.id === job.channel_id) || {}).name || '';
                 const channelDropdown = job.status === 'completed'
                     ? `<select onchange="publishJob('${job.job_id}', this.value); this.selectedIndex = 0;" class="appearance-none bg-slate-900 hover:bg-slate-800 text-slate-200 text-[10px] font-semibold py-1.5 pl-3 pr-8 rounded-lg cursor-pointer transition-all focus:outline-none border border-slate-700/60 hover:border-purple-500/50">
@@ -2316,12 +2311,12 @@ function renderJobsList() {
                         ${job.is_published ? '✓ Đã đăng' : 'Chờ đăng'}
                        </button>`
                     : '';
-                
+
                 const newActionsHtml = `${publishToggleBtn}${channelDropdown}${actionButton}<button onclick="openDetailPanel('${job.job_id}')" class="bg-white/5 hover:bg-white/10 hover:text-white text-slate-300 text-xs font-semibold px-3 py-1.5 rounded-lg border border-white/5 transition-all">Chi tiết</button>`;
-                
+
                 const activeEl = document.activeElement;
                 const isUserInteractingWithThisCard = activeEl && card.contains(activeEl) && activeEl.tagName === 'SELECT';
-                
+
                 if (actionsContainer.innerHTML !== newActionsHtml && !isUserInteractingWithThisCard) {
                     actionsContainer.innerHTML = newActionsHtml;
                 }
@@ -2492,7 +2487,6 @@ function sortDashboardJobs(a, b, mode) {
 
 function closeDetailPanel() {
     const panel = document.getElementById('detail-panel');
-    panel.classList.remove('lg:w-[850px]');
     panel.classList.add('lg:w-[650px]');
     panel.classList.add('translate-x-full');
     setTimeout(() => {
@@ -2516,30 +2510,30 @@ function renderOutputsList(job) {
     const container = document.getElementById('outputs-list-container');
     if (!container) return;
     container.innerHTML = '';
-    
+
     const snapshot = job.config_snapshot || {};
     const selectedOutputs = snapshot.selected_outputs || [];
-    
+
     if (selectedOutputs.length === 0) {
         container.innerHTML = '<div class="text-[10px] text-slate-500 text-center py-2">Chưa cấu hình output nào.</div>';
         return;
     }
-    
+
     selectedOutputs.forEach(outType => {
         const outData = job.outputs?.[outType] || {
             output_type: outType,
             render_status: 'pending',
             upload_status: 'pending'
         };
-        
+
         const friendlyOutNames = {
             "fb_reels": "Facebook Reels (9:16)",
             "yt_shorts": "YouTube Shorts (9:16)",
             "yt_video": "YouTube Video (16:9)"
         };
-        
+
         const friendlyName = friendlyOutNames[outType] || outType;
-        
+
         let statusBadge = '';
         if (outData.render_status === 'completed') {
             statusBadge = '<span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/10 px-2 py-0.5 rounded-lg font-bold">Hoàn thành</span>';
@@ -2550,10 +2544,10 @@ function renderOutputsList(job) {
         } else {
             statusBadge = '<span class="text-[10px] bg-slate-800 text-slate-400 border border-slate-700/60 px-2 py-0.5 rounded-lg font-bold">Đang chờ</span>';
         }
-        
+
         const div = document.createElement('div');
         div.className = "flex flex-col gap-2 p-3 bg-white/5 border border-white/5 rounded-xl text-xs";
-        
+
         let buttonsHtml = '';
         if (outData.render_status === 'completed') {
             buttonsHtml += `
@@ -2562,15 +2556,15 @@ function renderOutputsList(job) {
                 </button>
             `;
         }
-        
+
         // Manual crop is removed in favor of default blur background reframe
-        
+
         buttonsHtml += `
             <button onclick="renderSpecificOutput('${job.job_id}', '${outType}')" class="bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 text-[10px] px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 transition-all active:scale-[0.98] ml-auto">
                 ⚡ Render Lại
             </button>
         `;
-        
+
         // Output metadata for copy
         let metadataHtml = '';
         if (job.steps.metadata === 'completed') {
@@ -2624,7 +2618,7 @@ function renderOutputsList(job) {
                 `;
             }
         }
-        
+
         div.innerHTML = `
             <div class="flex justify-between items-center">
                 <span class="font-semibold text-slate-200">${friendlyName}</span>
@@ -2676,23 +2670,23 @@ let activeCropOutputType = null;
 function openCropEditor(jobId, outputType) {
     activeCropJobId = jobId;
     activeCropOutputType = outputType;
-    
+
     const job = jobsData.find(j => j.job_id === jobId);
     if (!job) return;
-    
+
     const snapshot = job.config_snapshot || {};
     const reframeMode = snapshot[`${outputType}_reframe_mode`] || 'blur_background';
     document.getElementById('crop-reframe-mode').value = reframeMode;
     toggleReframeMode(reframeMode);
-    
+
     const video = document.getElementById('crop-video-player');
     video.src = `/api/jobs/${jobId}/preview-video`;
     video.play();
-    
+
     const overlay = document.getElementById('crop-overlay-box');
     const shadeLeft = document.getElementById('crop-shade-left');
     const shadeRight = document.getElementById('crop-shade-right');
-    
+
     // Load current crop coordinates if any
     const crop = snapshot[`${outputType}_crop`] || {
         crop_x_percent: 0.342,
@@ -2700,41 +2694,41 @@ function openCropEditor(jobId, outputType) {
         crop_width_percent: 0.316,
         crop_height_percent: 1.0
     };
-    
+
     const workspaceWidth = 640;
     const overlayWidth = 202.5; // 360 * 9 / 16
-    
+
     const currentLeft = crop.crop_x_percent * workspaceWidth;
     overlay.style.left = `${currentLeft}px`;
     overlay.style.width = `${overlayWidth}px`;
-    
+
     shadeLeft.style.width = `${currentLeft}px`;
     shadeRight.style.left = `${currentLeft + overlayWidth}px`;
     shadeRight.style.width = `${workspaceWidth - (currentLeft + overlayWidth)}px`;
-    
+
     document.getElementById('crop-modal').classList.remove('hidden');
-    
+
     // Drag setup
     overlay.onmousedown = (e) => {
         e.preventDefault();
         isDraggingCrop = true;
         dragStartX = e.clientX;
         dragStartLeft = parseFloat(overlay.style.left) || 0;
-        
+
         document.onmousemove = (moveEvent) => {
             if (!isDraggingCrop) return;
             let deltaX = moveEvent.clientX - dragStartX;
             let newLeft = dragStartLeft + deltaX;
-            
+
             // Bound check
             newLeft = Math.max(0, Math.min(workspaceWidth - overlayWidth, newLeft));
             overlay.style.left = `${newLeft}px`;
-            
+
             shadeLeft.style.width = `${newLeft}px`;
             shadeRight.style.left = `${newLeft + overlayWidth}px`;
             shadeRight.style.width = `${workspaceWidth - (newLeft + overlayWidth)}px`;
         };
-        
+
         document.onmouseup = () => {
             isDraggingCrop = false;
             document.onmousemove = null;
@@ -2754,11 +2748,11 @@ function resetCrop() {
     const workspaceWidth = 640;
     const overlayWidth = 202.5;
     const centerLeft = (workspaceWidth - overlayWidth) / 2;
-    
+
     const overlay = document.getElementById('crop-overlay-box');
     const shadeLeft = document.getElementById('crop-shade-left');
     const shadeRight = document.getElementById('crop-shade-right');
-    
+
     overlay.style.left = `${centerLeft}px`;
     shadeLeft.style.width = `${centerLeft}px`;
     shadeRight.style.left = `${centerLeft + overlayWidth}px`;
@@ -2768,18 +2762,18 @@ function resetCrop() {
 async function saveCrop() {
     const overlay = document.getElementById('crop-overlay-box');
     const left = parseFloat(overlay.style.left) || 0;
-    
+
     const workspaceWidth = 640;
     const overlayWidth = 202.5;
-    
+
     // Calculate percentages
     const cropX = left / workspaceWidth;
     const cropY = 0.0;
     const cropW = overlayWidth / workspaceWidth;
     const cropH = 1.0;
-    
+
     const reframeMode = document.getElementById('crop-reframe-mode').value;
-    
+
     await saveCropConfig(activeCropJobId, activeCropOutputType, reframeMode, cropX, cropY, cropW, cropH);
     closeCropModal();
 }
@@ -2812,7 +2806,7 @@ async function checkApiKeysOnStartup() {
                 }
                 showToast("Cảnh báo: Chưa cấu hình Gemini API Key chính!", "error");
             }
-            
+
             // Prefill inputs if they exist in DOM
             const key1 = document.getElementById('gemini-key-1');
             if (key1) {
@@ -2845,7 +2839,7 @@ async function loadConfigTab() {
             }
             const exportPathEl = document.getElementById('system-export-path');
             if (exportPathEl) exportPathEl.value = data.default_export_path || '';
-            
+
             checkKeysStatus();
         }
     } catch (e) {
@@ -2880,7 +2874,7 @@ async function checkKeysStatus() {
             el.innerText = "⏳ Đang kiểm tra...";
         }
     }
-    
+
     try {
         const res = await fetch('/api/config/key-status');
         if (res.ok) {
@@ -2929,19 +2923,19 @@ function closeKeysModal() {
 async function saveGeminiKeys() {
     const k1 = document.getElementById('gemini-key-1').value.trim();
     const payload = { key: k1 };
-    
+
     for (let i = 2; i <= 10; i++) {
         const el = document.getElementById(`gemini-key-${i}`);
         payload[`key${i}`] = el ? el.value.trim() : '';
     }
-    
+
     if (!k1) {
         showToast("Lỗi: Gemini API Key chính không được để trống!", "error");
         return;
     }
-    
+
     const exportPathVal = document.getElementById('system-export-path')?.value.trim() || '';
-    
+
     showToast("Đang lưu cấu hình...", "info");
     try {
         // Save export path
@@ -2957,13 +2951,13 @@ async function saveGeminiKeys() {
         });
         if (res.ok) {
             showToast("Đã lưu cấu hình xoay tua API Keys thành công!", "success");
-            
+
             // Remove pulse highlight from button if fixed
             const btn = document.getElementById('btn-tab-config');
             if (btn) {
                 btn.classList.remove('animate-pulse', 'border', 'border-purple-500', 'text-purple-300');
             }
-            
+
             checkKeysStatus();
         } else {
             const err = await res.json();
@@ -2985,11 +2979,11 @@ window.logoLayout = null; // Stores { x_percent, y_percent }
 function openLogoPositionEditor() {
     const modal = document.getElementById('logo-position-modal');
     if (!modal) return;
-    
+
     const container = document.getElementById('logo-workspace-container');
     const box = document.getElementById('logo-draggable-box');
     const video = document.getElementById('logo-position-video-player');
-    
+
     // Set video background if any video is queued
     if (pendingVideoItems && pendingVideoItems.length > 0) {
         const item = pendingVideoItems[0];
@@ -3003,59 +2997,59 @@ function openLogoPositionEditor() {
     } else {
         video.src = '';
     }
-    
+
     // Load pre-existing layout if any
     const layout = window.logoLayout || { x_percent: 0.4375, y_percent: 0.055 };
-    
+
     const workspaceWidth = 640;
     const workspaceHeight = 360;
     const boxWidth = 80;
     const boxHeight = 45;
-    
+
     const currentLeft = layout.x_percent * workspaceWidth;
     const currentTop = layout.y_percent * workspaceHeight;
-    
+
     box.style.left = `${currentLeft}px`;
     box.style.top = `${currentTop}px`;
-    
+
     document.getElementById('logo-pos-x-val').innerText = `${(layout.x_percent * 100).toFixed(1)}%`;
     document.getElementById('logo-pos-y-val').innerText = `${(layout.y_percent * 100).toFixed(1)}%`;
-    
+
     modal.classList.remove('hidden');
-    
+
     // Setup mouse dragging logic
     box.onmousedown = (e) => {
         e.preventDefault();
         isDraggingLogo = true;
-        
+
         logoDragStartX = e.clientX;
         logoDragStartY = e.clientY;
         logoDragStartLeft = parseFloat(box.style.left) || 0;
         logoDragStartTop = parseFloat(box.style.top) || 0;
-        
+
         document.onmousemove = (moveEvent) => {
             if (!isDraggingLogo) return;
-            
+
             let deltaX = moveEvent.clientX - logoDragStartX;
             let deltaY = moveEvent.clientY - logoDragStartY;
-            
+
             let newLeft = logoDragStartLeft + deltaX;
             let newTop = logoDragStartTop + deltaY;
-            
+
             // Bounds check
             newLeft = Math.max(0, Math.min(workspaceWidth - boxWidth, newLeft));
             newTop = Math.max(0, Math.min(workspaceHeight - boxHeight, newTop));
-            
+
             box.style.left = `${newLeft}px`;
             box.style.top = `${newTop}px`;
-            
+
             // Update UI coordinates labels
             const xPct = newLeft / workspaceWidth;
             const yPct = newTop / workspaceHeight;
             document.getElementById('logo-pos-x-val').innerText = `${(xPct * 100).toFixed(1)}%`;
             document.getElementById('logo-pos-y-val').innerText = `${(yPct * 100).toFixed(1)}%`;
         };
-        
+
         document.onmouseup = () => {
             isDraggingLogo = false;
             document.onmousemove = null;
@@ -3076,14 +3070,14 @@ function resetLogoPosition() {
     const workspaceHeight = 360;
     const boxWidth = 80;
     const boxHeight = 45;
-    
+
     const centerLeft = (workspaceWidth - boxWidth) / 2;
     const topOffset = 20; // 5.5%
-    
+
     const box = document.getElementById('logo-draggable-box');
     box.style.left = `${centerLeft}px`;
     box.style.top = `${topOffset}px`;
-    
+
     document.getElementById('logo-pos-x-val').innerText = `${((centerLeft / workspaceWidth) * 100).toFixed(1)}%`;
     document.getElementById('logo-pos-y-val').innerText = `${((topOffset / workspaceHeight) * 100).toFixed(1)}%`;
 }
@@ -3092,18 +3086,18 @@ function saveLogoPosition() {
     const box = document.getElementById('logo-draggable-box');
     const left = parseFloat(box.style.left) || 0;
     const top = parseFloat(box.style.top) || 0;
-    
+
     const workspaceWidth = 640;
     const workspaceHeight = 360;
-    
+
     const xPct = left / workspaceWidth;
     const yPct = top / workspaceHeight;
-    
+
     window.logoLayout = {
         x_percent: parseFloat(xPct.toFixed(4)),
         y_percent: parseFloat(yPct.toFixed(4))
     };
-    
+
     showToast("Đã lưu vị trí logo thành công!", "success");
     closeLogoPositionModal();
 }
@@ -3124,7 +3118,7 @@ let nextBlurBoxId = 1;
 function addNewBlurMask() {
     const wrap = document.getElementById('subtitle-preview-wrap');
     if (!wrap) return;
-    
+
     const newBox = {
         id: nextBlurBoxId++,
         x_percent: 0.40,
@@ -3133,7 +3127,7 @@ function addNewBlurMask() {
         height_percent: 0.08,
         opacity: 0.6
     };
-    
+
     subtitleBlurBoxes.push(newBox);
     createBlurBoxElement(newBox);
     renderBlurMasksList();
@@ -3143,7 +3137,7 @@ function addNewBlurMask() {
 function createBlurBoxElement(boxData) {
     const wrap = document.getElementById('subtitle-preview-wrap');
     if (!wrap) return;
-    
+
     const box = document.createElement('div');
     box.id = `subtitle-blur-box-${boxData.id}`;
     box.className = 'subtitle-blur-box-instance absolute cursor-move border border-dashed border-indigo-400/80 bg-white/10 shadow-lg flex items-center justify-center text-center rounded select-none';
@@ -3152,26 +3146,26 @@ function createBlurBoxElement(boxData) {
     box.style.width = `${boxData.width_percent * 100}%`;
     box.style.height = `${boxData.height_percent * 100}%`;
     box.style.zIndex = '10';
-    
+
     const blurPx = boxData.opacity * 30;
     box.style.backdropFilter = `blur(${blurPx}px)`;
     box.style.webkitBackdropFilter = `blur(${blurPx}px)`;
-    
+
     box.innerHTML = `
         <span class="text-[8px] font-bold text-indigo-200 uppercase pointer-events-none select-none">HỘP LÀM MỜ #${boxData.id}</span>
         <div id="subtitle-blur-resize-${boxData.id}" class="subtitle-blur-resize-handle absolute right-0 bottom-0 w-3 h-3 cursor-se-resize rounded-tl bg-indigo-500/95"></div>
     `;
-    
+
     wrap.appendChild(box);
-    
+
     let dragging = false;
     let startX = 0, startY = 0;
     let startLeft = 0, startTop = 0;
-    
+
     box.addEventListener('pointerdown', (e) => {
         const resizeHandle = document.getElementById(`subtitle-blur-resize-${boxData.id}`);
         if (e.target === resizeHandle) return;
-        
+
         e.preventDefault();
         e.stopPropagation();
         selectBlurMask(boxData.id);
@@ -3180,41 +3174,41 @@ function createBlurBoxElement(boxData) {
         startY = e.clientY;
         startLeft = parseFloat(box.style.left) || 0;
         startTop = parseFloat(box.style.top) || 0;
-        
+
         const onMove = (mv) => {
             if (!dragging) return;
             const rect = wrap.getBoundingClientRect();
             let deltaX = mv.clientX - startX;
             let deltaY = mv.clientY - startY;
-            
+
             let newLeftPx = (startLeft / 100) * rect.width + deltaX;
             let newTopPx = (startTop / 100) * rect.height + deltaY;
-            
+
             newLeftPx = Math.max(0, Math.min(rect.width - box.offsetWidth, newLeftPx));
             newTopPx = Math.max(0, Math.min(rect.height - box.offsetHeight, newTopPx));
-            
+
             boxData.x_percent = newLeftPx / rect.width;
             boxData.y_percent = newTopPx / rect.height;
-            
+
             box.style.left = `${boxData.x_percent * 100}%`;
             box.style.top = `${boxData.y_percent * 100}%`;
         };
-        
+
         const onUp = () => {
             dragging = false;
             document.removeEventListener('pointermove', onMove);
             document.removeEventListener('pointerup', onUp);
         };
-        
+
         document.addEventListener('pointermove', onMove);
         document.addEventListener('pointerup', onUp);
     });
-    
+
     const resizeHandle = document.getElementById(`subtitle-blur-resize-${boxData.id}`);
     if (resizeHandle) {
         let resizing = false;
         let startW = 0, startH = 0;
-        
+
         resizeHandle.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -3224,35 +3218,35 @@ function createBlurBoxElement(boxData) {
             startY = e.clientY;
             startW = parseFloat(box.style.width) || 20;
             startH = parseFloat(box.style.height) || 8;
-            
+
             const onResizeMove = (mv) => {
                 if (!resizing) return;
                 const rect = wrap.getBoundingClientRect();
                 let deltaX = mv.clientX - startX;
                 let deltaY = mv.clientY - startY;
-                
+
                 let newWidthPx = (startW / 100) * rect.width + deltaX;
                 let newHeightPx = (startH / 100) * rect.height + deltaY;
-                
+
                 let leftPx = parseFloat(box.style.left) / 100 * rect.width;
                 let topPx = parseFloat(box.style.top) / 100 * rect.height;
-                
+
                 newWidthPx = Math.max(rect.width * 0.05, Math.min(rect.width - leftPx, newWidthPx));
                 newHeightPx = Math.max(rect.height * 0.02, Math.min(rect.height - topPx, newHeightPx));
-                
+
                 boxData.width_percent = newWidthPx / rect.width;
                 boxData.height_percent = newHeightPx / rect.height;
-                
+
                 box.style.width = `${boxData.width_percent * 100}%`;
                 box.style.height = `${boxData.height_percent * 100}%`;
             };
-            
+
             const onResizeUp = () => {
                 resizing = false;
                 document.removeEventListener('pointermove', onResizeMove);
                 document.removeEventListener('pointerup', onResizeUp);
             };
-            
+
             document.addEventListener('pointermove', onResizeMove);
             document.addEventListener('pointerup', onResizeUp);
         });
@@ -3261,7 +3255,7 @@ function createBlurBoxElement(boxData) {
 
 function selectBlurMask(id) {
     activeBlurBoxId = id;
-    
+
     document.querySelectorAll('.subtitle-blur-box-instance').forEach(el => {
         if (el.id === `subtitle-blur-box-${id}`) {
             el.classList.remove('border-dashed', 'border-indigo-400/80');
@@ -3275,14 +3269,14 @@ function selectBlurMask(id) {
             if (handle) handle.classList.add('hidden');
         }
     });
-    
+
     const boxData = subtitleBlurBoxes.find(b => b.id === id);
     if (!boxData) return;
-    
+
     const controls = document.getElementById('active-blur-controls');
     const title = document.getElementById('active-blur-title');
     const opacitySlider = document.getElementById('active-blur-opacity-slider');
-    
+
     if (controls && title && opacitySlider) {
         controls.classList.remove('hidden');
         title.innerText = `Chỉnh sửa Hộp #${id}`;
@@ -3300,13 +3294,13 @@ function deleteBlurMask(id) {
     subtitleBlurBoxes = subtitleBlurBoxes.filter(b => b.id !== id);
     const el = document.getElementById(`subtitle-blur-box-${id}`);
     if (el) el.remove();
-    
+
     if (activeBlurBoxId === id) {
         activeBlurBoxId = null;
         const controls = document.getElementById('active-blur-controls');
         if (controls) controls.classList.add('hidden');
     }
-    
+
     renderBlurMasksList();
     if (subtitleBlurBoxes.length > 0 && activeBlurBoxId === null) {
         selectBlurMask(subtitleBlurBoxes[0].id);
@@ -3317,9 +3311,9 @@ function onActiveBlurOpacityChange(opacity) {
     if (activeBlurBoxId === null) return;
     const boxData = subtitleBlurBoxes.find(b => b.id === activeBlurBoxId);
     if (!boxData) return;
-    
+
     boxData.opacity = parseFloat(opacity);
-    
+
     const el = document.getElementById(`subtitle-blur-box-${activeBlurBoxId}`);
     if (el) {
         const blurPx = boxData.opacity * 30;
@@ -3332,23 +3326,23 @@ function onActiveBlurOpacityChange(opacity) {
 function renderBlurMasksList() {
     const container = document.getElementById('blur-masks-list');
     if (!container) return;
-    
+
     if (subtitleBlurBoxes.length === 0) {
         container.innerHTML = '<span class="italic text-[10px] text-slate-500">Chưa có hộp làm mờ nào được thêm.</span>';
         return;
     }
-    
+
     container.innerHTML = '';
     subtitleBlurBoxes.forEach(b => {
         const isSelected = b.id === activeBlurBoxId;
         const pill = document.createElement('div');
         pill.className = `flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium transition cursor-pointer select-none ${isSelected ? 'bg-indigo-600/30 border border-indigo-500 text-indigo-200' : 'bg-slate-800/80 border border-slate-700/60 text-slate-300 hover:bg-slate-800'}`;
-        
+
         pill.innerHTML = `
             <span onclick="selectBlurMask(${b.id})">Hộp #${b.id} (Mờ: ${Math.round(b.opacity * 100)}%)</span>
             <button type="button" onclick="event.stopPropagation(); deleteBlurMask(${b.id})" class="text-slate-400 hover:text-rose-400 font-bold ml-0.5">×</button>
         `;
-        
+
         container.appendChild(pill);
     });
 }
@@ -3423,14 +3417,14 @@ async function initChannelsView() {
 function renderChannelsListView() {
     const listContainer = document.getElementById('modal-channel-list');
     if (!listContainer) return;
-    
+
     listContainer.innerHTML = '';
-    
+
     if (globalChannels.length === 0) {
         listContainer.innerHTML = '<div class="col-span-full py-12 text-center text-slate-500 border border-dashed border-white/5 rounded-2xl">Chưa có cấu hình Page nào. Nhập thông tin bên trái để tạo mới!</div>';
         return;
     }
-    
+
     globalChannels.forEach(c => {
         const card = document.createElement('div');
         card.className = "glass-card rounded-2xl p-5 border border-white/5 hover:border-purple-500/30 transition-all duration-300 flex flex-col justify-between gap-4";
@@ -3459,12 +3453,12 @@ function renderChannelsListView() {
 function editChannel(id) {
     const chan = globalChannels.find(c => c.id === id);
     if (!chan) return;
-    
+
     document.getElementById('chan-modal-title').innerText = "Chỉnh Sửa Page";
     document.getElementById('edit-channel-id').value = chan.id;
     document.getElementById('chan-name').value = chan.name;
     document.getElementById('chan-path').value = chan.path;
-    
+
     const logoSelect = document.getElementById('chan-logo');
     if (logoSelect) {
         logoSelect.value = chan.logo || '';
@@ -3479,17 +3473,17 @@ function cancelChannelEdit() {
 
 async function saveChannel(event) {
     if (event) event.preventDefault();
-    
+
     const id = document.getElementById('edit-channel-id').value;
     const name = document.getElementById('chan-name').value.trim();
     const path = document.getElementById('chan-path').value.trim();
     const logoSelect = document.getElementById('chan-logo');
     const logo = logoSelect ? logoSelect.value : '';
-    
+
     const payload = {
         name, path, logo
     };
-    
+
     try {
         let resp;
         if (id) {
@@ -3505,7 +3499,7 @@ async function saveChannel(event) {
                 body: JSON.stringify(payload)
             });
         }
-        
+
         if (resp.ok) {
             showToast("Lưu cấu hình Page thành công!", "success");
             cancelChannelEdit();
@@ -3523,7 +3517,7 @@ async function saveChannel(event) {
 async function deleteChannelData(id) {
     const confirmed = confirm("Bạn có chắc chắn muốn xóa Page này? Cấu hình mặc định của Page sẽ bị loại bỏ.");
     if (!confirmed) return;
-    
+
     try {
         const resp = await fetch(`/api/pages/${id}`, { method: 'DELETE' });
         if (resp.ok) {

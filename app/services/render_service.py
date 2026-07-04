@@ -583,14 +583,18 @@ class RenderService:
             if mask_subtitle:
                 layout = self._normalize_layout_keys(subtitle_layout)
                 y_pct = float(layout.get("y", 0.72))
-                h_pct = float(layout.get("height", 0.11))
+                h_pct = float(layout.get("height", 0.08))
+                
+                band_width = (int(w_out * 0.8) // 2) * 2
+                band_x = (int((w_out - band_width) / 2) // 2) * 2
                 
                 band_y = (int(h_out * y_pct) // 2) * 2
                 band_height = (int(h_out * h_pct) // 2) * 2
                 
-                fade_px = int(band_height * 0.3)
-                if fade_px < 1:
-                    fade_px = 1
+                # Clamp band_y to keep it within video frame
+                band_y = max(0, min(h_out - band_height, band_y))
+                
+                fade_px = max(1, int(band_height * 0.05)) # Small feathered edge
                     
                 alpha_expr = f"255*min(1,Y/{fade_px})*min(1,({band_height}-Y)/{fade_px})"
                 
@@ -599,13 +603,13 @@ class RenderService:
                     f"{current_grid}split=2[main_bg][fg_band]"
                 )
                 filters.append(
-                    f"[fg_band]crop=iw:{band_height}:0:{band_y},boxblur=15:5,colorchannelmixer=rr=0.5:gg=0.5:bb=0.5[blurred_band]"
+                    f"[fg_band]crop={band_width}:{band_height}:{band_x}:{band_y},boxblur=15:5,colorchannelmixer=rr=0.5:gg=0.5:bb=0.5,drawbox=x=0:y=0:w=iw:h=ih:color=black@0.5:t=2[blurred_band]"
                 )
                 filters.append(
                     f"[blurred_band]format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='{alpha_expr}'[feathered_blur]"
                 )
                 filters.append(
-                    f"[main_bg][feathered_blur]overlay=0:{band_y}:shortest=1{next_grid}"
+                    f"[main_bg][feathered_blur]overlay={band_x}:{band_y}:shortest=1{next_grid}"
                 )
                 current_grid = next_grid
             
