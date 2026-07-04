@@ -1042,7 +1042,7 @@ function defaultPendingConfig() {
         target_language: getVal('target_language', base.target_language || 'vi-VN'),
         target_locale: getVal('target_locale', base.target_locale || ''),
         translation_mode: getVal('translation_mode', base.translation_mode || 'natural'),
-        subtitle_style: getVal('subtitle_style', base.subtitle_style || 'default'),
+        subtitle_style: getVal('subtitle_style', base.subtitle_style || 'word_highlight'),
     };
 }
 

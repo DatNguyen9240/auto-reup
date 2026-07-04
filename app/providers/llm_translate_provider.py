@@ -117,6 +117,17 @@ class LLMTranslateProvider(TranslateProvider):
                 
         raise TranslationError(f"All configured Gemini API Keys failed. Last error: {last_error}")
 
+    def clean_translated_text(self, text: str) -> str:
+        if not text:
+            return ""
+        import re
+        # Fix run-together words with dot like "tai.Rẽ" -> "tai Rẽ"
+        pattern = r'([a-zàáâãèéêìíòóôõùúýăđĩũơưảãạẻẽẹểễệỉịỏõọổỗộớờởỡợủũụửữự])\.([a-zàáâãèéêìíòóôõùúýăđĩũơưảãạẻẽẹểễệỉịỏõọổỗộớờởỡợủũụửữự])'
+        text = re.sub(pattern, r'\1 \2', text, flags=re.IGNORECASE)
+        # Also clean up duplicate spaces
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+
     def translate(
         self,
         segments: List[Segment],
@@ -209,7 +220,7 @@ YÊU CẦU QUAN TRỌNG:
    Phụ đề nguồn tiếng Trung được tạo tự động bằng nhận diện giọng nói (ASR) nên chứa rất nhiều lỗi đồng âm hoặc sai chính tả. Hãy tự động phân tích ngữ cảnh để sửa các lỗi này trước khi dịch. Ví dụ:
    - "逆名" thực chất là "匿名" (nặc danh).
    - "契礼子散" thực chất là "妻离子散" (vợ con ly tán, tan nhà nát cửa).
-   - "印着头皮" thực chất là "硬着头皮" (nhắm mắt đưa chân, cố chịu đựng).
+   - "印着 head皮" thực chất là "硬着头皮" (nhắm mắt đưa chân, cố chịu đựng).
    - "让人招这儿" thực chất là "店里/这儿" (ở đây, ở cửa hàng).
 
 2. ĐẠI TỪ NHÂN XƯNG CHÍNH XÁC:
@@ -264,7 +275,7 @@ Danh sách phụ đề cần dịch:
                         
             # Apply translations
             for s in segments:
-                s.translated_text = translations.get(s.id, s.source_text)
+                s.translated_text = self.clean_translated_text(translations.get(s.id, s.source_text))
                 # Initialize tts_text
                 s.tts_text = s.translated_text
                 s.status = "translated"

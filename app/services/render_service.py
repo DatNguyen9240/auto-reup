@@ -247,7 +247,7 @@ class RenderService:
             "",
             "[V4+ Styles]",
             "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-            f"Style: Default,Arial,{font_size},&H00FFFFFF,&H0000FFFF,&H00000000,{back_colour},-1,0,0,0,100,100,0,0,{border_style},{outline_size},{shadow_size},5,20,20,0,1",
+            f"Style: Default,Tahoma,{font_size},&H00FFFFFF,&H0000FFFF,&H00000000,{back_colour},-1,0,0,0,100,100,0,0,{border_style},{outline_size},{shadow_size},5,20,20,0,1",
             "",
             "[Events]",
             "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"
