@@ -295,7 +295,11 @@ async function openDetailPanel(jobId) {
     if (!job) return;
 
     document.getElementById('detail-job-id-badge').innerText = job.job_id;
-    document.getElementById('detail-job-title').innerText = job.input_path.split(/[\\/]/).pop();
+    const detailTitle = document.getElementById('detail-job-title');
+    if (detailTitle) {
+        detailTitle.innerText = getJobDisplayTitle(job);
+        detailTitle.title = job.input_path || job.job_id;
+    }
 
     // Pre-select local settings overrides from the job details
     const detailVoice = document.getElementById('detail-voice');
@@ -344,9 +348,6 @@ async function openDetailPanel(jobId) {
             document.getElementById('detail-logs-section').classList.remove('hidden');
             document.getElementById('detail-completed-section').classList.remove('hidden');
 
-            // Set video player src path
-            document.getElementById('detail-video-player').src = `/api/jobs/${selectedJobId}/video`;
-
             loadTranscript(selectedJobId);
             loadAIcaption(selectedJobId);
         } else if (freshJob.status === 'failed') {
@@ -369,7 +370,6 @@ function closeDetailPanel() {
         panel.classList.add('hidden');
         selectedJobId = null;
         if (refreshInterval) clearInterval(refreshInterval);
-        document.getElementById('detail-video-player').src = '';
     }, 300);
 }
 
@@ -1555,13 +1555,22 @@ function escapeHtml(value) {
         .replace(/'/g, '&#039;');
 }
 
+function getJobDisplayTitle(job) {
+    const input = job?.input_path || job?.job_id || '';
+    try {
+        const url = new URL(input);
+        const videoId = url.searchParams.get('vid') || url.searchParams.get('modal_id');
+        return videoId ? `${url.hostname} / ${videoId}` : url.hostname;
+    } catch (_) {
+        return input.split(/[\\/]/).pop();
+    }
+}
+
 function updateSubtitlePreviewText() {
     const box = document.getElementById('subtitle-layout-box');
     const textWrap = box?.querySelector('.subtitle-plate-bg');
     if (!textWrap) return;
-    const sample = (selectedSegments || []).find(seg => (seg.translated_text || seg.text || '').trim());
-    const text = (sample?.translated_text || sample?.text || 'Ba năm trước, khởi nghiệp thất bại, nợ').trim();
-    textWrap.innerHTML = `${escapeHtml(text)}<br><span class="text-[10px] font-semibold text-white/80">[Kéo thả để chỉnh vị trí phụ đề]</span>`;
+    textWrap.textContent = 'Toi da bao ban lam the.';
 }
 
 async function onChangeEditorChannel(channelId) {
@@ -1939,8 +1948,6 @@ async function continueRenderWithSubtitleLayout() {
         subtitleLayoutEditorReady = false;
         isEditingSubtitleLayout = false;
         if (subtitleLayoutSubmitMode === 'rerender') {
-            const player = document.getElementById('detail-video-player');
-            if (player) player.src = `/api/jobs/${selectedJobId}/video?v=${Date.now()}`;
             const freshJob = await (await fetch(`/api/jobs/${selectedJobId}`)).json();
             updateSubtitleLayoutSummary(freshJob);
             showToast('Đã render lại video với vị trí phụ đề mới', 'success');
@@ -2038,7 +2045,11 @@ async function openDetailPanel(jobId) {
     if (!job) return;
 
     document.getElementById('detail-job-id-badge').innerText = job.job_id;
-    document.getElementById('detail-job-title').innerText = job.input_path.split(/[\\/]/).pop();
+    const detailTitle = document.getElementById('detail-job-title');
+    if (detailTitle) {
+        detailTitle.innerText = getJobDisplayTitle(job);
+        detailTitle.title = job.input_path || job.job_id;
+    }
     document.getElementById('detail-completed-section')?.classList.add('hidden');
     document.getElementById('subtitle-layout-section')?.classList.add('hidden');
     document.getElementById('detail-logs-section')?.classList.remove('hidden');
@@ -2118,13 +2129,11 @@ async function openDetailPanel(jobId) {
             const detBgm = document.getElementById('detail-bgm');
             if (detBgm) detBgm.value = snapshot.bgm || '';
 
-            // Show outputs list and set player source only if completed
+            // Show outputs list only if completed
             const outputsWrap = document.getElementById('detail-outputs-list-wrap');
             if (outputsWrap) {
                 if (freshJob.status === 'completed') {
                     outputsWrap.classList.remove('hidden');
-                    const player = document.getElementById('detail-video-player');
-                    if (player) player.src = `/api/jobs/${selectedJobId}/video`;
                     loadAIcaption(selectedJobId);
                 } else {
                     outputsWrap.classList.add('hidden');
@@ -2499,8 +2508,6 @@ function closeDetailPanel() {
             clearInterval(refreshInterval);
             refreshInterval = null;
         }
-        const detailPlayer = document.getElementById('detail-video-player');
-        if (detailPlayer) detailPlayer.src = '';
         const previewPlayer = document.getElementById('subtitle-preview-video');
         if (previewPlayer) previewPlayer.src = '';
     }, 300);
@@ -2549,13 +2556,6 @@ function renderOutputsList(job) {
         div.className = "flex flex-col gap-2 p-3 bg-white/5 border border-white/5 rounded-xl text-xs";
 
         let buttonsHtml = '';
-        if (outData.render_status === 'completed') {
-            buttonsHtml += `
-                <button onclick="playOutputVideo('${job.job_id}', '${outType}')" class="bg-purple-600 hover:bg-purple-500 text-white text-[10px] px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 transition-all active:scale-[0.98]">
-                    ▶ Xem & Tải
-                </button>
-            `;
-        }
 
         // Manual crop is removed in favor of default blur background reframe
 
@@ -2652,13 +2652,6 @@ function copyText(btn, text) {
             btn.innerText = originalText;
         }, 1500);
     });
-}
-
-function playOutputVideo(jobId, outputType) {
-    const video = document.getElementById('detail-video-player');
-    video.src = `/api/jobs/${jobId}/video?output_type=${outputType}`;
-    video.play();
-    showToast(`Đang phát video format ${outputType}`, "success");
 }
 
 let isDraggingCrop = false;

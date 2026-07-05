@@ -61,6 +61,12 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
+#detail-job-title {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .pulse-glow {
     box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
     animation: pulse-glow-anim 2s infinite alternate;

@@ -345,14 +345,14 @@
     <div id="detail-panel"
         class="hidden fixed inset-y-0 right-0 w-full lg:w-[650px] glass-panel border-l border-white/10 z-50 shadow-2xl flex flex-col overflow-hidden transition-all duration-300 transform translate-x-full">
         <!-- Panel Header -->
-        <div class="p-6 border-b border-white/5 flex items-center justify-between flex-shrink-0">
-            <div>
+        <div class="p-6 border-b border-white/5 flex items-center justify-between gap-4 flex-shrink-0">
+            <div class="min-w-0 flex-1">
                 <span
                     class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded font-extrabold uppercase tracking-widest"
                     id="detail-job-id-badge">JOB ID</span>
                 <h3 class="font-outfit font-bold text-lg text-white mt-1" id="detail-job-title">Chi tiết công việc</h3>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 flex-shrink-0">
                 <button onclick="deleteJob(selectedJobId)" id="btn-detail-delete"
                     class="hidden px-3 py-1.5 bg-rose-600/25 hover:bg-rose-600 text-rose-300 font-semibold text-[11px] rounded-lg transition-all flex items-center gap-1 shadow-sm border border-rose-500/20">
                     🗑️ Xóa Job
@@ -448,10 +448,9 @@
                     <div id="subtitle-layout-box"
                         class="absolute cursor-move border border-dashed border-purple-500/40 bg-transparent flex items-center justify-center text-center select-none"
                         style="left:10%; top:57%; width:80%; height:8%;">
-                        <div class="subtitle-plate-bg pointer-events-none text-white font-extrabold leading-tight text-[13px] bg-black/40 rounded-lg shadow-lg px-2.5 py-1"
+                        <div class="subtitle-plate-bg pointer-events-none text-white font-extrabold leading-tight text-[13px] bg-black/40 rounded-lg shadow-lg px-2.5 py-1 whitespace-nowrap overflow-hidden max-w-full"
                             style="font-family: Tahoma, sans-serif; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); text-shadow: 0 1px 2px #000;">
-                            Ba nam truoc, khoi nghiep that bai, no<br>
-                            <span class="text-[9px] font-semibold text-white/70">[Kéo thả để chỉnh vị trí phụ đề]</span>
+                            Toi da bao ban lam the.
                         </div>
                         <div id="subtitle-layout-resize"
                             class="hidden absolute right-0 bottom-0 w-4 h-4 cursor-se-resize rounded-tl bg-purple-400/80">
@@ -619,16 +618,6 @@
                     <div id="outputs-list-container"
                         class="flex flex-col gap-3 bg-black/20 rounded-xl p-3.5 border border-white/5">
                         <!-- Dynamically populated output items -->
-                    </div>
-                </div>
-
-                <!-- Video Player for Final Output (Placed directly under Outputs List) -->
-                <div class="flex flex-col gap-3 mt-2">
-                    <h4 class="text-xs font-bold text-slate-300 uppercase tracking-widest">Xem Video Kết Quả</h4>
-                    <div class="relative mx-auto w-full aspect-[9/16] bg-black rounded-xl overflow-hidden border border-white/10 shadow-lg"
-                        style="max-width: 240px;">
-                        <video id="detail-video-player" class="w-full h-full object-contain" controls playsinline
-                            preload="metadata"></video>
                     </div>
                 </div>
 
