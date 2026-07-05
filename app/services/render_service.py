@@ -226,9 +226,9 @@ class RenderService:
         
         # Calculate responsive font size based on video dimensions
         if play_h > play_w:
-            font_size = int(play_w * 0.055)
+            font_size = int(play_w * 0.050)
         else:
-            font_size = int(play_h * 0.069)
+            font_size = int(play_h * 0.063)
             
         max_chars = max(16, min(42, int(box_w / (font_size * 0.46))))
 
@@ -399,7 +399,7 @@ class RenderService:
         current_grid = "[layout]"
         
         # 2. Subtitle placement is user-selected. OCR/old-text detection is intentionally disabled.
-        default_layout = {"x": 0.08, "y": 0.72, "width": 0.84, "height": 0.11}
+        default_layout = {"x": 0.08, "y": 0.72, "width": 0.84, "height": 0.09}
         subtitle_layout = {**default_layout, **self._normalize_layout_keys(subtitle_layout)}
         if not render_subtitles:
             mask_subtitle = False

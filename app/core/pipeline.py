@@ -26,14 +26,18 @@ logger = get_logger("Pipeline")
 
 import threading
 _whisper_model = None
+_whisper_model_device = None
+_whisper_force_cpu = False
 _whisper_model_lock = threading.Lock()
-_whisper_transcribe_lock = threading.Lock()
 
 def _get_whisper_model(force_cpu: bool = False):
-    global _whisper_model
+    global _whisper_model, _whisper_model_device, _whisper_force_cpu
     with _whisper_model_lock:
         if force_cpu:
-            _whisper_model = None  # Force recreation on CPU
+            _whisper_force_cpu = True
+            if _whisper_model_device != "cpu":
+                _whisper_model = None  # Force recreation on CPU
+                _whisper_model_device = None
             
         if _whisper_model is None:
             import os
@@ -44,11 +48,12 @@ def _get_whisper_model(force_cpu: bool = False):
             from app.config import settings
             model_size = settings.whisper_model_size or "base"
             
-            use_cuda = not force_cpu
+            use_cuda = not force_cpu and not _whisper_force_cpu
             if use_cuda:
                 try:
                     logger.info(f"Attempting to initialize WhisperModel ('{model_size}') on GPU (CUDA)...")
                     _whisper_model = WhisperModel(model_size, device="cuda", compute_type="float16")
+                    _whisper_model_device = "cuda"
                     logger.info(f"Successfully initialized WhisperModel ('{model_size}') on GPU (CUDA).")
                 except Exception as e:
                     logger.info(f"Failed to initialize WhisperModel ('{model_size}') on GPU (CUDA): {e}. Falling back to CPU...")
@@ -65,6 +70,7 @@ def _get_whisper_model(force_cpu: bool = False):
                     compute_type="int8" if model_size != "large-v3" else "float32", # Use int8 quantization on CPU for 3x speedup!
                     cpu_threads=cpu_cores
                 )
+                _whisper_model_device = "cpu"
         return _whisper_model
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -703,43 +709,40 @@ class PipelineRunner:
                     try:
                         logger.info("No sidecar SRT found. Initiating Whisper auto-transcription...")
                         audio_path = work_dir / "audio.wav"
-                        # Use cached Whisper model and synchronize transcribe execution
+                        # Use cached Whisper model; allow concurrent jobs to transcribe in parallel.
                         model = _get_whisper_model()
                         try:
-                            with _whisper_transcribe_lock:
-                                segments_iter, info = model.transcribe(
-                                    str(audio_path),
-                                    beam_size=5,
-                                    vad_filter=True,
-                                    vad_parameters=dict(
-                                        threshold=0.35,              # Lower threshold to detect quieter speech (default 0.5)
-                                        min_speech_duration_ms=250,  # Detect shorter speech segments (default 250)
-                                        min_silence_duration_ms=500, # Treat gaps under 500ms as same sentence (default 2000)
-                                        speech_pad_ms=400            # Pad start/end to prevent chopping (default 400)
-                                    ),
-                                    condition_on_previous_text=False
-                                )
-                                # Materialize generator to list under lock to ensure execution is safe
-                                segments_list = list(segments_iter)
+                            segments_iter, info = model.transcribe(
+                                str(audio_path),
+                                beam_size=5,
+                                vad_filter=True,
+                                vad_parameters=dict(
+                                    threshold=0.35,              # Lower threshold to detect quieter speech (default 0.5)
+                                    min_speech_duration_ms=250,  # Detect shorter speech segments (default 250)
+                                    min_silence_duration_ms=500, # Treat gaps under 500ms as same sentence (default 2000)
+                                    speech_pad_ms=400            # Pad start/end to prevent chopping (default 400)
+                                ),
+                                condition_on_previous_text=False
+                            )
+                            segments_list = list(segments_iter)
                         except Exception as transcribe_err:
                             err_str = str(transcribe_err).lower()
                             if "cublas" in err_str or "cuda" in err_str or "cudnn" in err_str or "dll" in err_str:
                                 logger.warning(f"Whisper GPU execution failed: {transcribe_err}. Retrying with CPU fallback...")
                                 model = _get_whisper_model(force_cpu=True)
-                                with _whisper_transcribe_lock:
-                                    segments_iter, info = model.transcribe(
-                                        str(audio_path),
-                                        beam_size=5,
-                                        vad_filter=True,
-                                        vad_parameters=dict(
-                                            threshold=0.35,
-                                            min_speech_duration_ms=250,
-                                            min_silence_duration_ms=500,
-                                            speech_pad_ms=400
-                                        ),
-                                        condition_on_previous_text=False
-                                    )
-                                    segments_list = list(segments_iter)
+                                segments_iter, info = model.transcribe(
+                                    str(audio_path),
+                                    beam_size=5,
+                                    vad_filter=True,
+                                    vad_parameters=dict(
+                                        threshold=0.35,
+                                        min_speech_duration_ms=250,
+                                        min_silence_duration_ms=500,
+                                        speech_pad_ms=400
+                                    ),
+                                    condition_on_previous_text=False
+                                )
+                                segments_list = list(segments_iter)
                             else:
                                 raise transcribe_err
 
@@ -1121,6 +1124,7 @@ class PipelineRunner:
                         target_lang = snapshot.get("target_language", "vi-VN")
                         target_loc = snapshot.get("target_locale") or "mặc định"
                         summary_prompt = (
+                            "facebook_caption phai ngan gon tu 10 den 400 ky tu, chi la caption dang bai, khong viet thanh mo ta dai. "
                             "Bạn là chuyên gia sáng tạo nội dung mạng xã hội đa kênh. Hãy dựa vào nội dung đối thoại bên dưới "
                             f"để viết các captions, tiêu đề giật gân chuẩn SEO và các hashtags bằng ngôn ngữ đích '{target_lang}' (locale: '{target_loc}') "
                             "phù hợp cho từng nền tảng: Facebook Reels, YouTube Shorts, và YouTube Video thường. "
@@ -1139,6 +1143,7 @@ class PipelineRunner:
                         
                         ai_data = json.loads(response.text)
                         facebook_caption = ai_data.get("facebook_caption", facebook_caption)
+                        facebook_caption = " ".join(facebook_caption.split())[:400]
                         facebook_hashtags = ai_data.get("facebook_hashtags", facebook_hashtags)
                         youtube_shorts_title = ai_data.get("youtube_shorts_title", youtube_shorts_title)
                         youtube_shorts_description = ai_data.get("youtube_shorts_description", youtube_shorts_description)
@@ -1161,12 +1166,10 @@ class PipelineRunner:
                     except Exception as e:
                         logger.warning(f"Failed to generate custom AI captions: {e}")
                         
-                # Save to caption.txt (Keep legacy caption format for compatibility)
+                # Save the short posting caption only.
                 caption_file = output_dir / "caption.txt"
                 with open(caption_file, "w", encoding="utf-8") as f:
-                    f.write(f"=== FACEBOOK REELS ===\nCaption:\n{facebook_caption} {facebook_hashtags}\n\n")
-                    f.write(f"=== YOUTUBE SHORTS ===\nTitle:\n{youtube_shorts_title}\nDescription:\n{youtube_shorts_description}\n\n")
-                    f.write(f"=== YOUTUBE VIDEO ===\nTitle:\n{youtube_video_title}\nDescription:\n{youtube_video_description}\nTags:\n{youtube_video_tags}\n")
+                    f.write(f"{facebook_caption} {facebook_hashtags}\n")
                     
                 completed_dir = self._resolve_export_dir(job)
                 completed_dir.mkdir(parents=True, exist_ok=True)
