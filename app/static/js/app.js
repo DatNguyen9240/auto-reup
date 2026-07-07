@@ -2559,6 +2559,17 @@ function renderOutputsList(job) {
 
         // Manual crop is removed in favor of default blur background reframe
 
+        if (outData.render_status === 'completed') {
+            buttonsHtml += `
+                <a href="/api/jobs/${job.job_id}/video?output_type=${outType}" target="_blank" class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[10px] px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 transition-all active:scale-[0.98] no-underline">
+                    👁️ Xem Video
+                </a>
+                <button onclick="openOutputsFolder('${job.job_id}')" class="bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 text-[10px] px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 transition-all active:scale-[0.98]">
+                    📁 Mở Thư Mục
+                </button>
+            `;
+        }
+
         buttonsHtml += `
             <button onclick="renderSpecificOutput('${job.job_id}', '${outType}')" class="bg-white/5 hover:bg-white/10 text-slate-300 border border-white/5 text-[10px] px-2.5 py-1.5 rounded-lg font-semibold flex items-center gap-1 transition-all active:scale-[0.98] ml-auto">
                 ⚡ Render Lại
