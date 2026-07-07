@@ -107,8 +107,11 @@ class TTSService:
         
         def run_audio_processing():
             raw_duration_ms = self.get_audio_duration_ms(raw_path)
-            ratio = raw_duration_ms / available_time_ms
-            ratio = max(1.1, min(ratio, 1.8))
+            if raw_duration_ms > available_time_ms:
+                ratio = raw_duration_ms / available_time_ms
+                ratio = min(ratio, 1.8)
+            else:
+                ratio = 1.0
             
             logger.info(
                 f"Segment {segment.id}: raw duration {raw_duration_ms}ms, available time {available_time_ms}ms. "

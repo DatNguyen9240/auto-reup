@@ -840,6 +840,31 @@ class PipelineRunner:
                         rate=rate,
                         pitch=pitch
                     )
+                    
+                    # Prevent voiceover segments and subtitles from overlapping
+                    logger.info("Adjusting segment timelines to prevent voiceover/subtitle overlaps...")
+                    for i in range(len(segments)):
+                        s = segments[i]
+                        audio_dur = s.end_ms - s.start_ms
+                        if s.tts_path and os.path.exists(s.tts_path):
+                            try:
+                                audio_dur = self.tts_service.get_audio_duration_ms(Path(s.tts_path))
+                            except Exception as e:
+                                logger.warning(f"Failed to get audio duration for segment {s.id}: {e}")
+                        
+                        s.end_ms = s.start_ms + audio_dur
+                        
+                        if i < len(segments) - 1:
+                            s_next = segments[i+1]
+                            min_gap = 150  # 150ms natural pause between sentences
+                            if s_next.start_ms < s.end_ms + min_gap:
+                                old_start = s_next.start_ms
+                                s_next.start_ms = s.end_ms + min_gap
+                                # Shift its end_ms proportionally so its duration is preserved
+                                orig_dur = s_next.end_ms - old_start
+                                s_next.end_ms = s_next.start_ms + orig_dur
+                                logger.info(f"Shifted Segment {s_next.id} start_ms from {old_start} to {s_next.start_ms} to prevent overlap.")
+                                
                     self.store.save_translated(job_id, segments)
                     
                 job.steps["tts"] = "completed"
