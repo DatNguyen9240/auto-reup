@@ -44,7 +44,6 @@
 .doubleclick.net	TRUE	/	TRUE	1783900801	DSID	APPUz7So2JqeUpJRQVLEKFY4XG9M9tbTzkljfotDF7JvbZrmSnXhcXGrHthhS0WZzxNTbKXkIYHehZzDNjEAhgDOQxQIwdtMUvWfTVcPAojEVBBDjMr3qA-3fpH6pOalZl7Sqsg3mwI4Th2MLu5jsEt3nYj_K_y2305E-5c-y4oUanxLQ7R2jhkiROQ8_McUoPfAXVRuDpGVz-RP7pJ8znRKlz1Twjnzvm-UWCBh0aeQK9uma-2igz8dZ1X1o3wIgSS4WXeglxyqyfLi6f9sKcK4mM5Jp04KepKNSDY-5QqN6BHrCEAPOnQ
 .doubleclick.net	TRUE	/	TRUE	1790573499	GCL_AW_P	GCL.1782797496.Cj0KCQjwr4jSBhCSARIsAOX1E-KxFS7-ek5fI7qFTz-AIjbwQ7Xe6ypTZg1GmM87_nNxKsMgEqbj-FgaAhXYEALw_wcB
 .doubleclick.net	TRUE	/	TRUE	1817362359	IDE	AHWqTUlwUn35BirBmmJXr4ZuX78txW87HD4vT_GR4wALK874WvaY3KFtsdumnePq0_A
-.douyin.com	TRUE	/	FALSE	1783411242	IsDouyinActive	true
 .douyin.com	TRUE	/	TRUE	1817345907	UIFID	4f370c6d8fb718a382d31de50859ac71a63e1a5cc19a7a2de24e63803f467b41031cd8e63f2ad7f1b397cbdd4a931cdc12577841c7669a90c92e172be0ff23534fdaf869e1671a4e3c5128962bdfa3c7494d658bff8bf07e30c340e5da224b70b73caa28112b50f7d9024c3d02b72a6bdef5521b1fc880f7450ee15f1079e2f7ec2d10ab52fa33c320a4b4e5c51f9265f34f8feb35bec6814b31ea872edd0b8f
 .douyin.com	TRUE	/	TRUE	1817263794	UIFID_TEMP	4f370c6d8fb718a382d31de50859ac71a63e1a5cc19a7a2de24e63803f467b41031cd8e63f2ad7f1b397cbdd4a931cdc384bf77f6f56a6a6165fb4717f3ee42af6dbf98020042e2c6935056919b3398d
 .douyin.com	TRUE	/	FALSE	1787887817	__security_mc_1_s_sdk_crypt_sdk	0cade2eb-479a-8c06
@@ -52,30 +51,23 @@
 .douyin.com	TRUE	/	FALSE	1787972105	bd_ticket_guard_client_data_v2	eyJyZWVfcHVibGljX2tleSI6IkJOVGtKWFl5ZjV6bnh5TkhEdFVFWFpjTjlSUkw2QThtd1grbXEvS09vanh5c3U1dXFuNWhMc2Jiell1b0ZKcjlPcHJST0xFRzUveVF0REpubWx0RDJDND0iLCJyZXFfY29udGVudCI6InNlY190cyIsInJlcV9zaWduIjoiVFdIQ2lJV1ZUMDRFNm5VZnBJd01GVUtySCtLcDlWSGh0VzQ1RCsvVGYrQT0iLCJzZWNfdHMiOiIjMGh4RzlHTGJhcDlnSFcyMDBDekNXQWlTUkEwaEloblVuZG5MbU5lZnZCQWd4TUw0ajNvMnZKdnY2VStPIn0%3D
 .douyin.com	TRUE	/	FALSE	1787970936	bd_ticket_guard_client_web_domain	2
 .douyin.com	TRUE	/	FALSE	0	biz_trace_id	d275ac29
-.douyin.com	TRUE	/	FALSE	1783391850	download_guide	%223%2F20260630%2F0%22
 .douyin.com	TRUE	/	TRUE	1817366439	enter_pc_once	1
 .douyin.com	TRUE	/	FALSE	1817366442	hevc_supported	true
-.douyin.com	TRUE	/	FALSE	1783411245	home_can_add_dy_2_desktop	%221%22
-.douyin.com	TRUE	/	FALSE	1783401589	is_dash_user	1
 .douyin.com	TRUE	/	FALSE	0	is_support_rtm_web_ts	1
 .douyin.com	TRUE	/	FALSE	1817346931	my_rd	2
 .douyin.com	TRUE	/	FALSE	1814239804	odin_tt	a68f071971615c1b14517fa0d9024c333d2532703da57880be40cba3b5a9ca1a51e99f34e3af162e25e69d9b1741ae9778a6a66fc841dd47a69808ddc103805a02e3a43879b0e25c651d45429f8304ac
 .douyin.com	TRUE	/	TRUE	1787887813	passport_csrf_token	a41bbcc2b67e951ad7a4dc601c92d01a
 .douyin.com	TRUE	/	FALSE	1787887813	passport_csrf_token_default	a41bbcc2b67e951ad7a4dc601c92d01a
-.douyin.com	TRUE	/	FALSE	1783390719	strategyABtestKey	%221782785919.483%22
-.douyin.com	TRUE	/	FALSE	1783411242	stream_recommend_feed_params	%22%7B%5C%22cookie_enabled%5C%22%3Atrue%2C%5C%22screen_width%5C%22%3A1920%2C%5C%22screen_height%5C%22%3A1080%2C%5C%22browser_online%5C%22%3Atrue%2C%5C%22cpu_core_num%5C%22%3A6%2C%5C%22device_memory%5C%22%3A8%2C%5C%22downlink%5C%22%3A10%2C%5C%22effective_type%5C%22%3A%5C%224g%5C%22%2C%5C%22round_trip_time%5C%22%3A50%7D%22
 .douyin.com	TRUE	/	TRUE	1813910438	ttwid	1%7ChSrq5AHnLHjMKyZoCvOnceaR-CVw4BoplKaTa0e5nqI%7C1782786931%7Cdea07ba03c3263220436d57c583453639e09f87c033173aae6acb3f8f0392316
 .douyin.com	TRUE	/	FALSE	1817350502	volume_info	%7B%22isUserMute%22%3Afalse%2C%22isMute%22%3Atrue%2C%22volume%22%3A0.5%7D
 .everesttech.net	TRUE	/	TRUE	1814250100	everest_g_v2	g_surferid~akIO8wAC_cuuWQAJ
 .facebook.com	TRUE	/	TRUE	1814339278	c_user	100029910043286
 .facebook.com	TRUE	/	TRUE	1817263754	datr	ieZBagK6mLaZAoLdDrjB5vDd
 .facebook.com	TRUE	/	TRUE	1790579278	fr	1DKuOJ6n51aKMUgXY.AWfMnfYCuQhASyWbiaFn-ucnY2YkK02Xyo9-LFB1XpHsnurSG4U.BqQ2tK..AAA.0.0.BqQ2tK.AWc27vrAyUr5arq6nb_WeUa6fkI
-.facebook.com	TRUE	/	TRUE	1783392702	locale	en_US
 .facebook.com	TRUE	/	TRUE	0	presence	C%7B%22lm3%22%3A%22sc.7727499100629584%22%2C%22t3%22%3A%5B%7B%22o%22%3A0%2C%22i%22%3A%22g.1925006954719319%22%7D%5D%2C%22utc3%22%3A1782800813909%2C%22v%22%3A1%7D
 .facebook.com	TRUE	/	TRUE	1817263755	ps_l	1
 .facebook.com	TRUE	/	TRUE	1817263755	ps_n	1
 .facebook.com	TRUE	/	TRUE	1817347920	sb	iuZBarLriquNP4gADQlbCDrc
-.facebook.com	TRUE	/	TRUE	1783405599	wd	1920x911
 .facebook.com	TRUE	/	TRUE	1814339278	xs	23%3AnnKGxYRrMTc1ig%3A2%3A1782787914%3A-1%3A-1%3A%3AAcyI_3Vrak0Ln7GJmYR4FZwndN88h93l7YmWqe-Jnw
 .fake-veepn.com	TRUE	/	FALSE	1814321860	veepn-ab-tests	["abtest_promo_banner_close"]
 .gemini.google.com	TRUE	/	TRUE	1783589236	COMPASS	gemini-pd=CjwACWuJV93jFYb_b6k1ZbZc5AVi75OXfwVJx6huPFdJgLZgT-iphNSBtyIyTho-2Gurv4U86El7hPmdVFUQ8peO0gYaaAAJa4lXiu55GszUrRxnvbngzBbyyq2Nmt2y4OsbkFakzWmNfqvX83MYGsWlENfS19iXpCpgURt6ilY4WpPDLsjk2NX6swADR04onit7C5PaM09mJ3NCJkNLyhx-UB6zliVTUitwd-nlIAEwAQ
@@ -188,7 +180,6 @@
 .youtube.com	TRUE	/	TRUE	1814342081	__Secure-3PSIDTS	sidts-CjQByojQU1bcc0ToVoLO-XAECQFbjJMW-01gwPueUg5jFTx9AlVhE2ZdVEVnKpy3lJNvDXOCEAA
 .youtube.com	TRUE	/	TRUE	1798349496	__Secure-ROLLOUT_TOKEN	CN-kjJC7kJ2pzQEQ1YeApsirlQMYlurLmp6ulQM%3D
 .youtube.com	TRUE	/	TRUE	1798349496	__Secure-YNID	19.YT=lBOFD-B74yZBE0k4xv22pwqxtV1U3sLp7mrErcIw517yscwUZa71cnO1jTY3cNb3xyYI-YP290IwzoUNhZnPYHjPyGTxTvMOS3WwbFVGrmMb3F76tuftNNKbdmEZ1IEchEdrVROJQeSwlYwLfffDd2HWCRvfZYAG_nWptqzwGqzdw3S7KBSAUyS2b76xyb89DfehfTNMrjS5CipuNzUZpjQvvnQsGZItmZCnmQGo0vRvrFtQIL1uGulNnM3UUICSNJmJWOeQiTafYj8vQ5a8zDqJ8XtaoA_aIauehlRv5qKVnYlVMe4T5_bRmKlAtxbmq5OGz5uNVfWaDlR93F7W5Q
-127.0.0.1	FALSE	/	FALSE	1783302862	auth_token	FC983F90-F4EC-4D77-BF6E-7B1C6E4CEEE9
 accounts.google.com	FALSE	/	TRUE	1817281756	ACCOUNT_CHOOSER	AFx_qI4ZNw23KXtYg5jWpunPIssdqj3ArWCVZkDhtFQVef3wtuEAblx_-wVNgF6C0MwwYJi8vZ8XdmkJLeH-3M-_NZHXvDoQr742uttzc5snZjPZ65e6PkqoETPmaFNJetK8fblT1_w3DXDm-1cwrJtz2qhk3rTSlQ4EZELC-WnDrc6eA_4Vfb7mVJorsQlbSsbJw76UEQJP2e4AyQmrY5DsdzI76xBezRyvLQ7aT6htxw3W0C-ZkZs
 accounts.google.com	FALSE	/	TRUE	1817366354	LSID	o.chromewebstore.google.com|o.play.google.com|s.VN|s.youtube:g.a000_gimbyllrGdQDN1QL6Jx6Z7bTl30Tw9VzHgXfHzgxTZPjOd1PBu68c2-sHlmw0OkdHAyiQACgYKARESARESFQHGX2MisyUBEM3Weam4qbQJpZWTwRoVAUF8yKrca3NhA26M19ch0pphE3Wy0076
 accounts.google.com	FALSE	/	TRUE	1785293891	OTZ	8673298_28_28__28_
@@ -216,7 +207,6 @@ github.com	FALSE	/	TRUE	1783911577	__Host-user_session_same_site	c3K6lsOsWuUPLYz
 github.com	FALSE	/	TRUE	1814237888	_device_id	5d4a8699c79df851fef6998547e74703
 github.com	FALSE	/	TRUE	1790477977	saved_user_sessions	180746784%3Ac3K6lsOsWuUPLYzSL3ao6bl7zKloOEjwgxjOl_X9q8oTYoqK
 github.com	FALSE	/	TRUE	1783911577	user_session	c3K6lsOsWuUPLYzSL3ao6bl7zKloOEjwgxjOl_X9q8oTYoqK
-kyhoa.bms7.net	FALSE	/	TRUE	1783302953	auth_token	FC983F90-F4EC-4D77-BF6E-7B1C6E4CEEE9
 ogs.google.com	FALSE	/	TRUE	1785297990	OTZ	8673367_28_28__28_
 pixabay.com	FALSE	/	TRUE	1817273998	_sp2_id.aded	c8788282-257a-4bf3-9b19-451c9f83897e.1782713892.1.1782713998..e5b475c8-6f1f-4ffa-94fb-42b1ef539c48..5723c333-f403-4ced-b607-302cdad88d40.1782713892236.30
 pixabay.com	FALSE	/	FALSE	1817273893	anonymous_user_id	55a773d32bb4459e964dd7ea9b3c5bf4
@@ -237,8 +227,6 @@ www.douyin.com	FALSE	/	FALSE	0	architecture	amd64
 www.douyin.com	FALSE	/	FALSE	0	device_web_cpu_core	6
 www.douyin.com	FALSE	/	FALSE	0	device_web_memory_size	8
 www.douyin.com	FALSE	/	FALSE	0		douyin.com
-www.douyin.com	FALSE	/	FALSE	1783411242	dy_sheight	1080
-www.douyin.com	FALSE	/	FALSE	1783411242	dy_swidth	1920
 www.douyin.com	FALSE	/	TRUE	1817263838	fpk1	U2FsdGVkX182V28MP1wx9PSDxqS1QpNFu1q0uPARMhSeMyvUW9yyq+Ok7cqMa7nQUjTdkpbHzcxuUKeuvwBKJw==
 www.douyin.com	FALSE	/	TRUE	1817263838	fpk2	16fee37559dbd42b448204446d02089f
 www.douyin.com	FALSE	/	FALSE	1787887801	s_v_web_id	verify_mqyntb8x_qAsrckjA_ezE6_4mZV_BJ5V_1qPHaFoLc2GL

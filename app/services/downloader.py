@@ -201,11 +201,121 @@ class PlaywrightDownloaderService:
                 'Referer': 'https://www.douyin.com/'
             }
             cookies = _load_cookies_from_file(self.cookie_file_path)
-            with requests.get(info['play_addr'], headers=headers, cookies=cookies, stream=True, timeout=30, verify=False) as r:
-                r.raise_for_status()
-                with open(dest_path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192): 
-                        f.write(chunk)
+            
+            try:
+                logger.info("Attempting download using requests with TLS 1.2 forced...")
+                from requests.adapters import HTTPAdapter
+                from urllib3.poolmanager import PoolManager
+                import ssl
+
+                class TLS12Adapter(HTTPAdapter):
+                    def init_poolmanager(self, connections, maxsize, block=False):
+                        self.poolmanager = PoolManager(
+                            num_pools=connections,
+                            maxsize=maxsize,
+                            block=block,
+                            ssl_version=ssl.PROTOCOL_TLSv1_2
+                        )
+
+                session = requests.Session()
+                session.mount('https://', TLS12Adapter())
+                
+                with session.get(info['play_addr'], headers=headers, cookies=cookies, stream=True, timeout=30, verify=False) as r:
+                    r.raise_for_status()
+                    with open(dest_path, 'wb') as f:
+                        for chunk in r.iter_content(chunk_size=8192): 
+                            f.write(chunk)
+                logger.info("Download via requests (TLS 1.2 forced) completed successfully.")
+            except Exception as e:
+                logger.warning(f"Download via requests failed: {e}. Falling back to curl forcing TLS 1.2 and HTTP/1.1...")
+                try:
+                    cmd = [
+                        "curl",
+                        "-L",
+                        "-k",
+                        "--http1.1",
+                        "--tlsv1.2",
+                        "--tls-max", "1.2",
+                        "-H", f"User-Agent: {headers['User-Agent']}",
+                        "-H", f"Referer: {headers['Referer']}",
+                        "--connect-timeout", "30",
+                        "-o", str(dest_path),
+                    ]
+                    if self.cookie_file_path and self.cookie_file_path.exists():
+                        cmd.extend(["-b", str(self.cookie_file_path)])
+                    cmd.append(info['play_addr'])
+                    
+                    logger.info(f"Running curl fallback command: {' '.join(cmd)}")
+                    result = subprocess.run(cmd, capture_output=True, text=True)
+                    if result.returncode != 0:
+                        raise Exception(f"curl process returned non-zero code {result.returncode}. Stderr: {result.stderr}")
+                    if not dest_path.exists() or dest_path.stat().st_size == 0:
+                        raise Exception("Downloaded file does not exist or is empty.")
+                    logger.info("Download via curl completed successfully.")
+                except Exception as curl_err:
+                    logger.warning(f"Fallback curl download failed: {curl_err}. Trying Playwright APIRequest fallback...")
+                    try:
+                        from playwright.sync_api import sync_playwright
+                        with sync_playwright() as p:
+                            try:
+                                browser = p.chromium.launch(headless=True)
+                            except Exception:
+                                try:
+                                    browser = p.chromium.launch(headless=True, channel="chrome")
+                                except Exception:
+                                    browser = p.chromium.launch(headless=True, channel="msedge")
+                            
+                            context = browser.new_context(
+                                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+                                bypass_csp=True
+                            )
+                            
+                            cookie_jar = _load_cookies_from_file(self.cookie_file_path)
+                            playwright_cookies = []
+                            for c in cookie_jar:
+                                p_cookie = {
+                                    "name": c.name,
+                                    "value": c.value,
+                                    "domain": c.domain,
+                                    "path": c.path,
+                                    "secure": c.secure,
+                                }
+                                if c.expires:
+                                    p_cookie["expires"] = c.expires
+                                playwright_cookies.append(p_cookie)
+                            if playwright_cookies:
+                                context.add_cookies(playwright_cookies)
+                                
+                            extra_headers = {
+                                "Referer": "https://www.douyin.com/",
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                            }
+                            
+                            logger.info("Sending GET request via Playwright browser context...")
+                            response = context.request.get(
+                                info['play_addr'],
+                                headers=extra_headers,
+                                timeout=60000
+                            )
+                            
+                            if not response.ok:
+                                raise Exception(f"Playwright request failed with status {response.status}: {response.status_text}")
+                                
+                            body = response.body()
+                            if not body:
+                                raise Exception("Received empty body from Playwright request.")
+                                
+                            with open(dest_path, 'wb') as f:
+                                f.write(body)
+                                
+                            browser.close()
+                        logger.info("Download via Playwright API request completed successfully.")
+                    except Exception as pw_err:
+                        logger.error(f"Fallback Playwright download failed: {pw_err}")
+                        raise Exception(
+                            f"Failed to download video using all methods. "
+                            f"Requests error: {e}. Curl error: {curl_err}. Playwright error: {pw_err}"
+                        )
                         
         wrapped_download = wrap_with_job_context(job_id, do_download)
         await loop.run_in_executor(None, wrapped_download)
