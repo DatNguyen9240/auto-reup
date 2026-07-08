@@ -1150,7 +1150,7 @@ class PipelineRunner:
                         target_lang = snapshot.get("target_language", "vi-VN")
                         target_loc = snapshot.get("target_locale") or "mặc định"
                         summary_prompt = (
-                            "facebook_caption phai ngan gon tu 10 den 400 ky tu, chi la caption dang bai, khong viet thanh mo ta dai. "
+                            "facebook_caption phai ngan gon tu 10 den 250 ky tu, chi la caption dang bai, khong viet thanh mo ta dai. "
                             "Bạn là chuyên gia sáng tạo nội dung mạng xã hội đa kênh. Hãy dựa vào nội dung đối thoại bên dưới "
                             f"để viết các captions, tiêu đề giật gân chuẩn SEO và các hashtags bằng ngôn ngữ đích '{target_lang}' (locale: '{target_loc}') "
                             "phù hợp cho từng nền tảng: Facebook Reels, YouTube Shorts, và YouTube Video thường. "
@@ -1169,8 +1169,24 @@ class PipelineRunner:
                         
                         ai_data = json.loads(response.text)
                         facebook_caption = ai_data.get("facebook_caption", facebook_caption)
-                        facebook_caption = " ".join(facebook_caption.split())[:400]
+                        facebook_caption = " ".join(facebook_caption.split()).strip()
                         facebook_hashtags = ai_data.get("facebook_hashtags", facebook_hashtags)
+                        facebook_hashtags = " ".join(facebook_hashtags.split()).strip()
+                        
+                        # Smart truncate combined Facebook Reels caption (caption + hashtags) to strictly under 400 chars
+                        max_total_len = 395
+                        combined_len = len(facebook_caption) + 1 + len(facebook_hashtags)
+                        if combined_len > max_total_len:
+                            # Keep hashtags intact, truncate the caption text (account for 3 characters of "...")
+                            allowed_caption_len = max_total_len - len(facebook_hashtags) - 1 - 3
+                            if allowed_caption_len > 10:
+                                facebook_caption = facebook_caption[:allowed_caption_len].strip() + "..."
+                            else:
+                                # Fallback if hashtags are too long
+                                combined = f"{facebook_caption} {facebook_hashtags}"
+                                facebook_caption = combined[:max_total_len].strip()
+                                facebook_hashtags = ""
+                                
                         youtube_shorts_title = ai_data.get("youtube_shorts_title", youtube_shorts_title)
                         youtube_shorts_description = ai_data.get("youtube_shorts_description", youtube_shorts_description)
                         youtube_shorts_tags = ai_data.get("youtube_shorts_tags", youtube_shorts_tags)
@@ -1195,7 +1211,11 @@ class PipelineRunner:
                 # Save the short posting caption only.
                 caption_file = output_dir / "caption.txt"
                 with open(caption_file, "w", encoding="utf-8") as f:
-                    f.write(f"{facebook_caption} {facebook_hashtags}\n")
+                    combined_out = f"{facebook_caption} {facebook_hashtags}".strip()
+                    # Final safety check on total length
+                    if len(combined_out) > 398:
+                        combined_out = combined_out[:398].strip()
+                    f.write(f"{combined_out}\n")
                     
                 completed_dir = self._resolve_export_dir(job)
                 completed_dir.mkdir(parents=True, exist_ok=True)
