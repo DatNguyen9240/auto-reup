@@ -349,9 +349,10 @@ class RenderService:
         asset_path: Path = None,
         asset_layout: dict = None,
         blur_masks: list = None,
+        reverse_video: bool = False,
     ) -> Path:
         """Renders the final output video with mixed audio, brand logo, and burned SRT."""
-        logger.info(f"Rendering final output video to {output_path} ({w_out}x{h_out}, mode={reframe_mode}, logo_pos={logo_position}, logo_layout={logo_layout}, asset_layout={asset_layout}, blur_masks={blur_masks})...")
+        logger.info(f"Rendering final output video to {output_path} ({w_out}x{h_out}, mode={reframe_mode}, logo_pos={logo_position}, logo_layout={logo_layout}, asset_layout={asset_layout}, blur_masks={blur_masks}, reverse={reverse_video})...")
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         w_in = metadata.get("width", 1920)
@@ -359,20 +360,25 @@ class RenderService:
         
         filters = []
         
+        v_in = "[0:v]"
+        if reverse_video:
+            filters.append("[0:v]hflip[flipped]")
+            v_in = "[flipped]"
+        
         # 1. Video aspect ratio reframing & padding filters
         if reframe_mode == "blur_background":
             if (w_in / h_in) > (w_out / h_out):
                 # Landscape source to vertical target
                 filters.extend([
-                    f"[0:v]scale={w_out}:-2[scaled_fg]",
-                    f"[0:v]scale=-2:{h_out},crop={w_out}:{h_out},boxblur=20:5[bg]",
+                    f"{v_in}scale={w_out}:-2[scaled_fg]",
+                    f"{v_in}scale=-2:{h_out},crop={w_out}:{h_out},boxblur=20:5[bg]",
                     f"[bg][scaled_fg]overlay=x=0:y=(H-h)/2[layout]"
                 ])
             else:
                 # Vertical source to landscape target
                 filters.extend([
-                    f"[0:v]scale=-2:{h_out}[scaled_fg]",
-                    f"[0:v]scale={w_out}:-2,crop={w_out}:{h_out},boxblur=20:5[bg]",
+                    f"{v_in}scale=-2:{h_out}[scaled_fg]",
+                    f"{v_in}scale={w_out}:-2,crop={w_out}:{h_out},boxblur=20:5[bg]",
                     f"[bg][scaled_fg]overlay=x=(W-w)/2:y=0[layout]"
                 ])
         elif reframe_mode == "manual_crop" and crop_layout:
@@ -387,13 +393,13 @@ class RenderService:
             h_px = int(ch * h_in)
             
             filters.extend([
-                f"[0:v]crop={w_px}:{h_px}:{x_px}:{y_px}[cropped]",
+                f"{v_in}crop={w_px}:{h_px}:{x_px}:{y_px}[cropped]",
                 f"[cropped]scale={w_out}:{h_out}[layout]"
             ])
         else:
             # Default scale and pad to keep aspect ratio
             filters.append(
-                f"[0:v]scale={w_out}:{h_out}:force_original_aspect_ratio=decrease,pad={w_out}:{h_out}:(ow-iw)/2:(oh-ih)/2:black[layout]"
+                f"{v_in}scale={w_out}:{h_out}:force_original_aspect_ratio=decrease,pad={w_out}:{h_out}:(ow-iw)/2:(oh-ih)/2:black[layout]"
             )
             
         current_grid = "[layout]"

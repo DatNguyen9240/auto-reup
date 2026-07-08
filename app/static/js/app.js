@@ -1043,6 +1043,7 @@ function defaultPendingConfig() {
         target_locale: getVal('target_locale', base.target_locale || ''),
         translation_mode: getVal('translation_mode', base.translation_mode || 'natural'),
         subtitle_style: getVal('subtitle_style', base.subtitle_style || 'word_highlight'),
+        reverse_video: getChecked('reverse_video', base.reverse_video ?? false),
     };
 }
 
@@ -1201,6 +1202,7 @@ function renderQueueList() {
                 <label class="flex items-center gap-1"><input type="checkbox" ${cfg.ocr_only_mode ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','ocr_only_mode',this.checked)"> Không lời (OCR)</label>
                 <label class="flex items-center gap-1"><input type="checkbox" ${cfg.tts_enabled ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','tts_enabled',this.checked)"> TTS</label>
                 <label class="flex items-center gap-1"><input type="checkbox" ${cfg.subtitles_enabled ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','subtitles_enabled',this.checked)"> Phụ đề</label>
+                <label class="flex items-center gap-1"><input type="checkbox" ${cfg.reverse_video ? 'checked' : ''} onchange="updatePendingConfig('${entry.id}','reverse_video',this.checked)"> Ngược video</label>
                 <button type="button" onclick="applyPendingConfigToAll('${entry.id}')" class="text-purple-300 hover:text-white font-semibold">Áp dụng cho tất cả</button>
             </div>
         `;
@@ -1570,7 +1572,7 @@ function updateSubtitlePreviewText() {
     const box = document.getElementById('subtitle-layout-box');
     const textWrap = box?.querySelector('.subtitle-plate-bg');
     if (!textWrap) return;
-    textWrap.textContent = 'Toi da bao ban lam the.';
+    textWrap.textContent = 'Tôi đã bảo bạn làm thế.';
 }
 
 async function onChangeEditorChannel(channelId) {
@@ -1658,6 +1660,12 @@ function setupSubtitleLayoutEditor(job) {
 
         if (!video.src || !video.src.includes(job.job_id)) {
             video.src = `/api/jobs/${job.job_id}/preview-video`;
+        }
+
+        if (snapshot.reverse_video) {
+            video.style.transform = 'scaleX(-1)';
+        } else {
+            video.style.transform = '';
         }
 
         switchSubtitleFormat(activeLayoutFormat);

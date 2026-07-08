@@ -187,7 +187,7 @@ class PipelineRunner:
         reader = None
         try:
             import easyocr
-            reader = easyocr.Reader(["ch_sim", "en"], gpu=False, verbose=False)
+            reader = easyocr.Reader(["ch_sim", "en", "vi"], gpu=False, verbose=False)
             logger.info("Đã khởi tạo EasyOCR để nhận diện chữ trên màn hình.")
         except Exception as e:
             logger.warning(f"Không thể khởi tạo EasyOCR: {e}. Thử dùng PaddleOCR...")
@@ -1058,7 +1058,8 @@ class PipelineRunner:
                             logo_layout=snapshot.get("logo_layout"),
                             asset_path=asset_path,
                             asset_layout=snapshot.get("asset_layout"),
-                            blur_masks=snapshot.get("blur_masks", [])
+                            blur_masks=snapshot.get("blur_masks", []),
+                            reverse_video=snapshot.get("reverse_video", False)
                         )
                         
                         # 1. Resolve output export folder (e.g. outputs/page_name/job_id/ or outputs/Completed/job_id/)

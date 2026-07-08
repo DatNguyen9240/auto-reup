@@ -99,6 +99,7 @@ class JobCreateRequest(BaseModel):
     target_locale: Optional[str] = None
     translation_mode: str = "natural"
     subtitle_style: str = "default"
+    reverse_video: bool = False
 
 class SegmentUpdateRequest(BaseModel):
     segments: List[Segment]
@@ -121,6 +122,7 @@ class SegmentUpdateRequest(BaseModel):
     channel_folder: Optional[str] = None
     platform_folder: Optional[str] = None
     ocr_only_mode: bool = False
+    reverse_video: bool = False
 
 class SubtitleLayoutRequest(BaseModel):
     subtitle_x_percent: float = 0.08
@@ -867,6 +869,11 @@ async def update_transcript(job_id: str, req: SegmentUpdateRequest):
     store.save_translated(job_id, req.segments)
     
     if req.reset_from_tts:
+        # Save key re-run settings overrides to snapshot
+        snapshot = job.config_snapshot or {}
+        snapshot["reverse_video"] = req.reverse_video
+        job.config_snapshot = snapshot
+
         job.steps["tts"] = "pending"
         job.steps["mix_audio"] = "pending"
         job.steps["render"] = "pending"

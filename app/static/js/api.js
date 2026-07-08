@@ -94,6 +94,8 @@ async function submitJob(e) {
     const mask = maskInput ? maskInput.checked : true;
     const subtitle_style = document.getElementById('subtitle_style')?.value || 'default';
     const subtitleCoverConfig = readSubtitleCoverConfig();
+    const reverseVideoInput = document.getElementById('reverse_video');
+    const reverse_video = reverseVideoInput ? reverseVideoInput.checked : false;
 
     const channel_folder = null;
     const platform_folder = document.getElementById('dest_platform').value;
@@ -114,7 +116,7 @@ async function submitJob(e) {
             const response = await fetch('/api/jobs', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ input_video, tone, voice, rate, pitch, bgm, logo, mask, channel_folder, platform_folder, subtitle_style, ...subtitleCoverConfig })
+                body: JSON.stringify({ input_video, tone, voice, rate, pitch, bgm, logo, mask, channel_folder, platform_folder, subtitle_style, reverse_video, ...subtitleCoverConfig })
             });
             
             if (!response.ok) {
@@ -605,6 +607,7 @@ async function submitJob(e) {
             ocr_sample_interval_sec: cfg.ocr_sample_interval_sec,
             ocr_crop_bottom_ratio: cfg.ocr_crop_bottom_ratio,
             selected_outputs: selected_outputs.length > 0 ? selected_outputs : null,
+            reverse_video: cfg.reverse_video ?? false,
             config_snapshot: {
                 url: item.url,
                 normalized_url: item.normalized_url,
@@ -612,6 +615,7 @@ async function submitJob(e) {
                 selected_outputs: selected_outputs.length > 0 ? selected_outputs : null,
                 logo_position: document.getElementById('logo_position')?.value || 'top_left',
                 logo_layout: window.logoLayout || null,
+                reverse_video: cfg.reverse_video ?? false,
                 ...cfg
             }
         };

@@ -31,6 +31,9 @@ class SubtitleRegion:
 
 
 class SubtitleDetector:
+    _paddle_ocr = None
+    _easy_ocr = None
+
     def __init__(
         self,
         sample_interval_sec: float = 0.75,
@@ -125,8 +128,10 @@ class SubtitleDetector:
             if image is None:
                 return []
             crop = image[crop_y:, :]
-            ocr = PaddleOCR(use_angle_cls=False, lang="ch", show_log=False, use_gpu=False)
-            result = ocr.ocr(crop, cls=False)
+            if SubtitleDetector._paddle_ocr is None:
+                logger.info("Initializing PaddleOCR instance...")
+                SubtitleDetector._paddle_ocr = PaddleOCR(use_angle_cls=False, lang="ch", show_log=False, use_gpu=False)
+            result = SubtitleDetector._paddle_ocr.ocr(crop, cls=False)
             boxes = []
             for line in result or []:
                 for item in line or []:
@@ -153,8 +158,10 @@ class SubtitleDetector:
         if image is None:
             return []
         crop = image[crop_y:, :]
-        reader = easyocr.Reader(["ch_sim", "en"], gpu=False, verbose=False)
-        result = reader.readtext(crop)
+        if SubtitleDetector._easy_ocr is None:
+            logger.info("Initializing EasyOCR reader...")
+            SubtitleDetector._easy_ocr = easyocr.Reader(["ch_sim", "en", "vi"], gpu=False, verbose=False)
+        result = SubtitleDetector._easy_ocr.readtext(crop)
         boxes = []
         for points, _text, score in result:
             if float(score) < 0.35:
