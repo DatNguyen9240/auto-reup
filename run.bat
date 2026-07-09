@@ -17,6 +17,43 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8088 ^| findstr LISTENING') 
 echo [INFO] Stopping old AutoTool server processes...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$root = (Resolve-Path '.').Path; Get-CimInstance Win32_Process -Filter \"name = 'python.exe' or name = 'pythonw.exe'\" | Where-Object { ($_.CommandLine -like ('*' + $root + '*')) -or ($_.CommandLine -like '*app\main.py*server*') -or ($_.CommandLine -like '*app/main.py*server*') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
 
+set "PYTHON_CMD="
+
+rem Check if py launcher is available
+py -0 >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    set "PYTHON_CMD=py"
+) else (
+    rem Check if python is available in PATH
+    python --version >nul 2>&1
+    if %ERRORLEVEL% equ 0 (
+        set "PYTHON_CMD=python"
+    ) else (
+        rem Search local AppData
+        for /d %%d in ("%LocalAppData%\Programs\Python\Python*") do (
+            if exist "%%d\python.exe" (
+                set "PYTHON_CMD=%%d\python.exe"
+            )
+        )
+        rem Search Program Files
+        if not defined PYTHON_CMD (
+            for /d %%d in ("%ProgramFiles%\Python*") do (
+                if exist "%%d\python.exe" (
+                    set "PYTHON_CMD=%%d\python.exe"
+                )
+            )
+        )
+        rem Search Program Files (x86)
+        if not defined PYTHON_CMD (
+            for /d %%d in ("%ProgramFiles(x86)%\Python*") do (
+                if exist "%%d\python.exe" (
+                    set "PYTHON_CMD=%%d\python.exe"
+                )
+            )
+        )
+    )
+)
+
 echo [1/3] Checking and installing Python dependencies...
 if not exist "app\requirements.txt" (
     echo [ERROR] Missing app\requirements.txt. Please run this launcher from the project folder.
@@ -26,19 +63,29 @@ if not exist "app\requirements.txt" (
 
 if not exist "venv\Scripts\python.exe" (
     echo [INFO] Creating Python virtual environment...
-    py -3.11 -m venv venv
-    if errorlevel 1 (
-        py -3.12 -m venv venv
+    if not defined PYTHON_CMD (
+        echo [ERROR] Python 3 was not found on your system.
+        echo Please download and install Python from: https://www.python.org/downloads/
+        echo Make sure to check the option "Add Python to PATH" during installation.
+        pause
+        exit /b 1
     )
-    if errorlevel 1 (
-        py -3.10 -m venv venv
+    
+    if "%PYTHON_CMD%"=="py" (
+        py -3.11 -m venv venv
+        if errorlevel 1 (
+            py -3.12 -m venv venv
+        )
+        if errorlevel 1 (
+            py -3.10 -m venv venv
+        )
+        if errorlevel 1 (
+            py -3 -m venv venv
+        )
+    ) else (
+        "%PYTHON_CMD%" -m venv venv
     )
-    if errorlevel 1 (
-        py -3 -m venv venv
-    )
-    if errorlevel 1 (
-        python -m venv venv
-    )
+    
     if not exist "venv\Scripts\python.exe" (
         echo [ERROR] Failed to create virtual environment. Please install Python 3 and enable the py launcher or python command.
         pause

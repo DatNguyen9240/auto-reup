@@ -149,6 +149,15 @@ class SubtitleDetector:
 
     def _detect_with_easyocr(self, frame_path: Path, crop_y: int) -> list[tuple[int, int, int, int]]:
         try:
+            import os
+            os.environ["OMP_NUM_THREADS"] = "1"
+            os.environ["MKL_NUM_THREADS"] = "1"
+            import torch
+            torch.set_num_threads(1)
+        except Exception:
+            pass
+            
+        try:
             import easyocr
             import cv2
         except Exception:
@@ -160,7 +169,14 @@ class SubtitleDetector:
         crop = image[crop_y:, :]
         if SubtitleDetector._easy_ocr is None:
             logger.info("Initializing EasyOCR reader...")
-            SubtitleDetector._easy_ocr = easyocr.Reader(["ch_sim", "en", "vi"], gpu=False, verbose=False)
+            try:
+                # Try Chinese + English first (needed for Douyin videos)
+                SubtitleDetector._easy_ocr = easyocr.Reader(["ch_sim", "en"], gpu=False, verbose=False)
+                logger.info("EasyOCR reader (ch_sim, en) initialized successfully.")
+            except Exception as inner_e:
+                logger.warning(f"Failed to initialize EasyOCR with Chinese: {inner_e}. Trying Vietnamese...")
+                SubtitleDetector._easy_ocr = easyocr.Reader(["vi", "en"], gpu=False, verbose=False)
+                logger.info("EasyOCR reader (vi, en) initialized successfully.")
         result = SubtitleDetector._easy_ocr.readtext(crop)
         boxes = []
         for points, _text, score in result:

@@ -70,7 +70,6 @@
 .facebook.com	TRUE	/	TRUE	1817347920	sb	iuZBarLriquNP4gADQlbCDrc
 .facebook.com	TRUE	/	TRUE	1814339278	xs	23%3AnnKGxYRrMTc1ig%3A2%3A1782787914%3A-1%3A-1%3A%3AAcyI_3Vrak0Ln7GJmYR4FZwndN88h93l7YmWqe-Jnw
 .fake-veepn.com	TRUE	/	FALSE	1814321860	veepn-ab-tests	["abtest_promo_banner_close"]
-.gemini.google.com	TRUE	/	TRUE	1783589236	COMPASS	gemini-pd=CjwACWuJV93jFYb_b6k1ZbZc5AVi75OXfwVJx6huPFdJgLZgT-iphNSBtyIyTho-2Gurv4U86El7hPmdVFUQ8peO0gYaaAAJa4lXiu55GszUrRxnvbngzBbyyq2Nmt2y4OsbkFakzWmNfqvX83MYGsWlENfS19iXpCpgURt6ilY4WpPDLsjk2NX6swADR04onit7C5PaM09mJ3NCJkNLyhx-UB6zliVTUitwd-nlIAEwAQ
 .gemini.google.com	TRUE	/	FALSE	1817285320	_ga	GA1.1.1468287268.1782725320
 .gemini.google.com	TRUE	/	FALSE	1817285320	_ga_BF8Q35BMLM	GS2.1.s1782725320$o1$g0$t1782725320$j60$l0$h0
 .gemini.google.com	TRUE	/	FALSE	1817285320	_ga_WC57KJ50ZZ	GS2.1.s1782725319$o1$g1$t1782725319$j60$l0$h0

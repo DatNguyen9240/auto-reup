@@ -186,9 +186,25 @@ class PipelineRunner:
         # 3. Khởi tạo OCR engine
         reader = None
         try:
+            import os
+            os.environ["OMP_NUM_THREADS"] = "1"
+            os.environ["MKL_NUM_THREADS"] = "1"
+            import torch
+            torch.set_num_threads(1)
+            logger.info("Đã giới hạn số luồng CPU của PyTorch về 1 để tránh treo luồng (deadlock).")
+        except Exception as torch_e:
+            logger.warning(f"Không thể giới hạn số luồng PyTorch: {torch_e}")
+            
+        try:
             import easyocr
-            reader = easyocr.Reader(["ch_sim", "en", "vi"], gpu=False, verbose=False)
-            logger.info("Đã khởi tạo EasyOCR để nhận diện chữ trên màn hình.")
+            try:
+                # Try Chinese + English first (needed for Douyin videos)
+                reader = easyocr.Reader(["ch_sim", "en"], gpu=False, verbose=False)
+                logger.info("Đã khởi tạo EasyOCR (ch_sim, en) để nhận diện chữ trên màn hình.")
+            except Exception as inner_e:
+                logger.warning(f"Không thể khởi tạo EasyOCR với tiếng Trung: {inner_e}. Thử dùng tiếng Việt...")
+                reader = easyocr.Reader(["vi", "en"], gpu=False, verbose=False)
+                logger.info("Đã khởi tạo EasyOCR (vi, en) để nhận diện chữ trên màn hình.")
         except Exception as e:
             logger.warning(f"Không thể khởi tạo EasyOCR: {e}. Thử dùng PaddleOCR...")
             try:
@@ -211,7 +227,7 @@ class PipelineRunner:
                         import cv2
                         img = cv2.imread(str(frame_path))
                         h, w = img.shape[:2]
-                        crop = img[int(h*0.55):, :]
+                        crop = img[int(h*0.15):int(h*0.95), :]
                         results = reader.readtext(crop)
                         texts = [r[1].strip() for r in results if r[2] > 0.35]
                         text = " ".join(texts).strip()
@@ -219,7 +235,7 @@ class PipelineRunner:
                         import cv2
                         img = cv2.imread(str(frame_path))
                         h, w = img.shape[:2]
-                        crop = img[int(h*0.55):, :]
+                        crop = img[int(h*0.15):int(h*0.95), :]
                         result = reader.ocr(crop, cls=False)
                         texts = []
                         for line in result or []:
@@ -652,7 +668,16 @@ class PipelineRunner:
                 logger.info("--- Step 4: Transcribe / Import SRT ---")
                 
                 input_srt = work_dir / "input.srt"
-                if input_srt.exists():
+                has_valid_sidecar = False
+                if input_srt.exists() and input_srt.stat().st_size > 0:
+                    try:
+                        subs = pysrt.open(str(input_srt), encoding="utf-8")
+                        if len(subs) > 0:
+                            has_valid_sidecar = True
+                    except Exception as parse_err:
+                        logger.warning(f"Failed to parse sidecar SRT: {parse_err}")
+                        
+                if has_valid_sidecar:
                     logger.info("Loading existing sidecar SRT...")
                     subs = pysrt.open(str(input_srt), encoding="utf-8")
                     logger.info(f"Found {len(subs)} subtitle lines in sidecar SRT.")
@@ -940,6 +965,14 @@ class PipelineRunner:
                 
             # Step 8: Render Video
             check_cancellation()
+            
+            # Check if there are any translated segments. If not, disable subtitles and masks.
+            segments = self.store.load_translated(job_id)
+            if not segments:
+                logger.info("No dialogue segments found. Disabling subtitles and subtitle cover masking for rendering.")
+                subtitles_enabled = False
+                mask_subtitle = False
+                
             if subtitles_enabled and job.steps.get("subtitle_layout", "pending") == "pending":
                 job.current_step = "subtitle_layout"
                 job.status = "waiting_for_subtitle_layout"
@@ -1299,8 +1332,8 @@ class PipelineRunner:
                 except Exception:
                     pass
                     
-            # Delete run.log and job_config.json if keep_debug_on_success is False
-            if not settings.keep_debug_on_success:
+            # Delete run.log and job_config.json if keep_debug_on_success is False (Disabled temporarily for debugging)
+            if False:
                 for name in ["run.log", "job_config.json"]:
                     p = job_dir / name
                     if p.exists():
