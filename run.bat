@@ -31,23 +31,23 @@ if %ERRORLEVEL% equ 0 (
     ) else (
         rem Search local AppData
         for /d %%d in ("%LocalAppData%\Programs\Python\Python*") do (
-            if exist "%%d\python.exe" (
-                set "PYTHON_CMD=%%d\python.exe"
+            if exist "%%~d\python.exe" (
+                set "PYTHON_CMD=%%~d\python.exe"
             )
         )
         rem Search Program Files
         if not defined PYTHON_CMD (
             for /d %%d in ("%ProgramFiles%\Python*") do (
-                if exist "%%d\python.exe" (
-                    set "PYTHON_CMD=%%d\python.exe"
+                if exist "%%~d\python.exe" (
+                    set "PYTHON_CMD=%%~d\python.exe"
                 )
             )
         )
         rem Search Program Files (x86)
         if not defined PYTHON_CMD (
             for /d %%d in ("%ProgramFiles(x86)%\Python*") do (
-                if exist "%%d\python.exe" (
-                    set "PYTHON_CMD=%%d\python.exe"
+                if exist "%%~d\python.exe" (
+                    set "PYTHON_CMD=%%~d\python.exe"
                 )
             )
         )
