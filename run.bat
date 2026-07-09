@@ -30,9 +30,31 @@ if %ERRORLEVEL% equ 0 (
         set "PYTHON_CMD=python"
     ) else (
         rem Search local AppData
-        for /d %%d in ("%LocalAppData%\Programs\Python\Python*") do (
-            if exist "%%~d\python.exe" (
-                set "PYTHON_CMD=%%~d\python.exe"
+        if exist "%LocalAppData%\Programs\Python\Python310\python.exe" (
+            set "PYTHON_CMD=%LocalAppData%\Programs\Python\Python310\python.exe"
+        )
+        if not defined PYTHON_CMD (
+            if exist "%USERPROFILE%\AppData\Local\Programs\Python\Python310\python.exe" (
+                set "PYTHON_CMD=%USERPROFILE%\AppData\Local\Programs\Python\Python310\python.exe"
+            )
+        )
+        if not defined PYTHON_CMD (
+            if exist "C:\Users\Dell3070\AppData\Local\Programs\Python\Python310\python.exe" (
+                set "PYTHON_CMD=C:\Users\Dell3070\AppData\Local\Programs\Python\Python310\python.exe"
+            )
+        )
+        if not defined PYTHON_CMD (
+            for /d %%d in ("%LocalAppData%\Programs\Python\Python*") do (
+                if exist "%%~d\python.exe" (
+                    set "PYTHON_CMD=%%~d\python.exe"
+                )
+            )
+        )
+        if not defined PYTHON_CMD (
+            for /d %%d in ("%USERPROFILE%\AppData\Local\Programs\Python\Python*") do (
+                if exist "%%~d\python.exe" (
+                    set "PYTHON_CMD=%%~d\python.exe"
+                )
             )
         )
         rem Search Program Files
@@ -67,6 +89,11 @@ if not exist "venv\Scripts\python.exe" (
         echo [ERROR] Python 3 was not found on your system.
         echo Please download and install Python from: https://www.python.org/downloads/
         echo Make sure to check the option "Add Python to PATH" during installation.
+        echo.
+        echo Diagnostic Info:
+        echo   LocalAppData: %LocalAppData%
+        echo   UserProfile:  %USERPROFILE%
+        echo.
         pause
         exit /b 1
     )
